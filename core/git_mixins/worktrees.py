@@ -29,6 +29,12 @@ WORKTREE_LIST_PORCELAIN_FIELD_PREFIXES = (
 )
 
 
+class WorktreeTarget(NamedTuple):
+    path: str
+    start_point: str
+    detached: bool
+
+
 class Worktree(NamedTuple):
     path: str
     commit_hash: FullHash

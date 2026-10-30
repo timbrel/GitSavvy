@@ -12,11 +12,11 @@ from ...common import util
 from ..fns import filter_, take, unique
 from ..git_command import GitCommand
 from ..git_mixins.branches import Branch
-from ..git_mixins.worktrees import WorktreeLocation
+from ..git_mixins.worktrees import WorktreeLocation, WorktreeTarget
 from ..runtime import on_new_thread
 from ..text_helper import line_from_pt
-from ..ui__worktrees import remove_worktree_with_recovery
 from ..types import FullPath
+from ..ui__worktrees import remove_worktree
 from ..ui__quick_panel import ActionType, SEPARATOR, show_actions_panel, show_quick_panel
 from . import multi_selector
 from . import ref_undo
@@ -780,7 +780,12 @@ def branch_and_worktree_delete_actions(
     ] + [
         (
             f"Delete worktree at {name}",
-            partial(delete_worktree_from_graph, cmd, wt.path)
+            partial(
+                delete_worktree_from_graph, cmd, view,
+                WorktreeTarget(
+                    wt.path, wt.branch_name or wt.detached_commit or info["commit"], wt.is_detached
+                )
+            )
         )
         for wt, name in targets
     ]
@@ -814,17 +819,11 @@ def worktree_targets(
 @on_new_thread
 def delete_worktree_from_graph(
     cmd: gs_log_graph_action | gs_log_graph_delete_decoration,
-    path: str,
-    force: bool = False,
-    *,
-    unlock: bool = False
+    view: sublime.View,
+    target: WorktreeTarget,
+    force: bool = False
 ) -> None:
-    try:
-        remove_worktree_with_recovery(
-            cmd, cmd.window, path, force, unlock, partial(delete_worktree_from_graph, cmd)
-        )
-    finally:
-        util.view.refresh_gitsavvy_interfaces(cmd.window, refresh_sidebar=True)
+    remove_worktree(cmd, view, target, force)
 
 
 def delete_tag_from_graph(

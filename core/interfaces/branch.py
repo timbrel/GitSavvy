@@ -11,11 +11,11 @@ from sublime_plugin import WindowCommand
 
 from ...common import ui, util
 from ..commands import GsNavigate, ref_undo
+from ..git_mixins.worktrees import WorktreeTarget
+from ..ui__worktrees import remove_worktree
 from ..commands.log import LogMixin
 from ..commands import multi_selector
 from ..git_command import GitCommand, GitSavvyError
-from ..ui__busy_spinner import busy_indicator
-from ..ui__worktrees import remove_worktree_with_recovery
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core import app_state
@@ -718,7 +718,14 @@ class gs_branches_delete(BranchInterfaceCommand):
             if selected_item.is_remote:
                 self.delete_remote_branches(selected_item.remote, [selected_item.branch_name], force)
             elif selected_item.worktree:
-                self.delete_worktree(selected_item.worktree, force)
+                self.delete_worktree(
+                    WorktreeTarget(
+                        selected_item.worktree,
+                        selected_item.branch_name or selected_item.commit_hash,
+                        selected_item.is_detached
+                    ),
+                    force
+                )
             else:
                 self.view.settings().set("git_savvy.update_view_in_a_blocking_manner", True)
                 self.window.run_command("gs_delete_branch", {
@@ -792,14 +799,12 @@ class gs_branches_delete(BranchInterfaceCommand):
 
     @util.actions.destructive(description="delete a worktree")
     @on_new_thread
-    def delete_worktree(self, path: str, force: bool, *, unlock: bool = False) -> None:
+    def delete_worktree(self, target: WorktreeTarget, force: bool) -> None:
+        path = target.path
         self.interface.state["worktree_deletions_in_progress"].add(path)
         self.interface.just_render()
         try:
-            with busy_indicator(self.view, start_after=0.5):
-                remove_worktree_with_recovery(
-                    self, self.window, path, force, unlock, self.delete_worktree
-                )
+            remove_worktree(self, self.view, target, force)
         finally:
             self.interface.state["worktree_deletions_in_progress"].discard(path)
             self.view.settings().set("git_savvy.update_view_in_a_blocking_manner", True)

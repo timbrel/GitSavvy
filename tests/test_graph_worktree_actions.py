@@ -3,7 +3,7 @@ from __future__ import annotations
 from unittesting import DeferrableTestCase
 
 from GitSavvy.core.commands import log_graph_main_actions as actions
-from GitSavvy.core.git_mixins.worktrees import WorktreeLocation
+from GitSavvy.core.git_mixins.worktrees import WorktreeLocation, WorktreeTarget
 from GitSavvy.core.types import FullHash, ShortHash
 from GitSavvy.tests.mockito import mock, unstub, verify, when
 
@@ -53,7 +53,9 @@ class TestGraphWorktreeActions(DeferrableTestCase):
         for wt, suffix in zip(worktrees, ["one", "two"]):
             self.assertIn(f"Open {suffix} in a new window", menu)
             menu[f"Delete worktree at {suffix}"]()
-            verify(actions).delete_worktree_from_graph(self.command, wt.path)
+            verify(actions).delete_worktree_from_graph(
+                self.command, self.view, WorktreeTarget(wt.path, wt.detached_commit, True)
+            )
 
     def test_current_and_unrelated_worktrees_are_not_offered(self) -> None:
         worktrees = [
