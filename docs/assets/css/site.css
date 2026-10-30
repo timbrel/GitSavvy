@@ -20,7 +20,7 @@
     margin: 0;
     background: var(--paper);
     color: var(--ink);
-    font: 15px/1.6 var(--sans);
+    font: 16px/1.6 var(--sans);
     padding-left: 16px;
     padding-right: 16px;
   }
@@ -39,7 +39,7 @@
     text-transform: uppercase;
     color: var(--accent);
   }
-  h1 { font: 600 28px/1.2 var(--sans); margin: 0; text-wrap: balance; }
+  h1 { font: 600 48px/1.2 var(--sans); margin: 0; text-wrap: balance; }
   .lede { color: var(--muted); margin: 0; }
   h2 {
     font: 600 19px/1.3 var(--sans);
