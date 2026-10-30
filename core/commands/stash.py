@@ -5,6 +5,7 @@ from sublime_plugin import EventListener, TextCommand, WindowCommand
 
 from ..runtime import enqueue_on_worker
 from ..git_command import GitCommand
+from ..ui__quick_panel import show_noop_panel
 from ..ui_mixins.quick_panel import PanelCommandMixin
 from ..ui_mixins.quick_panel import show_stash_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
@@ -211,36 +212,20 @@ class GsStashShowCommand(WindowCommand, GitCommand):
 class GsStashSaveCommand(WindowCommand, GitCommand):
 
     """
-    Create a new stash from the user's unstaged changes.
+    Create a new stash from unstaged changes, or optionally staged changes only.
     """
 
-    def run(self, include_untracked=False, stash_of_indexed=False):
+    def run(self, include_untracked: bool = False, stash_of_indexed: bool = False) -> None:
         self.include_untracked = include_untracked
         self.stash_of_indexed = stash_of_indexed
         show_single_line_input_panel("Description:", "", self.on_done)
 
-    def on_done(self, description):
+    def on_done(self, description: str) -> None:
         if not self.stash_of_indexed:
             self.create_stash(description, include_untracked=self.include_untracked)
+        elif self.git_version < (2, 35, 0):
+            show_noop_panel(self.window, "Sorry, stashing staged changes requires Git 2.35 or newer.")
+            return
         else:
-            # Create a temporary stash of everything, including staged files.
-            self.git("stash", "--keep-index")
-            # Stash only the indexed files, since they're the only thing left in the working directory.
-            self.create_stash(description)
-            # Clean out the working directory.
-            self.git("reset", "--hard")
-            try:
-                # Pop the original stash, taking us back to the original working state.
-                self.apply_stash(1)
-                # Get the diff from the originally staged files, and remove them from the working dir.
-                stash_text = self.git("stash", "show", "--no-color", "-p")
-                self.git("apply", "-R", stdin=stash_text)
-                # Delete the temporary stash.
-                self.drop_stash(1)
-                # Remove all changes from the staging area.
-                self.git("reset")
-            except Exception as e:
-                # Restore the original working state.
-                self.pop_stash(1)
-                raise e
+            self.git("stash", "push", "--staged", "--message" if description else None, description or None)
         util.view.refresh_gitsavvy(self.window.active_view())
