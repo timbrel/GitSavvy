@@ -1,4 +1,6 @@
 from __future__ import annotations
+import os
+import tempfile
 
 from unittesting import DeferrableTestCase
 
@@ -49,7 +51,15 @@ class CiWatcherTestCase(DeferrableTestCase):
         store.state.pop(REPO, None)
 
     def start(self, key=KEY, repository=UPSTREAM, url=UPSTREAM_URL):
-        ci_status.start_run(REPO, key, repository, TARGET, url)
+        """Start a run whose first request is due right now."""
+        now = self.clock
+        self.clock = now - ci_status.DISCOVERY_SCHEDULE[0]
+        self.launch(key, repository, url)
+        self.clock = now
+        ci_status.advance_all()
+
+    def launch(self, key=KEY, repository=UPSTREAM, url=UPSTREAM_URL, schedule=ci_status.DISCOVERY_SCHEDULE):
+        ci_status.start_run(REPO, key, repository, TARGET, url, schedule)
 
     def at(self, seconds: float) -> None:
         self.clock = 1000.0 + seconds
@@ -131,11 +141,32 @@ class TestPendingPresentation(CiWatcherTestCase):
 
 
 class TestRequests(CiWatcherTestCase):
-    def test_first_request_is_immediate_and_verifies_the_push_target(self):
-        self.start()
+    def test_first_request_waits_and_verifies_the_push_target(self):
+        self.launch()
+        self.at(2.999)
+        self.assertEqual([], self.requests)
 
+        self.at(3.0)
         self.assertEqual(1, len(self.requests))
         self.assertEqual(TARGET, self.requests[0][1])
+
+    @p.expand([
+        ("with workflows", ci_status.DISCOVERY_SCHEDULE, (3, 6, 9, 15, 25, 35, 45, 55)),
+        ("without workflows", ci_status.QUIET_DISCOVERY_SCHEDULE, (5, 15, 25, 35)),
+    ])
+    def test_no_checks_follow_the_discovery_schedule_then_stop(self, _, schedule, expected):
+        self.launch(schedule=schedule)
+
+        for offset in expected:
+            self.at(offset - 0.001)
+            self.assertEqual([], self.requests)
+            self.at(offset)
+            self.assertEqual(1, len(self.requests))
+            self.assertIsNone(self.text())
+            self.respond_at(offset + 0.5, "no_checks")
+
+        self.assertEqual("", self.text())
+        self.assertEqual({}, ci_status.runs)
 
     def test_requests_never_overlap_and_follow_completion(self):
         self.start()
@@ -230,21 +261,7 @@ class TestSettling(CiWatcherTestCase):
 
 
 class TestTermination(CiWatcherTestCase):
-    def test_no_checks_show_nothing_during_discovery_then_stop(self):
-        self.start()
-        t = 0.0
-        while t < 50.0:
-            self.respond_at(t + 0.5, "no_checks")
-            t += 10.5
-            self.at(t)
-            self.assertIsNone(self.text())
-
-        self.respond_at(60.0, "no_checks")
-
-        self.assertEqual("", self.text())
-        self.assertEqual({}, ci_status.runs)
-
-    def test_checks_seen_disable_the_discovery_grace(self):
+    def test_checks_seen_end_the_discovery(self):
         self.start()
         self.respond_at(0.5, "pending")
         self.at(10.5)
@@ -474,6 +491,7 @@ class TestPushCapture(DeferrableTestCase):
         when(ci_status).is_enabled().thenReturn(True)
         when(ci_status).enqueue_on_ui(...).thenAnswer(lambda fn, *args: fn(*args))
         when(ci_status).start_run(...).thenReturn(None)
+        when(ci_status).discovery_schedule(REPO).thenReturn(ci_status.DISCOVERY_SCHEDULE)
         when(github.app_settings).get("api_tokens", {}).thenReturn({"github.com": "secret"})
         when(github.app_settings).get("github_enterprise_hosts").thenReturn([])
 
@@ -492,7 +510,8 @@ class TestPushCapture(DeferrableTestCase):
             ("feature", OID),
             GitHubRepo("https://github.com/upstream/project", "github.com", "upstream", "project", "secret"),
             PushTarget("me", "project", "refs/heads/feature"),
-            "https://github.com/upstream/project.git"
+            "https://github.com/upstream/project.git",
+            ci_status.DISCOVERY_SCHEDULE
         )
         verify(self.cmd, times=1).get_remote_info()
 
@@ -500,7 +519,7 @@ class TestPushCapture(DeferrableTestCase):
         self.push(porcelain("https://github.com/me/project", "+", "feature:refs/heads/renamed"))
 
         verify(ci_status).start_run(
-            REPO, ("feature", OID), ANY(), PushTarget("me", "project", "refs/heads/renamed"), ANY()
+            REPO, ("feature", OID), ANY(), PushTarget("me", "project", "refs/heads/renamed"), ANY(), ANY()
         )
 
     def test_integration_uses_the_effective_url(self):
@@ -518,7 +537,7 @@ class TestPushCapture(DeferrableTestCase):
         verify(ci_status).start_run(
             REPO, ("feature", OID),
             GitHubRepo("https://github.com/upstream/project", "github.com", "upstream", "project", "secret"),
-            ANY(), "https://github.com/upstream/project"
+            ANY(), "https://github.com/upstream/project", ANY()
         )
 
     def test_ssh_alias_of_the_push_url_is_resolved(self):
@@ -539,7 +558,7 @@ class TestPushCapture(DeferrableTestCase):
             REPO, ANY(),
             GitHubRepo("https://github.example.com/upstream/project", "github.example.com",
                        "upstream", "project", "ghe"),
-            ANY(), ANY()
+            ANY(), ANY(), ANY()
         )
 
     @p.expand([
@@ -851,6 +870,35 @@ class TestPassiveLookups(CiWatcherTestCase):
 
         self.assertEqual(0, len(store.current_state(REPO)["github_ci_status"]))
         self.assertNotIn(REPO, ci_status.observed_heads)
+
+
+class TestDiscoverySchedule(DeferrableTestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.repo_path = self.tmp.name
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def add(self, *path):
+        full_path = os.path.join(self.repo_path, *path)
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        open(full_path, "w").close()
+
+    def test_no_github_folder(self):
+        self.assertEqual(ci_status.QUIET_DISCOVERY_SCHEDULE, ci_status.discovery_schedule(self.repo_path))
+
+    def test_github_folder_without_workflows(self):
+        self.add(".github", "dependabot.yml")
+        self.add(".github", "workflows", "README.md")
+
+        self.assertEqual(ci_status.QUIET_DISCOVERY_SCHEDULE, ci_status.discovery_schedule(self.repo_path))
+
+    @p.expand([("ci.yml",), ("ci.yaml",)])
+    def test_workflows(self, name):
+        self.add(".github", "workflows", name)
+
+        self.assertEqual(ci_status.DISCOVERY_SCHEDULE, ci_status.discovery_schedule(self.repo_path))
 
 
 class TestSingleBranchUpdate(DeferrableTestCase):

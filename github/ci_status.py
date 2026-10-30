@@ -37,7 +37,7 @@ from GitSavvy.core.ui__busy_spinner import BusyIndicators
 from GitSavvy.core.utils import eat_but_log_errors
 from GitSavvy.github import github
 
-from typing import Callable, Dict, List, Literal, NamedTuple, Optional, Tuple, TYPE_CHECKING
+from typing import Callable, Dict, List, Literal, NamedTuple, Optional, Sequence, Tuple, TYPE_CHECKING
 if TYPE_CHECKING:
     from GitSavvy.core.git_command import GitCommand
     from GitSavvy.core.git_mixins.remotes import PushDestination, RemoteInfoBlob
@@ -54,7 +54,10 @@ __all__ = (
 
 SETTING = "github_ci_status_in_status_bar"
 POLL_INTERVAL = 10.0  # [seconds], after the previous request completed
-DISCOVERY_GRACE = 60.0  # [seconds] without any checks before giving up
+# [seconds] since the push, when to look for checks until GitHub reports any
+DISCOVERY_SCHEDULE = (3.0, 6.0, 9.0, 15.0, 25.0, 35.0, 45.0, 55.0)
+# Without local workflows, only external CI could report checks.
+QUIET_DISCOVERY_SCHEDULE = (5.0, 15.0, 25.0, 35.0)
 GREEN_CONFIRMATION = 10.0  # [seconds] between two successful observations
 DEADLINE = 30 * 60.0  # [seconds] since the run started
 RETRY_DELAYS = (10.0, 20.0, 40.0)  # [seconds] after consecutive transient failures
@@ -86,6 +89,7 @@ class Run:
     push_target: Optional[github.PushTarget]
     started_at: float
     next_request_at: float
+    discovery: Sequence[float]
     in_flight: bool = False
     # When GitHub first reported checks; the busy text only shows from then on.
     checks_seen_at: Optional[float] = None
@@ -132,7 +136,7 @@ def on_successful_push(
 
     Runs on the thread that pushed.  Unsupported or ambiguous pushes skip
     monitoring silently.  Only reads the git config, which also republishes
-    `remote_info` to the store.
+    `remote_info` to the store, and lists the local workflows.
     """
     if not is_enabled() or not source_sha:
         return
@@ -169,7 +173,8 @@ def on_successful_push(
         (source_branch, source_sha),
         repository,
         github.PushTarget(pushed.owner, pushed.repo, destination_ref),
-        integration_url
+        integration_url,
+        discovery_schedule(repo_path)
     )
 
 
@@ -243,7 +248,8 @@ def start_run(
     key: CacheKey,
     repository: github.GitHubRepo,
     push_target: Optional[github.PushTarget],
-    integration_url: str
+    integration_url: str,
+    discovery: Sequence[float]
 ) -> None:
     if not is_enabled():
         return
@@ -262,7 +268,8 @@ def start_run(
         repository,
         push_target,
         started_at=started_at,
-        next_request_at=started_at,
+        next_request_at=started_at + discovery[0],
+        discovery=discovery,
     )
     runs[(repo_path, key)] = run
     dprint("CI status: watch {} at {}/{}".format(key, repository.owner, repository.repo))
@@ -363,11 +370,15 @@ def on_observation(run: Run, observation: github.CiObservation) -> None:
         run.next_request_at = t + POLL_INTERVAL
 
     elif state == "no_checks":
-        if run.checks_seen_at is None and t - run.started_at >= DISCOVERY_GRACE:
-            dprint("CI status: {} has no checks".format(run.key))
-            terminate(run)
-            return
-        run.next_request_at = t + POLL_INTERVAL
+        if run.checks_seen_at is None:
+            next_request_at = next_discovery_request(run, t)
+            if next_request_at is None:
+                dprint("CI status: {} has no checks".format(run.key))
+                terminate(run)
+                return
+            run.next_request_at = next_request_at
+        else:
+            run.next_request_at = t + POLL_INTERVAL
 
     elif observation.retry_after is not None:
         run.next_request_at = t + observation.retry_after
@@ -385,6 +396,10 @@ def on_observation(run: Run, observation: github.CiObservation) -> None:
 
     if run.next_request_at > run.deadline:
         terminate(run)
+
+
+def next_discovery_request(run: Run, t: float) -> Optional[float]:
+    return next((run.started_at + d for d in run.discovery if run.started_at + d > t), None)
 
 
 def settle(run: Run, result: Result, t: float) -> None:
@@ -627,6 +642,21 @@ def single_branch_update(destinations: List[PushDestination]) -> Optional[Tuple[
     if not ref.dst.startswith("refs/heads/"):
         return None
     return destination.url, ref.dst
+
+
+def discovery_schedule(repo_path: RepoPath) -> Sequence[float]:
+    """
+    Look for checks less eagerly if the repository has no GitHub Actions
+    workflows.  Their absence is only a hint, external CI can still report
+    checks, so we look anyway.
+    """
+    try:
+        names = os.listdir(os.path.join(repo_path, ".github", "workflows"))
+    except OSError:
+        names = []
+    if any(name.endswith((".yml", ".yaml")) for name in names):
+        return DISCOVERY_SCHEDULE
+    return QUIET_DISCOVERY_SCHEDULE
 
 
 def is_mirror(remote_info: RemoteInfoBlob, remote: str) -> bool:
