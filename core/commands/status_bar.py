@@ -1,7 +1,7 @@
 import sublime
 from sublime_plugin import TextCommand, EventListener
 
-from ..git_command import GitCommand
+from ..git_command import GitCommand, find_repo_path_for_view
 from ..runtime import run_when_worker_is_idle, throttled
 from GitSavvy.core import store
 
@@ -41,17 +41,14 @@ class gs_draw_status_bar(TextCommand, GitCommand):
     Update the short Git status in the Sublime status bar.
     """
 
-    def run(self, edit, repo_path=None):
+    def run(self, edit):
         view = self.view
         if not self.app_settings.get("git_status_in_status_bar"):
             view.erase_status(STATUSBAR_KEY)
             return
 
+        repo_path = self.find_repo_path()
         if not repo_path:
-            repo_path = self.find_repo_path()
-            if not repo_path:
-                return
-        elif repo_path != self.find_repo_path():
             return
 
         try:
@@ -64,8 +61,8 @@ class gs_draw_status_bar(TextCommand, GitCommand):
 
 def on_status_update(repo_path, state):
     view = sublime.active_window().active_view()
-    if view:
-        view.run_command("gs_draw_status_bar", {"repo_path": repo_path})
+    if view and find_repo_path_for_view(view) == repo_path:
+        view.run_command("gs_draw_status_bar")
 
 
 store.subscribe("*", {"short_status"}, on_status_update)
