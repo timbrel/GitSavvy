@@ -16,7 +16,7 @@ from typing import (
 if TYPE_CHECKING:
     from GitSavvy.core.git_mixins.active_branch import Commit
     from GitSavvy.core.git_mixins.branches import Branch
-    from GitSavvy.core.git_mixins.worktrees import Worktree
+    from GitSavvy.core.git_mixins.worktrees import Worktree, WorktreeLocation
     from GitSavvy.core.git_mixins.stash import Stash
     from GitSavvy.core.git_mixins.tags import TagList
     from GitSavvy.core.git_mixins.remotes import RemoteInfoBlob
@@ -31,6 +31,7 @@ if TYPE_CHECKING:
         remotes: Dict[str, str]
         remote_info: RemoteInfoBlob
         worktrees: List[Worktree]
+        worktree_locations: List[WorktreeLocation]
         remotes_with_no_tags_set: Set[str]
         local_tags: TagList
         last_branches: Deque[Optional[str]]

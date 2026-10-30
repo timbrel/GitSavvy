@@ -1,8 +1,10 @@
 from __future__ import annotations
+import configparser
 from copy import deepcopy
 from glob import glob
 from itertools import count
 import os
+import re
 
 from typing import Callable, Iterable, NamedTuple
 
@@ -31,7 +33,7 @@ class Worktree(NamedTuple):
     path: str
     commit_hash: FullHash
     branch_name: str | None
-    is_main: bool
+    is_current: bool
     locked: str | bool
     prunable: str | bool
 
@@ -40,7 +42,63 @@ class Worktree(NamedTuple):
         return not self.branch_name
 
 
+class WorktreeLocation(NamedTuple):
+    path: str
+    branch_name: str | None
+    detached_commit: FullHash | None
+    is_current: bool
+
+    @property
+    def is_detached(self) -> bool:
+        return self.branch_name is None
+
+
 class WorktreesMixin(mixin_base):
+    @cache_in_store_as("worktree_locations")
+    def get_worktree_locations(self) -> list[WorktreeLocation]:
+        """Read checkout locations and HEAD identities without resolving refs.
+
+        This is not a replacement for Git's complete worktree inventory. Skip
+        unreadable registrations and layouts whose checkout path is unknown.
+        No lock/prune status or attached commit hashes are inferred. Reftable
+        HEADs are not supported by this loose-HEAD reader.
+        """
+        common_dir = self.git_common_dir
+        if os.path.isdir(os.path.join(common_dir, "reftable")):
+            return []
+        entries: list[tuple[str, str]] = []
+        if _paths_are_equal(self.git_dir, common_dir):
+            if not _paths_are_equal(self.repo_path, common_dir):
+                entries.append((common_dir, self.repo_path))
+        elif main_path := main_worktree_path(common_dir):
+            entries.append((common_dir, main_path))
+        try:
+            with os.scandir(os.path.join(common_dir, "worktrees")) as children:
+                for child in children:
+                    if child.is_dir():
+                        gitfile = read_worktree_file(os.path.join(child.path, "gitdir"))
+                        if gitfile:
+                            if not os.path.isabs(gitfile):
+                                gitfile = os.path.normpath(os.path.join(child.path, gitfile))
+                            entries.append((child.path, os.path.dirname(gitfile)))
+        except OSError:
+            pass
+
+        locations = []
+        for git_dir, path in entries:
+            head = read_worktree_file(os.path.join(git_dir, "HEAD"))
+            if head.startswith("ref: refs/heads/"):
+                branch = head[len("ref: refs/heads/"):]
+                if branch:
+                    locations.append(WorktreeLocation(
+                        path, branch, None, _paths_are_equal(git_dir, self.git_dir)
+                    ))
+            elif re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", head):
+                locations.append(WorktreeLocation(
+                    path, None, FullHash(head), _paths_are_equal(git_dir, self.git_dir)
+                ))
+        return locations
+
     @cache_in_store_as("worktrees")
     def get_worktrees(self) -> list[Worktree]:
         if self.git_version < WORKTREE_LIST_SUPPORTS_Z_FORMAT:
@@ -68,12 +126,12 @@ class WorktreesMixin(mixin_base):
             path = info["path"]
             commit_hash = info["commit_hash"]
             branch_name = info.get("branch")
-            is_main = path == normalized_repo_path
+            is_current = path == normalized_repo_path
             locked = info.get("locked", False)
             prunable = info.get("prunable", False)
 
             worktrees.append(Worktree(
-                path, commit_hash, branch_name, is_main,
+                path, commit_hash, branch_name, is_current,
                 locked, prunable
             ))
 
@@ -183,6 +241,41 @@ class WorktreesMixin(mixin_base):
         with open(destination, "w", encoding="utf-8", newline="\n") as file:
             file.write(sublime.encode_value(project_data, pretty=True))
             file.write("\n")
+
+
+def main_worktree_path(common_dir: str) -> str | None:
+    """Recognize a conventional main checkout, never guess a separate gitdir's parent."""
+    if os.path.isfile(os.path.join(common_dir, "config.worktree")):
+        return None
+    config = configparser.RawConfigParser(
+        strict=False, allow_no_value=True, inline_comment_prefixes=("#", ";")
+    )
+    try:
+        with open(os.path.join(common_dir, "config"), encoding="utf-8") as f:
+            config.read_file(f)
+        core = next((section for section in config.sections() if section.lower() == "core"), "core")
+        bare = config.get(core, "bare", fallback="false")
+        if bare is None or config.BOOLEAN_STATES.get(bare.strip('"').lower()) is not False:
+            return None
+        # Includes and explicit worktree paths need Git's config/path semantics.
+        if config.has_option(core, "worktree") or any(
+            section.lower() == "include" or section.lower().startswith("includeif ")
+            for section in config.sections()
+        ):
+            return None
+    except (OSError, UnicodeError, configparser.Error):
+        return None
+    if os.path.basename(os.path.normpath(common_dir)) == ".git":
+        return os.path.dirname(os.path.normpath(common_dir))
+    return None
+
+
+def read_worktree_file(path: str) -> str:
+    try:
+        with open(path, encoding="utf-8") as f:
+            return f.read().rstrip("\r\n")
+    except (OSError, UnicodeError):
+        return ""
 
 
 def _looks_malformed_non_z_field(field: str) -> bool:

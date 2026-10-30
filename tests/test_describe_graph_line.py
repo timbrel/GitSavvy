@@ -75,6 +75,29 @@ examples = [
 
 
 class TestDescribeGraphLine(DeferrableTestCase):
+    @p.expand([
+        ("feature ■, bookmark, origin/feature, tag: v1", {
+            "branches": ["feature", "bookmark", "origin/feature"],
+            "local_branches": ["feature", "bookmark"],
+            "tags": ["v1"]
+        }),
+        ("bookmark, ■", {"branches": ["bookmark"], "local_branches": ["bookmark"]}),
+        ("■", {}),
+        ("HEAD, ■", {"HEAD": "ac2a8a67"}),
+        ("HEAD* -> feature, bookmark ■, ■", {
+            "HEAD": "feature",
+            "branches": ["feature", "bookmark"],
+            "local_branches": ["feature", "bookmark"]
+        }),
+        ("tag: v1, ■", {"tags": ["v1"]})
+    ])
+    def test_worktree_markers_are_not_revision_names(self, decoration, expected):
+        branches = {name: mock({"is_local": True}) for name in ("feature", "bookmark")}
+        self.assertEqual(
+            {"commit": "ac2a8a67", **expected},
+            describe_graph_line("● ac2a8a67 ({}) Subject".format(decoration), branches)
+        )
+
     @p.expand(examples)
     def test_a(self, input_line, branches, output):
         self.assertEqual(output, describe_graph_line(input_line, branches))

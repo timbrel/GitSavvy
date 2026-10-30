@@ -15,7 +15,7 @@ from ..commands.log import LogMixin
 from ..commands import multi_selector
 from ..git_command import GitCommand, GitSavvyError
 from ..ui__busy_spinner import busy_indicator
-from ..ui__quick_panel import noop, show_actions_panel
+from ..ui__worktrees import remove_worktree_with_recovery
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core import app_state
@@ -251,7 +251,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
                 worktree_path=wt.path,
             )
             for wt in worktrees
-            if wt.is_detached and not wt.is_main
+            if wt.is_detached and not wt.is_current
             if wt.path not in self.state["worktree_deletions_in_progress"]
         ]
         detached_head = [
@@ -261,7 +261,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
                 worktree_path="."
             )
             for wt in worktrees
-            if wt.is_detached and wt.is_main
+            if wt.is_detached and wt.is_current
         ]
 
         has_distance_to_head_information = any(b.distance_to_head for b in local_branches)
@@ -797,33 +797,15 @@ class gs_branches_delete(BranchInterfaceCommand):
         self.interface.just_render()
         try:
             with busy_indicator(self.view, start_after=0.5):
-                self.remove_worktree(path, force=force, unlock=unlock)
-        except GitSavvyError as e:
-            if match := LOCKED_WORKTREE_RE.search(e.stderr):
-                reason = f" ({match[1]})" if match[1] else ""
-                show_actions_panel(self.window, [
-                    noop(f"Abort, worktree is locked{reason}."),
-                    (
-                        "Unlock and delete the worktree",
-                        partial(self.delete_worktree, path, force, unlock=True)
-                    )
-                ])
-            elif "contains modified or untracked files" in e.stderr and not force:
-                show_actions_panel(self.window, [
-                    noop("Abort, worktree contains modified or untracked files."),
-                    ("Open worktree in a new window", partial(self.open_worktree_in_new_window, path)),
-                    ("Delete anyway", partial(self.delete_worktree, path, True))
-                ])
-            else:
-                e.show_error_panel()
-                raise
+                remove_worktree_with_recovery(
+                    self, self.window, path, force, unlock, self.delete_worktree
+                )
         finally:
             self.interface.state["worktree_deletions_in_progress"].discard(path)
             self.view.settings().set("git_savvy.update_view_in_a_blocking_manner", True)
             util.view.refresh_gitsavvy(self.view)
 
 
-LOCKED_WORKTREE_RE = re.compile(r"cannot remove a locked working tree(?:, lock reason: ([^\n]*))?")
 DELETED_BRANCH_RE = re.compile(r"^Deleted branch (.+?) \\(was ([0-9a-f]+)\\)\\.$", re.MULTILINE)
 
 

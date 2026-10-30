@@ -4,7 +4,7 @@ import sublime
 
 from unittesting import DeferrableTestCase, expectedFailure
 from GitSavvy.tests.parameterized import parameterized as p
-from GitSavvy.tests.mockito import spy2, unstub, when
+from GitSavvy.tests.mockito import spy2, unstub, verify, when
 
 from GitSavvy.core import app_state, store
 from GitSavvy.core.commands.log_graph import (
@@ -157,7 +157,7 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
             when(gs_show_commit_info).read_commit(sha1, ...).thenReturn(info)
             when(gs_show_commit_info).to_short_hash(sha1).thenReturn(sha1)
 
-    def create_graph_view_async(self, repo_path, log, wait_for):
+    def create_graph_view_async(self, repo_path, log, wait_for, markers=None):
         when(gs_log_graph_refresh).read_graph(...).thenReturn(
             line.replace("|", "%00") for line in log.splitlines(keepends=True)
         )
@@ -166,6 +166,10 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         spy2('os.path.exists')
         when(os.path).exists(repo_path).thenReturn(True)
         when(GitCommand).get_working_dir_status().thenReturn(CLEAN_WORKING_DIR)
+        when(gs_log_graph_refresh).get_worktrees().thenRaise(AssertionError("Unexpected Git query"))
+        when(gs_log_graph_refresh).get_worktree_locations().thenReturn([])
+        if markers is not None:
+            when(gs_log_graph_refresh).get_worktree_markers().thenReturn(markers)
         self.window.run_command('gs_graph', {'repo_path': repo_path})
         yield lambda: self.window.active_view().settings().get('git_savvy.log_graph_view') is True
         log_view = self.window.active_view()
@@ -195,6 +199,78 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
             yield from self.await_active_panel_to_be('output.show_commit_info')
 
         return log_view
+
+    def test_graph_without_linked_worktrees_avoids_query(self):
+        yield from self.setup_graph_view_async(show_commit_info_setting=False)
+        verify(gs_log_graph_refresh, times=0).get_worktrees()
+
+    def test_graph_marks_other_worktrees(self):
+        self.set_app_state('graph_show_more_commit_info', False, default=True)
+        self.set_app_setting('git_status_in_status_bar', False)
+        log = (
+            "* fec0aca|HEAD -> main, feature, bookmark|Subject|Today, Author|parent\n"
+            "* abcd123||Unrelated commit|Today, Author|parent\n"
+            "* f461ea1|bookmark2|Subject|Today, Author|parent\n"
+            "* 57b00b1||Subject|Today, Author|parent\n"
+        )
+        markers = ({"feature"}, {"f461ea1" + "0" * 33, "57b00b1" + "0" * 33})
+        view = yield from self.create_graph_view_async(
+            "/not/there", log, wait_for="57b00b1", markers=markers
+        )
+        text = view.substr(sublime.Region(0, view.size()))
+        self.assertIn("(HEAD -> main, feature ■, bookmark)", text)
+        self.assertIn("(bookmark2, ■)", text)
+        self.assertIn("57b00b1 (■)", text)
+        self.assertIn("abcd123 Unrelated commit", text)
+        verify(gs_log_graph_refresh, times=0).get_worktrees()
+
+    def test_multiple_detached_worktrees_each_get_a_marker(self):
+        self.set_app_state('graph_show_more_commit_info', False, default=True)
+        self.set_app_setting('git_status_in_status_bar', False)
+        log = (
+            "* fec0aca|HEAD -> main|Current|Today, Author|parent\n"
+            "* f461ea1||Detached|Today, Author|\n"
+        )
+        view = yield from self.create_graph_view_async(
+            "/not/there", log, wait_for="f461ea1",
+            markers=(set(), ["f461ea1" + "0" * 33] * 2)
+        )
+        self.assertIn("f461ea1 (■, ■)", view.substr(sublime.Region(0, view.size())))
+
+    @p.expand(["123456", "123456789abc", "123456789abc" + "0" * 28])
+    def test_detached_markers_use_the_displayed_hash_length(self, short_hash):
+        self.set_app_state('graph_show_more_commit_info', False, default=True)
+        self.set_app_setting('git_status_in_status_bar', False)
+        log = (
+            "* fec0aca|HEAD -> main|Current|Today, Author|parent\n"
+            "* {}||Detached|Today, Author|\n".format(short_hash)
+        )
+        view = yield from self.create_graph_view_async(
+            "/not/there", log, wait_for=short_hash,
+            markers=(set(), {"123456789abc" + "0" * 28})
+        )
+        text = view.substr(sublime.Region(0, view.size()))
+        self.assertIn("{} (■)".format(short_hash), text)
+        self.assertIn("⌂", text)
+
+    def test_detached_markers_support_mixed_hash_lengths(self):
+        self.set_app_state('graph_show_more_commit_info', False, default=True)
+        self.set_app_setting('git_status_in_status_bar', False)
+        log = (
+            "* fec0aca|HEAD -> main|Current|Today, Author|parent\n"
+            "* 1234567||Detached short|Today, Author|parent\n"
+            "* abcdef123456||Detached long|Today, Author|parent\n"
+            "* 1234568||Unrelated|Today, Author|parent\n"
+            "* 8765432||Detached short again|Today, Author|parent\n"
+        )
+        view = yield from self.create_graph_view_async(
+            "/not/there", log, wait_for="8765432",
+            markers=(set(), {"1234567" + "0" * 33, "abcdef123456" + "0" * 28, "8765432" + "0" * 33})
+        )
+        text = view.substr(sublime.Region(0, view.size()))
+        for commit in ("1234567", "abcdef123456", "8765432"):
+            self.assertIn("{} (■)".format(commit), text)
+        self.assertIn("1234568 Unrelated", text)
 
     @p.expand([(0, False, 0), (8, False, 8), (8, True, 10), (12, True, 12)])
     def test_graph_learns_lengths_when_extracting_hashes(self, cached, wide_graph, expected):

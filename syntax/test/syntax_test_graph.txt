@@ -112,3 +112,27 @@
 #           ^ storage.type
 #               ^ entity.name.tag
 #          ^^^^^^^^^^ meta.graph.tag.git-savvy
+
+● ac2a8a67 (fix-python-314-tests ■, bookmark) Support tests
+#           ^^^^^^^^^^^^^^^^^^^^ constant.other.git.branch
+#                                   ^^^^^^^^ constant.other.git.branch
+#                                ^ punctuation.definition.worktree.git-savvy
+#                                ^ - constant.other.git.branch entity.name.tag gitsavvy.gotosymbol meta.graph.message
+#                                             ^ meta.graph.message.git-savvy
+● 644c9d46 (slow-and-fast-repos-again, ■) Run commit graph
+#           ^^^^^^^^^^^^^^^^^^^^^^^^^ constant.other.git.branch
+#                                      ^ punctuation.definition.worktree.git-savvy
+#                                      ^ - constant.other.git.branch entity.name.tag gitsavvy.gotosymbol meta.graph.message
+#                                         ^ meta.graph.message.git-savvy
+● 44cac149 (■) Clean up processes
+#           ^ punctuation.definition.worktree.git-savvy
+#           ^ - constant.other.git.branch entity.name.tag gitsavvy.gotosymbol meta.graph.message
+#              ^ meta.graph.message.git-savvy
+● 44cac149 (HEAD* -> main, feature ■, tag: v1, ■) Subject
+#                    ^^^^ constant.other.git.branch
+#                          ^^^^^^^ constant.other.git.branch
+#                                  ^ punctuation.definition.worktree.git-savvy
+#                                  ^ - constant.other.git.branch entity.name.tag gitsavvy.gotosymbol meta.graph.message
+#                                              ^ punctuation.definition.worktree.git-savvy
+#                                              ^ - constant.other.git.branch entity.name.tag gitsavvy.gotosymbol meta.graph.message
+#                                                 ^ meta.graph.message.git-savvy

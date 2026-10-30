@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections import deque
+from collections import Counter, deque
 from functools import lru_cache, partial
 from itertools import chain, groupby, islice
 from queue import Empty
@@ -58,6 +58,7 @@ from .log_graph_helper import (
     FIND_COMMIT_HASH,
     GRAPH_HEIGHT,
     ROOT_NODE_CHAR,
+    WORKTREE_MARKER,
 )
 
 T = TypeVar("T")
@@ -474,12 +475,11 @@ class gs_log_graph_refresh(GsTextCommand):
 
     def run_impl(
         self,
-        initial_draw,
-        assume_complete_redraw,
-        prelude_text,
-        should_abort,
-    ):
-        # type: (bool, bool, str, ShouldAbort) -> None
+        initial_draw: bool,
+        assume_complete_redraw: bool,
+        prelude_text: str,
+        should_abort: ShouldAbort
+    ) -> None:
         settings = self.view.settings()
         try:
             # In case of `assume_complete_redraw` we later clear the graph content
@@ -643,9 +643,11 @@ class gs_log_graph_refresh(GsTextCommand):
         awaiting_head_commit = True
         short_hash_length = self.current_state().get("short_hash_length", 0)
         additional_decorations = resolve_refs_from_the_logs()
+        worktree_branches, detached_worktree_commits = self.get_worktree_markers()
+        mark_worktree_branches = make_worktree_branch_marker(worktree_branches)
+        detached_worktree_short_commits: dict[int, Counter[str]] = {}
 
-        def simplify_decoration(decoration):
-            # type: (str) -> str
+        def simplify_decoration(decoration: str) -> str:
             """Simplify decoration by omitting remote branches if they match
             local branches.
             """
@@ -676,6 +678,7 @@ class gs_log_graph_refresh(GsTextCommand):
                 len(hash) > ASCII_ART_LENGHT_LIMIT
                 or in_overview_mode
                 or additional_decorations
+                or detached_worktree_commits
             ):
                 commit_hash = hash.rsplit(" ", 1)[1]
                 hash_length = len(commit_hash)
@@ -705,9 +708,22 @@ class gs_log_graph_refresh(GsTextCommand):
                     remember_drawn_repo_status(self.view, bool(repo_is_dirty))
                 if in_overview_mode:
                     decoration = simplify_decoration(decoration)
-                left = f"{hash} ({decoration})"
-            else:
-                left = f"{hash}"
+
+                if mark_worktree_branches:
+                    decoration = mark_worktree_branches(decoration)
+
+            if detached_worktree_commits:
+                if hash_length not in detached_worktree_short_commits:
+                    # Match this line's actual abbreviation length, not the repo's
+                    # cached maximum: Git may print shorter hashes on later lines.
+                    detached_worktree_short_commits[hash_length] = Counter(
+                        full_hash[:hash_length] for full_hash in detached_worktree_commits
+                    )
+                if count := detached_worktree_short_commits[hash_length][commit_hash]:
+                    markers = ", ".join([WORKTREE_MARKER] * count)
+                    decoration = f"{decoration}, {markers}" if decoration else markers
+
+            left = f"{hash} ({decoration})" if decoration else hash
             left_width = len(left) if left.isascii() else text_width(left)
             return f"{left} {trunc_and_pad(subject, max(2, LEFT_COLUMN_WIDTH - left_width))} \u200b {info}\n"
 
@@ -929,6 +945,13 @@ class gs_log_graph_refresh(GsTextCommand):
 
         run_on_new_thread(reader)
 
+    def get_worktree_markers(self) -> tuple[set[str], list[FullHash]]:
+        locations = self.get_worktree_locations()
+        return (
+            {wt.branch_name for wt in locations if not wt.is_current and wt.branch_name},
+            [wt.detached_commit for wt in locations if not wt.is_current and wt.detached_commit]
+        )
+
     def read_graph(self, got_proc=None):
         # type: (Callable[[subprocess.Popen], None]) -> Iterator[str]
         args = self.build_git_command()
@@ -1015,6 +1038,19 @@ class gs_log_graph_refresh(GsTextCommand):
             args += ["--"] + paths
 
         return args
+
+
+def make_worktree_branch_marker(branches: set[str]) -> Optional[Callable[[str], str]]:
+    """For {"foo"}, turn "foo, main" into "foo ■, main".
+
+    Leave "tag: foo" and "origin/foo" unchanged; return None for no branches.
+    """
+    if not branches:
+        return None
+    # Match whole branch decorations, never a tag or a similarly named remote.
+    names = "|".join(map(re.escape, branches))
+    pattern = re.compile(rf"(?:^|, )(?:HEAD\*? -> )?(?:{names})(?=, |$)")
+    return partial(pattern.sub, rf"\g<0> {WORKTREE_MARKER}")
 
 
 def prelude(view):
