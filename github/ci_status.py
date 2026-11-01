@@ -15,8 +15,18 @@ lookups are passive: no
 animation and no acknowledgements, only a failure shows as `[red]`.
 
 The status bar only selects the applicable string; it never schedules
-anything or computes elapsed time.  All run and lookup state lives on the
-UI thread, only the HTTPS requests run on short-lived background threads.
+anything or computes elapsed time.
+
+Threads: the UI thread owns all run and lookup state, `known_sources`,
+and the published cache; every function touching them is
+`@must_run_on_ui`.  Not for Sublime's sake: git never blocks the UI
+thread, so its timers keep the animation, polling, and delays on time,
+and the status bar reads the published cache there.  The entry points
+run on the threads that ran git, and do their git reads there; the
+HTTPS requests run on short-lived background threads.  Both hand their
+results over with `enqueue_on_ui`.  Only `observed_heads` is shared:
+the git threads deduplicate HEADs under `observed_heads_lock` before
+they read any remote info.
 """
 from __future__ import annotations
 from dataclasses import dataclass, field
@@ -31,7 +41,7 @@ from GitSavvy.common.util.debug import dprint
 from GitSavvy.core import store
 from GitSavvy.core.fns import last
 from GitSavvy.core.git_mixins.remotes import by_raw_key
-from GitSavvy.core.runtime import enqueue_on_ui, run_new_daemon_thread
+from GitSavvy.core.runtime import enqueue_on_ui, must_run_on_ui, run_new_daemon_thread
 from GitSavvy.core.settings import app_settings
 from GitSavvy.core.ui__busy_spinner import BusyIndicators
 from GitSavvy.core.utils import eat_but_log_errors
@@ -194,6 +204,7 @@ def on_head_observed(cmd: GitCommand, head: HeadState) -> None:
     rebase, merge, cherry-pick, revert, or bisect.  The lookup itself
     waits until HEAD stayed put for `SETTLE_DELAY`.
     """
+    global observed_heads
     if not is_enabled():
         return
 
@@ -212,9 +223,10 @@ def on_head_observed(cmd: GitCommand, head: HeadState) -> None:
         if not integration:
             return
         repository, integration_url = integration
-        enqueue_on_ui(schedule_lookup, repo_path, key, repository, integration_url)
+        schedule_lookup(repo_path, key, repository, integration_url)
 
 
+@must_run_on_ui
 def start() -> None:
     global unsubscribe_store, settings, was_enabled
     stop()
@@ -224,8 +236,9 @@ def start() -> None:
     unsubscribe_store = store.subscribe("*", {"remote_info"}, on_remote_info_update)
 
 
+@must_run_on_ui
 def stop() -> None:
-    global unsubscribe_store, settings
+    global unsubscribe_store, settings, runs, lookups, known_sources
     if settings is not None:
         settings.clear_on_change(__name__)
         settings = None
@@ -243,6 +256,7 @@ def is_enabled() -> bool:
     return bool(app_settings.get(SETTING, True))
 
 
+@must_run_on_ui
 def start_run(
     repo_path: RepoPath,
     key: CacheKey,
@@ -251,6 +265,7 @@ def start_run(
     integration_url: str,
     discovery: Sequence[float]
 ) -> None:
+    global runs, lookups
     if not is_enabled():
         return
 
@@ -277,7 +292,9 @@ def start_run(
     ensure_ticking()
 
 
+@must_run_on_ui
 def remember_source(repo_path: RepoPath, repository: github.GitHubRepo, integration_url: str) -> None:
+    global known_sources
     known_source = KnownSource(source_of(repository), integration_url)
     previous_source = known_sources.get(repo_path)
     if previous_source and previous_source.source != known_source.source:
@@ -285,12 +302,15 @@ def remember_source(repo_path: RepoPath, repository: github.GitHubRepo, integrat
     known_sources[repo_path] = known_source
 
 
+@must_run_on_ui
 def advance_all() -> None:
+    global runs
     t = now()
     for run in list(runs.values()):
         advance(run, t)
 
 
+@must_run_on_ui
 def advance(run: Run, t: float) -> None:
     """Publish the text for `t` and start a request if one is due."""
     if run.done:
@@ -328,7 +348,9 @@ def pending_text(elapsed: float) -> str:
     return "[CI: {}]".format(frame) if elapsed < LABEL_DURATION else "[{}]".format(frame)
 
 
+@must_run_on_ui
 def request_observation(run: Run) -> None:
+    # Read the mutable `push_target` here, not on the request thread.
     run_new_daemon_thread(fetch_observation, run, run.push_target)
 
 
@@ -337,6 +359,7 @@ def fetch_observation(run: Run, push_target: Optional[github.PushTarget]) -> Non
     enqueue_on_ui(on_observation, run, observation)
 
 
+@must_run_on_ui
 def on_observation(run: Run, observation: github.CiObservation) -> None:
     run.in_flight = False
     if run.done:
@@ -402,25 +425,30 @@ def next_discovery_request(run: Run, t: float) -> Optional[float]:
     return next((run.started_at + d for d in run.discovery if run.started_at + d > t), None)
 
 
+@must_run_on_ui
 def settle(run: Run, result: Result, t: float) -> None:
     run.result = result
     run.settled_at = t
     advance(run, t)
 
 
+@must_run_on_ui
 def terminate(run: Run) -> None:
     """Stop without a result; never claims success."""
     publish(run.repo_path, run.key, "")
     finish(run)
 
 
+@must_run_on_ui
 def finish(run: Run) -> None:
+    global runs
     run.done = True
     run_key = (run.repo_path, run.key)
     if runs.get(run_key) is run:
         del runs[run_key]
 
 
+@must_run_on_ui
 def publish(repo_path: RepoPath, key: CacheKey, text: str) -> None:
     cache = store.current_state(repo_path)["github_ci_status"]
     if key in cache and cache.get(key) == text:
@@ -429,8 +457,10 @@ def publish(repo_path: RepoPath, key: CacheKey, text: str) -> None:
     store.update_state(repo_path, {"github_ci_status": cache})
 
 
+@must_run_on_ui
 def reset_repo(repo_path: RepoPath) -> None:
     """Forget all runs and published results of `repo_path`."""
+    global runs, lookups, known_sources
     for run in list(runs.values()):
         if run.repo_path == repo_path:
             finish(run)
@@ -443,6 +473,7 @@ def reset_repo(repo_path: RepoPath) -> None:
         store.update_state(repo_path, {"github_ci_status": cache})
 
 
+@must_run_on_ui
 def ensure_ticking() -> None:
     global ticking
     if not ticking:
@@ -454,8 +485,9 @@ def schedule_tick() -> None:
     sublime.set_timeout(tick, int(FRAME_INTERVAL * 1000))
 
 
+@must_run_on_ui
 def tick() -> None:
-    global ticking
+    global ticking, runs
     advance_all()
     if runs:
         schedule_tick()
@@ -467,8 +499,9 @@ def now() -> float:
     return time.monotonic()
 
 
+@must_run_on_ui
 def on_settings_changed() -> None:
-    global was_enabled
+    global was_enabled, runs, known_sources
     enabled = is_enabled()
     if was_enabled and not enabled:
         for run in list(runs.values()):
@@ -481,25 +514,30 @@ def on_settings_changed() -> None:
 
 
 def on_remote_info_update(repo_path: RepoPath, state: store.RepoStore) -> None:
-    # Runs on the publishing thread.  The source only changes if the
-    # integration remote now points elsewhere; a renamed remote with the
-    # same URL, or a different URL for the same repository, does not count.
+    # Runs on the publishing thread, which must not read `known_sources`.
+    enqueue_on_ui(
+        on_integration_url_observed,
+        repo_path,
+        integration_remote_url(state["remote_info"])
+    )
+
+
+@must_run_on_ui
+def on_integration_url_observed(repo_path: RepoPath, url: Optional[str]) -> None:
+    """
+    Forget everything about `repo_path` if its integration remote now
+    points elsewhere.  A renamed remote with the same URL, or a different
+    URL for the same repository, does not count.
+    """
+    global known_sources
     known = known_sources.get(repo_path)
-    if not known:
-        return
-    url = integration_remote_url(state["remote_info"])
-    if url == known.remote_url:
+    if not known or url == known.remote_url:
         return
     try:
         source = source_of(github.parse_remote(url)) if url else None
     except ValueError:
         source = None
     if source != known.source:
-        enqueue_on_ui(reset_repo_if_source_is, repo_path, known)
-
-
-def reset_repo_if_source_is(repo_path: RepoPath, known: KnownSource) -> None:
-    if known_sources.get(repo_path) == known:
         reset_repo(repo_path)
         # Look up the current HEAD in the new source.
         forget_observed_heads(repo_path)
@@ -511,12 +549,14 @@ def schedule_lookup(
     repository: github.GitHubRepo,
     integration_url: str
 ) -> None:
+    # `set_timeout` is safe on any thread and runs the callback on the UI thread.
     sublime.set_timeout(
         partial(lookup_if_settled, repo_path, key, repository, integration_url),
         int(SETTLE_DELAY * 1000)
     )
 
 
+@must_run_on_ui
 def lookup_if_settled(
     repo_path: RepoPath,
     key: CacheKey,
@@ -527,7 +567,10 @@ def lookup_if_settled(
     Start a one-shot lookup unless HEAD moved on in the meantime, a push
     run owns the key, or a lookup of the key is already in flight.
     """
-    if not is_enabled() or observed_heads.get(repo_path) != key:
+    global observed_heads, runs, lookups
+    with observed_heads_lock:
+        observed_head = observed_heads.get(repo_path)
+    if not is_enabled() or observed_head != key:
         return
     run_key = (repo_path, key)
     if run_key in runs or run_key in lookups:
@@ -549,7 +592,9 @@ def fetch_lookup(lookup: Lookup) -> None:
     enqueue_on_ui(on_lookup_result, lookup, observation)
 
 
+@must_run_on_ui
 def on_lookup_result(lookup: Lookup, observation: github.CiObservation) -> None:
+    global lookups
     run_key = (lookup.repo_path, lookup.key)
     if lookups.get(run_key) is not lookup:
         return
@@ -574,6 +619,7 @@ def passive_text(state: github.CiState) -> Optional[str]:
 
 
 def forget_observed_heads(repo_path: Optional[RepoPath] = None) -> None:
+    global observed_heads
     with observed_heads_lock:
         if repo_path is None:
             observed_heads.clear()

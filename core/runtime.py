@@ -87,6 +87,21 @@ def assert_on_ui() -> None:
         raise RuntimeError("This operation must run on the UI thread")
 
 
+def must_run_on_ui(fn: Callable[P, T]) -> Callable[P, T]:
+    """
+    Mark `fn` as confined to the UI thread, typically because it touches
+    state only the UI thread owns, and raise if it is called elsewhere.
+
+    It never hops threads itself; callers on other threads must
+    `enqueue_on_ui` it explicitly.
+    """
+    @wraps(fn)
+    def wrapped(*args: P.args, **kwargs: P.kwargs) -> T:
+        assert_on_ui()
+        return fn(*args, **kwargs)
+    return wrapped
+
+
 def ensure_on_ui(fn, *args, **kwargs):
     # type: (Callable[P, T], P.args, P.kwargs) -> None
     if it_runs_on_ui():

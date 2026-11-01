@@ -424,6 +424,17 @@ class TestRemoteInfoUpdates(CiWatcherTestCase):
         self.assertEqual({}, ci_status.runs)
         self.assertEqual(0, len(store.current_state(REPO)["github_ci_status"]))
 
+    def test_compares_on_the_ui_thread(self):
+        handed_over: list[tuple] = []
+        when(ci_status).enqueue_on_ui(...).thenAnswer(lambda *args: handed_over.append(args))
+
+        self.publish_remote_info({"origin": "git@github.com:other/project.git"}, "origin")
+        self.assertIn((REPO, KEY), ci_status.runs)
+
+        fn, *args = handed_over.pop()
+        fn(*args)
+        self.assertEqual({}, ci_status.runs)
+
 
 class TestEnablement(CiWatcherTestCase):
     def test_disabling_cancels_runs_and_clears_results(self):
@@ -663,6 +674,8 @@ class TestHeadObservation(DeferrableTestCase):
         self.observe()
 
         self.assertEqual([(REPO, KEY, UPSTREAM, UPSTREAM_URL)], self.scheduled)
+        # The timer itself hands the lookup over to the UI thread.
+        verify(ci_status, times=0).enqueue_on_ui(...)
 
     def test_same_head_stays_fresh(self):
         self.observe()
@@ -864,9 +877,8 @@ class TestPassiveLookups(CiWatcherTestCase):
     def test_changed_integration_source_forgets_observed_heads(self):
         self.look_up()
         self.answer("failure")
-        known = ci_status.known_sources[REPO]
 
-        ci_status.reset_repo_if_source_is(REPO, known)
+        ci_status.on_integration_url_observed(REPO, "git@github.com:someone/else.git")
 
         self.assertEqual(0, len(store.current_state(REPO)["github_ci_status"]))
         self.assertNotIn(REPO, ci_status.observed_heads)
