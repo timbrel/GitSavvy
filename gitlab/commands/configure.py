@@ -1,8 +1,8 @@
 import sublime
-from sublime_plugin import WindowCommand
 
 from ..git_mixins import GitLabRemotesMixin
-from ...core.git_command import GitCommand
+from ...core.base_commands import GsWindowCommand
+from ...core.runtime import on_worker
 from ...core.ui_mixins.quick_panel import show_branch_panel
 
 
@@ -11,12 +11,10 @@ __all__ = (
 )
 
 
-class gs_gitlab_configure_remote(WindowCommand, GitLabRemotesMixin, GitCommand):
+class gs_gitlab_configure_remote(GitLabRemotesMixin, GsWindowCommand):
 
+    @on_worker
     def run(self):
-        sublime.set_timeout_async(self.run_async)
-
-    def run_async(self):
         show_branch_panel(
             self.on_branch_selection,
             ask_remote_first=True,
