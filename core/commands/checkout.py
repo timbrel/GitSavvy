@@ -4,12 +4,13 @@ import os
 from typing import Any
 
 import sublime
-from sublime_plugin import ListInputHandler, WindowCommand
+from sublime_plugin import ListInputHandler
 
 from . import intra_line_colorizer
 from .branch import ask_for_name
 from .log import LogMixin
-from ..git_command import GitCommand, GitSavvyError
+from ..git_command import GitSavvyError
+from ..runtime import on_worker
 from ..git_mixins.branches import Branch
 from ..utils import uprint
 from ..view import replace_view_content
@@ -34,7 +35,7 @@ GitSavvy: Re-created branch '{0}', in case you want to undo, run:
 """
 
 
-class gs_checkout_branch(WindowCommand, GitCommand):
+class gs_checkout_branch(GsWindowCommand):
     """Check out a local branch, track a remote branch, or open its worktree."""
 
     _input_handler: CheckoutBranchInputHandler | None = None
@@ -199,7 +200,7 @@ class gs_checkout_remote_branch(GsWindowCommand):
         util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
-class gs_checkout_current_file_at_commit(LogMixin, WindowCommand, GitCommand):
+class gs_checkout_current_file_at_commit(LogMixin, GsWindowCommand):
 
     """
     Reset the current active file to a given commit.
@@ -231,20 +232,16 @@ class gs_checkout_current_file_at_commit(LogMixin, WindowCommand, GitCommand):
             util.view.refresh_gitsavvy_interfaces(self.window)
 
 
-class gs_show_file_diff(WindowCommand, GitCommand):
+class gs_show_file_diff(GsWindowCommand):
+    @on_worker
     def run(self, commit_hash, file_path):
-        self._commit_hash = commit_hash
-        self._file_path = file_path
-        sublime.set_timeout_async(self.run_async)
-
-    def run_async(self):
         text = self.git(
             "diff",
             "--no-color",
             "-R",
-            self._commit_hash,
+            commit_hash,
             '--',
-            self._file_path
+            file_path
         )
 
         view = self.window.create_output_panel("show_file_diff")
