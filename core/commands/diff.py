@@ -19,7 +19,7 @@ from . import inline_diff
 from . import intra_line_colorizer
 from . import multi_selector
 from . import stage_hunk
-from .navigate import GsNavigate
+from .navigate import GsNavigateBase
 from ..fns import head, filter_, flatten, pairwise, unique
 from ..parse_diff import SplittedDiff
 from ..git_command import GitCommand, GitSavvyError
@@ -1843,7 +1843,7 @@ def __recount_lines(hunk_lines, a_start, b_start):
         yield line, LineId(a_start, b_start)
 
 
-class gs_diff_navigate(GsNavigate):
+class gs_diff_navigate(GsNavigateBase):
 
     """
     Travel between hunks/chunks. It is also used by show_commit_view.

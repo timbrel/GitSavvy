@@ -8,7 +8,7 @@ from sublime_plugin import EventListener, WindowCommand
 
 from ..git_mixins.status import FileStatus
 from ..git_mixins.active_branch import format_and_limit
-from ..commands import GsNavigate
+from ..commands.navigate import GsNavigateBase
 from ...common import ui
 from ..git_command import GitCommand, GitSavvyError
 from ...common import util
@@ -980,7 +980,7 @@ class gs_status_use_base_version(StatusInterfaceCommand):
         return False
 
 
-class gs_status_navigate_file(GsNavigate):
+class gs_status_navigate_file(GsNavigateBase):
 
     """
     Move cursor to the next (or previous) selectable item in the dashboard.
@@ -994,7 +994,7 @@ class gs_status_navigate_file(GsNavigate):
         )
 
 
-class gs_status_navigate_goto(GsNavigate):
+class gs_status_navigate_goto(GsNavigateBase):
 
     """
     Move cursor to the next (or previous) selectable file in the dashboard.

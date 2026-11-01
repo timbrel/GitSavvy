@@ -8,7 +8,7 @@ from sublime_plugin import EventListener
 
 from . import diff
 from . import show_file_at_commit
-from .navigate import GsNavigate
+from .navigate import GsNavigateBase
 from ..base_commands import GsTextCommand, GsWindowCommand
 from ..parse_diff import SplittedDiff, UnsupportedCombinedDiff
 from ..runtime import enqueue_on_ui, enqueue_on_worker, on_worker
@@ -1167,7 +1167,7 @@ def closest_hunk_ref_before_line(hunks, line):
         return None
 
 
-class gs_inline_diff_navigate_hunk(GsNavigate):
+class gs_inline_diff_navigate_hunk(GsNavigateBase):
 
     """
     Navigate to the next/previous hunk that appears after the current cursor

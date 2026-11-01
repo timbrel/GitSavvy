@@ -7,7 +7,7 @@ from typing import TypedDict
 from sublime_plugin import WindowCommand
 
 from ...common import ui
-from ..commands import GsNavigate
+from ..commands.navigate import GsNavigateBase
 from ..git_command import GitCommand
 from ..git_mixins.active_branch import Commit
 from ..git_mixins.remotes import ConfigEntry, RemoteInfo, RemoteInfoBlob
@@ -284,7 +284,7 @@ class gs_remotes_refresh(RemotesInterfaceCommand):
         self.interface.render()
 
 
-class gs_remotes_navigate_remote(GsNavigate):
+class gs_remotes_navigate_remote(GsNavigateBase):
 
     """
     Move cursor to the next (or previous) selectable remote in the dashboard.

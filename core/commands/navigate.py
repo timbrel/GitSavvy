@@ -9,7 +9,7 @@ from GitSavvy.core.view import show_region
 from typing import Optional, Sequence
 
 
-class GsNavigate(TextCommand, GitCommand):
+class GsNavigateBase(TextCommand, GitCommand):
     """
     Move cursor to the next (or previous).
     """

@@ -8,7 +8,7 @@ from sublime_plugin import TextCommand, WindowCommand
 
 from . import diff
 from . import inline_diff
-from .navigate import GsNavigate
+from .navigate import GsNavigateBase
 from ..fns import filter_, pairwise
 from ..git_command import GitCommand
 from ..parse_diff import SplittedDiff
@@ -308,7 +308,7 @@ class gs_line_history_open_graph_context(TextCommand, GitCommand):
             })
 
 
-class gs_line_history_navigate(GsNavigate):
+class gs_line_history_navigate(GsNavigateBase):
     offset = 0
     wrap_with_force = True
 

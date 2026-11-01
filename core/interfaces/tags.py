@@ -9,7 +9,8 @@ from webbrowser import open as open_in_browser
 import sublime
 from sublime_plugin import WindowCommand
 
-from ..commands import GsNavigate, ref_undo
+from ..commands import ref_undo
+from ..commands.navigate import GsNavigateBase
 from ...common import ui
 from ..git_command import GitCommand, GitSavvyError
 from ..git_mixins.tags import TagList
@@ -704,7 +705,7 @@ class gs_tags_show_graph(TagsInterfaceCommand):
         })
 
 
-class gs_tags_navigate_tag(GsNavigate):
+class gs_tags_navigate_tag(GsNavigateBase):
 
     """
     Move cursor to the next (or previous) selectable tag in the dashboard.
@@ -718,7 +719,7 @@ class gs_tags_navigate_tag(GsNavigate):
         )
 
 
-class gs_tags_navigate_to_next_tag(GsNavigate):
+class gs_tags_navigate_to_next_tag(GsNavigateBase):
 
     """
     Move cursor to the next (or previous) selectable tag in the dashboard.

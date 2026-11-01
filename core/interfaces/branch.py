@@ -10,7 +10,8 @@ import sublime
 from sublime_plugin import WindowCommand
 
 from ...common import ui, util
-from ..commands import GsNavigate, ref_undo
+from ..commands import ref_undo
+from ..commands.navigate import GsNavigateBase
 from ..git_mixins.worktrees import WorktreeTarget
 from ..ui__worktrees import remove_worktree
 from ..commands.log import LogMixin
@@ -1123,7 +1124,7 @@ class gs_branches_edit_branch_description(CommandForSingleBranch):
         util.view.refresh_gitsavvy(self.view)
 
 
-class gs_branches_navigate_branch(GsNavigate):
+class gs_branches_navigate_branch(GsNavigateBase):
 
     """
     Move cursor to the next (or previous) selectable branch in the dashboard.
@@ -1137,7 +1138,7 @@ class gs_branches_navigate_branch(GsNavigate):
         )
 
 
-class gs_branches_navigate_to_active_branch(GsNavigate):
+class gs_branches_navigate_to_active_branch(GsNavigateBase):
 
     """
     Move cursor to the active branch.

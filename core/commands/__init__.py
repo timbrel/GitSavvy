@@ -28,7 +28,6 @@ from .log_graph_smart_copy import *
 from .merge import *
 from .multi_selector import *
 from .mv import *
-from .navigate import *
 from .next_hunk import *
 from .output_panel import *
 from .pull import *

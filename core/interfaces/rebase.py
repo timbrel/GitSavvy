@@ -6,7 +6,7 @@ import sublime
 from sublime_plugin import WindowCommand
 
 from ...common import ui, util
-from ..commands import GsNavigate
+from ..commands.navigate import GsNavigateBase
 from ..exceptions import GitSavvyError
 from ..git_command import GitCommand
 from ..git_mixins.rebase import NearestBranchMixin
@@ -1007,7 +1007,7 @@ class gs_rebase_toggle_preserve_mode(RebaseInterfaceCommand):
         util.view.refresh_gitsavvy(self.view)
 
 
-class gs_rebase_navigate_commits(GsNavigate):
+class gs_rebase_navigate_commits(GsNavigateBase):
 
     """
     Move cursor to the next (or previous) selectable commit in the dashboard.

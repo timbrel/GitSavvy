@@ -9,7 +9,7 @@ import unicodedata
 import sublime
 from sublime_plugin import EventListener
 
-from .navigate import GsNavigate
+from .navigate import GsNavigateBase
 from ..fns import filter_
 from ..git_mixins.history import CommitInfo, LogEntry, is_dynamic_ref
 from ..runtime import enqueue_on_ui, enqueue_on_worker, on_worker, run_as_text_command, throttled
@@ -1160,7 +1160,7 @@ class gs_blame_toggle_setting(GsTextCommand):
         })
 
 
-class gs_blame_navigate_chunk(GsNavigate):
+class gs_blame_navigate_chunk(GsNavigateBase):
 
     """
     Move cursor to the next (or previous) different commit
@@ -1181,7 +1181,7 @@ class gs_blame_navigate_chunk(GsNavigate):
         return regions
 
 
-class gs_blame_navigate_head(GsNavigate):
+class gs_blame_navigate_head(GsNavigateBase):
 
     """
     Move cursor to the most recent changes
