@@ -6,7 +6,9 @@ import re
 from sublime_plugin import WindowCommand
 import sublime
 
+from ..base_commands import GsWindowCommand
 from ..git_command import GitCommand
+from ..runtime import enqueue_on_worker
 from ..ui_mixins.quick_panel import PanelActionMixin, PanelCommandMixin
 from ..ui_mixins.quick_panel import show_log_panel, show_branch_panel
 from ..ui__quick_panel import show_quick_panel
@@ -44,7 +46,7 @@ class LogMixin(GitCommand):
         if commit_hash:
             self.do_action(commit_hash, file_path=file_path, **kwargs)
         else:
-            sublime.set_timeout_async(lambda: self.run_async(file_path=file_path, **kwargs))
+            enqueue_on_worker(self.run_async, file_path=file_path, **kwargs)
 
     def run_async(self, *, file_path=None, **kwargs):
         follow = kwargs.pop(
@@ -117,17 +119,17 @@ class LogMixin(GitCommand):
             }))
 
 
-class gs_log_current_branch(LogMixin, WindowCommand, GitCommand):
+class gs_log_current_branch(LogMixin, GsWindowCommand):
     pass
 
 
-class gs_log_all_branches(LogMixin, WindowCommand, GitCommand):
+class gs_log_all_branches(LogMixin, GsWindowCommand):
 
     def log(self, **kwargs):  # type: ignore[override]
         return super().log(all_branches=True, **kwargs)
 
 
-class gs_log_by_author(LogMixin, WindowCommand, GitCommand):
+class gs_log_by_author(LogMixin, GsWindowCommand):
 
     """
     Open a quick panel containing all committers for the active
@@ -169,7 +171,7 @@ class gs_log_by_author(LogMixin, WindowCommand, GitCommand):
         return super().log(author=self._selected_author, **kwargs)
 
 
-class gs_log_by_branch(LogMixin, WindowCommand, GitCommand):
+class gs_log_by_branch(LogMixin, GsWindowCommand):
     _selected_branch = None
 
     def run_async(self, **kwargs):
@@ -183,7 +185,7 @@ class gs_log_by_branch(LogMixin, WindowCommand, GitCommand):
         super().run_async(branch=branch, **kwargs)
 
 
-class gs_log(PanelCommandMixin, WindowCommand, GitCommand):
+class gs_log(PanelCommandMixin, GsWindowCommand):
     default_actions = [
         ["gs_log_current_branch", "For current branch"],
         ["gs_log_all_branches", "For all branches"],
