@@ -20,9 +20,11 @@ After a successful push with GitSavvy, the status bar shows GitHub's check statu
 
 GitSavvy also looks up the checks once whenever it sees that you moved to another commit of a branch which has an upstream and is not ahead of it, or checked out a commit directly (detached HEAD), e.g. after switching branches, after pulling, or when you open a repository.  These lookups are silent: there is no animation, and only a failure shows as `[red]`.  Nothing is looked up for unpushed commits on a branch, or during a rebase, merge, cherry-pick, revert, or bisect.
 
+The branch dashboard shows the checks of every pushed local branch next to its upstream: `[ok]`, `[red]`, or `[pending]`, and nothing if a commit has no checks.  Every refresh of the dashboard looks them up again, with a single request for up to 50 branches, the most recently committed first.  A branch is considered pushed if it has an upstream which is not gone and it is not ahead of it.  These results also update the status bar.
+
 The checks are looked up in the integrated remote (see below), so pushing to your fork reports the checks of the upstream repository for your commit.  Monitoring requires an API token as described above, and is skipped for non-GitHub hosts, mirrors, and pushes to multiple destinations.  GitHub Enterprise hosts must be listed in the `github_enterprise_hosts` setting.
 
-Set `github_ci_status_in_status_bar` to `false` to turn this off.  It is independent of `git_status_in_status_bar`.
+Set `github_ci_status_in_status_bar` to `false` to turn this off, in the status bar and in the branch dashboard.  It is independent of `git_status_in_status_bar`.
 
 
 ## Choosing a remote

@@ -55,18 +55,24 @@ if TYPE_CHECKING:
         # "" as the branch name of a detached HEAD's lookups;
         # owned and published by `github.ci_status`.
         github_ci_status: Cache
+        # GitHub's CI state ("success", "failure", "pending", "no_checks")
+        # by the same keys; replaced, never mutated, on every change.
+        # Owned and published by `github.ci_status`.
+        github_ci_results: Cache
     RepoPath = str
     SubscriberKey = str
     Keys = AbstractSet[str]
 
 
 GITHUB_CI_STATUS_CACHE_SIZE = 64
+GITHUB_CI_RESULTS_CACHE_SIZE = 128
 
 
 def initial_state() -> RepoStore:
     return {
         "last_branches": deque([None] * 2, 2),
         "github_ci_status": Cache(maxsize=GITHUB_CI_STATUS_CACHE_SIZE),
+        "github_ci_results": Cache(maxsize=GITHUB_CI_RESULTS_CACHE_SIZE),
     }
 
 

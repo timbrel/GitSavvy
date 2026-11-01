@@ -5,6 +5,7 @@ import tempfile
 from unittesting import DeferrableTestCase
 
 from GitSavvy.core import store
+from GitSavvy.core.git_mixins.branches import Branch, Upstream
 from GitSavvy.core.git_mixins.remotes import (
     ConfigEntry,
     PushDestination,
@@ -14,6 +15,7 @@ from GitSavvy.core.git_mixins.remotes import (
     parse_push_porcelain
 )
 from GitSavvy.core.git_mixins.status import HeadState
+from GitSavvy.core.types import FullHash
 from GitSavvy.github import ci_status, github
 from GitSavvy.github.github import CiObservation, GitHubRepo, PushTarget
 from GitSavvy.tests.mockito import any as ANY, mock, unstub, verify, when
@@ -24,6 +26,7 @@ REPO = "/fake/ci-repo"
 OID = "a" * 40
 OTHER_OID = "b" * 40
 KEY = ("feature", OID)
+MAIN_KEY = ("main", OTHER_OID)
 UPSTREAM_URL = "git@github.com:upstream/project.git"
 UPSTREAM = GitHubRepo("https://github.com/upstream/project", "github.com", "upstream", "project", "secret")
 TARGET = PushTarget("me", "project", "refs/heads/feature")
@@ -46,6 +49,7 @@ class CiWatcherTestCase(DeferrableTestCase):
         unstub()
         ci_status.runs.clear()
         ci_status.lookups.clear()
+        ci_status.batch_lookups.clear()
         ci_status.observed_heads.clear()
         ci_status.known_sources.clear()
         store.state.pop(REPO, None)
@@ -75,6 +79,9 @@ class CiWatcherTestCase(DeferrableTestCase):
 
     def text(self, key=KEY):
         return store.current_state(REPO)["github_ci_status"].get(key)
+
+    def result(self, key=KEY):
+        return store.current_state(REPO)["github_ci_results"].get(key)
 
 
 class TestPendingPresentation(CiWatcherTestCase):
@@ -436,9 +443,48 @@ class TestRemoteInfoUpdates(CiWatcherTestCase):
         self.assertEqual({}, ci_status.runs)
 
 
+class TestRunResults(CiWatcherTestCase):
+    def test_pending_until_success_is_confirmed(self):
+        self.start()
+        self.respond_at(0.5, "success")
+        self.at(0.5)
+        self.assertEqual("pending", self.result())
+
+        self.at(10.5)
+        self.respond_at(11.0, "success")
+        self.assertEqual("success", self.result())
+
+    def test_failure(self):
+        self.start()
+        self.respond_at(0.5, "failure")
+
+        self.assertEqual("failure", self.result())
+
+    def test_no_checks_only_after_the_discovery(self):
+        self.launch(schedule=(1.0, 2.0))
+        self.at(1.0)
+        self.respond_at(1.5, "no_checks")
+        self.assertIsNone(self.result())
+
+        self.at(2.0)
+        self.respond_at(2.5, "no_checks")
+        self.assertEqual("no_checks", self.result())
+
+    def test_results_are_replaced_not_mutated(self):
+        self.start()
+        before = store.current_state(REPO)["github_ci_results"]
+
+        self.respond_at(0.5, "failure")
+
+        self.assertEqual(0, len(before))
+        self.assertIsNot(before, store.current_state(REPO)["github_ci_results"])
+
+
 class TestEnablement(CiWatcherTestCase):
     def test_disabling_cancels_runs_and_clears_results(self):
         self.start()
+        self.respond_at(0.5, "pending")
+        self.at(10.5)
         run, _ = self.requests.pop(0)
         when(ci_status).is_enabled().thenReturn(False)
 
@@ -447,6 +493,7 @@ class TestEnablement(CiWatcherTestCase):
 
         self.assertEqual({}, ci_status.runs)
         self.assertEqual(0, len(store.current_state(REPO)["github_ci_status"]))
+        self.assertEqual(0, len(store.current_state(REPO)["github_ci_results"]))
 
     def test_reenabling_makes_no_request(self):
         when(ci_status).is_enabled().thenReturn(False)
@@ -795,6 +842,7 @@ class TestPassiveLookups(CiWatcherTestCase):
         self.answer(state)
 
         self.assertEqual(expected, self.text())
+        self.assertEqual(state, self.result())
         self.assertEqual({}, ci_status.lookups)
 
     def test_rerun_clears_an_earlier_failure(self):
@@ -815,6 +863,7 @@ class TestPassiveLookups(CiWatcherTestCase):
         self.answer("unknown", transient=True)
 
         self.assertEqual("[red]", self.text())
+        self.assertEqual("failure", self.result())
 
     def test_head_moved_on_before_settling(self):
         ci_status.observed_heads[REPO] = ("main", OTHER_OID)
@@ -881,7 +930,204 @@ class TestPassiveLookups(CiWatcherTestCase):
         ci_status.on_integration_url_observed(REPO, "git@github.com:someone/else.git")
 
         self.assertEqual(0, len(store.current_state(REPO)["github_ci_status"]))
+        self.assertEqual(0, len(store.current_state(REPO)["github_ci_results"]))
         self.assertNotIn(REPO, ci_status.observed_heads)
+
+
+class TestBranchKeys(DeferrableTestCase):
+    def test_pushed_local_branches_most_recent_first(self):
+        branches = [
+            branch("old", OID, committerdate=1),
+            branch("new", OTHER_OID, committerdate=2),
+            branch("behind", OID, status="behind 2"),
+        ]
+
+        self.assertEqual(
+            [("new", OTHER_OID), ("old", OID), ("behind", OID)],
+            ci_status.branch_keys(branches)
+        )
+
+    @p.expand([
+        ("no upstream", dict(upstream=False)),
+        ("gone", dict(status="gone")),
+        ("ahead", dict(status="ahead 1")),
+        ("diverged", dict(status="ahead 1, behind 2")),
+        ("remote", dict(is_remote=True)),
+    ])
+    def test_ineligible_branches(self, _, kwargs):
+        self.assertEqual([], ci_status.branch_keys([branch("feature", OID, **kwargs)]))
+
+    def test_at_most_a_batch(self):
+        branches = [
+            branch("b{}".format(i), OID, committerdate=i)
+            for i in range(ci_status.MAX_BATCH_SIZE + 5)
+        ]
+
+        keys = ci_status.branch_keys(branches)
+
+        self.assertEqual(ci_status.MAX_BATCH_SIZE, len(keys))
+        self.assertEqual("b{}".format(ci_status.MAX_BATCH_SIZE + 4), keys[0][0])
+
+
+class TestBranchesObservation(DeferrableTestCase):
+    def setUp(self):
+        self.cmd = mock({"repo_path": REPO})
+        when(self.cmd).get_remote_info().thenReturn(RemoteInfoBlob(
+            [RemoteInfo("upstream", UPSTREAM_URL, [], UPSTREAM_URL)],
+            "upstream",
+            "upstream"
+        ))
+        self.started: list[tuple] = []
+        when(ci_status).is_enabled().thenReturn(True)
+        when(ci_status).enqueue_on_ui(...).thenAnswer(lambda fn, *args: fn(*args))
+        when(ci_status).start_batch_lookup(...).thenAnswer(lambda *args: self.started.append(args))
+        when(github.app_settings).get("api_tokens", {}).thenReturn({"github.com": "secret"})
+        when(github.app_settings).get("github_enterprise_hosts").thenReturn([])
+
+    def tearDown(self):
+        unstub()
+
+    def test_starts_a_batch_in_the_integration_repository(self):
+        ci_status.on_branches_observed(self.cmd, [branch("feature", OID), branch("local", OID, upstream=False)])
+
+        self.assertEqual([(REPO, [KEY], UPSTREAM, UPSTREAM_URL)], self.started)
+
+    def test_every_refresh_looks_up_again(self):
+        ci_status.on_branches_observed(self.cmd, [branch("feature", OID)])
+        ci_status.on_branches_observed(self.cmd, [branch("feature", OID)])
+
+        self.assertEqual(2, len(self.started))
+
+    def test_without_eligible_branches_reads_nothing(self):
+        ci_status.on_branches_observed(self.cmd, [branch("feature", OID, status="ahead 1")])
+
+        self.assertEqual([], self.started)
+        verify(self.cmd, times=0).get_remote_info()
+
+    def test_disabled_reads_nothing(self):
+        when(ci_status).is_enabled().thenReturn(False)
+
+        ci_status.on_branches_observed(self.cmd, [branch("feature", OID)])
+
+        self.assertEqual([], self.started)
+        verify(self.cmd, times=0).get_remote_info()
+
+    def test_unsupported_integration_is_skipped_quietly(self):
+        when(github.app_settings).get("api_tokens", {}).thenReturn({})
+        when(github.os.environ).get("GITHUB_TOKEN").thenReturn(None)
+        when(ci_status).dprint(...).thenReturn(None)
+
+        ci_status.on_branches_observed(self.cmd, [branch("feature", OID)])
+
+        self.assertEqual([], self.started)
+        verify(ci_status, times=0).dprint(...)
+
+
+class TestBatchLookups(CiWatcherTestCase):
+    def setUp(self):
+        super().setUp()
+        self.batches: list[ci_status.BatchLookup] = []
+        when(ci_status).request_batch_lookup(...).thenAnswer(self.batches.append)
+
+    def look_up(self, keys=(KEY, MAIN_KEY)):
+        ci_status.start_batch_lookup(REPO, list(keys), UPSTREAM, UPSTREAM_URL)
+
+    def answer(self, **states):
+        """Answer the oldest batch by commit: `answer(a="failure", b="success")`."""
+        observations = {
+            {"a": OID, "b": OTHER_OID}[name]: CiObservation(state)
+            for name, state in states.items()
+        }
+        ci_status.on_batch_lookup_result(self.batches.pop(0), observations)
+
+    def test_records_results_and_publishes_failures(self):
+        self.look_up()
+        self.answer(a="failure", b="success")
+
+        self.assertEqual("failure", self.result(KEY))
+        self.assertEqual("success", self.result(MAIN_KEY))
+        self.assertEqual("[red]", self.text(KEY))
+        self.assertIsNone(self.text(MAIN_KEY), "nothing to clear, nothing published")
+        self.assertEqual({}, ci_status.batch_lookups)
+
+    def test_branches_at_the_same_commit_share_the_observation(self):
+        self.look_up([KEY, ("copy", OID)])
+        self.answer(a="pending")
+
+        self.assertEqual("pending", self.result(KEY))
+        self.assertEqual("pending", self.result(("copy", OID)))
+
+    def test_rerun_clears_an_earlier_failure(self):
+        ci_status.publish(REPO, KEY, "[red]")
+
+        self.look_up()
+        self.answer(a="pending", b="success")
+
+        self.assertEqual("", self.text(KEY))
+
+    def test_unknown_keeps_what_was_published(self):
+        self.look_up()
+        self.answer(a="failure", b="success")
+
+        self.look_up()
+        self.answer(a="unknown", b="unknown")
+
+        self.assertEqual("[red]", self.text(KEY))
+        self.assertEqual("failure", self.result(KEY))
+        self.assertEqual("success", self.result(MAIN_KEY))
+
+    def test_one_batch_in_flight_per_repository(self):
+        self.look_up()
+        self.look_up()
+        self.assertEqual(1, len(self.batches))
+
+        self.answer(a="success", b="success")
+        self.look_up()
+        self.assertEqual(1, len(self.batches))
+
+    def test_keys_of_push_runs_are_not_looked_up(self):
+        self.start()
+
+        self.look_up()
+
+        self.assertEqual([MAIN_KEY], self.batches[0].keys)
+
+    def test_push_run_wins_over_a_batch_in_flight(self):
+        self.look_up()
+        self.start()
+
+        self.answer(a="failure", b="success")
+
+        self.assertIsNone(self.text(KEY))
+        self.assertIsNone(self.result(KEY))
+        self.assertEqual("success", self.result(MAIN_KEY))
+
+    def test_disabled_makes_no_request(self):
+        when(ci_status).is_enabled().thenReturn(False)
+
+        self.look_up()
+
+        self.assertEqual([], self.batches)
+
+    def test_stop_invalidates_a_batch_in_flight(self):
+        self.look_up()
+
+        try:
+            ci_status.stop()
+            self.answer(a="failure", b="failure")
+        finally:
+            ci_status.start()
+
+        self.assertIsNone(self.result(KEY))
+
+    def test_changed_integration_source_drops_a_batch_in_flight(self):
+        self.look_up()
+
+        ci_status.on_integration_url_observed(REPO, "git@github.com:someone/else.git")
+        self.answer(a="failure", b="failure")
+
+        self.assertIsNone(self.result(KEY))
+        self.assertEqual({}, ci_status.batch_lookups)
 
 
 class TestDiscoverySchedule(DeferrableTestCase):
@@ -932,6 +1178,32 @@ class TestSingleBranchUpdate(DeferrableTestCase):
     def test_nothing_pushed(self):
         self.assertIsNone(ci_status.single_branch_update([]))
         self.assertIsNone(ci_status.single_branch_update([PushDestination("https://github.com/me/p", [])]))
+
+
+def branch(
+    name: str,
+    commit_hash: str,
+    *,
+    committerdate: int = 0,
+    upstream: bool = True,
+    status: str = "",
+    is_remote: bool = False
+) -> Branch:
+    return Branch(
+        name=name,
+        remote="origin" if is_remote else None,
+        canonical_name="origin/" + name if is_remote else name,
+        commit_hash=FullHash(commit_hash),
+        commit_msg="",
+        active=False,
+        is_remote=is_remote,
+        committerdate=committerdate,
+        human_committerdate="",
+        relative_committerdate="",
+        upstream=Upstream("origin", name, "origin/" + name, status) if upstream else None,
+        distance_to_head=None,
+        worktree_path=None
+    )
 
 
 def head(**kwargs) -> HeadState:

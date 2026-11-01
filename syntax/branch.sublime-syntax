@@ -68,7 +68,7 @@ contexts:
         4: meta.git-savvy.branches.branch.name gitsavvy.gotosymbol
         5: comment.git-savvy.branches.branch.extra-info
 
-    - match: '^  (▸)?\s+([0-9a-f]{7,40}) (?:\(DETACHED\)|(\S+))\s([^(-].+?)?((?:, )?\(.+?(?:, (gone))?\))?( ?\- .+)?$'
+    - match: '^  (▸)?\s+([0-9a-f]{7,40}) (?:\(DETACHED\)|(\S+))\s([^(-].+?)?((?:, )?\(.+?(?:, (gone))?\))?( \[(?:(ok)|(red)|(pending))\])?( ?\- .+)?$'
       captures:
         0: meta.git-savvy.branches.branch
         1: punctuation.symbol.active-branch.git-savvy
@@ -77,4 +77,8 @@ contexts:
         4: comment.git-savvy.branches.branch.date
         5: comment.git-savvy.branches.branch.tracking-info
         6: constant.git-savvy.upstream.gone
-        7: comment.git-savvy.branches.branch.description keyword
+        7: meta.git-savvy.branches.branch.ci-status comment
+        8: markup.inserted.git-savvy.ci-status.success
+        9: markup.deleted.git-savvy.ci-status.failure
+        10: comment.git-savvy.ci-status.pending
+        11: comment.git-savvy.branches.branch.description keyword

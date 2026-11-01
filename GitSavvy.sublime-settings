@@ -300,7 +300,8 @@
         commit after you pushed it with GitSavvy and shows it in the status
         bar next to (or, with `git_status_in_status_bar` turned off, instead
         of) the Git status: an animated `[◇]` while checks run, a short
-        `[CI: ok]` on success, and `[red]` for failures.
+        `[CI: ok]` on success, and `[red]` for failures.  The branch
+        dashboard then also shows the check status of each pushed branch.
 
         Requires a GitHub API token, see `api_tokens`.
      */

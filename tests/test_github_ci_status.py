@@ -208,6 +208,101 @@ class TestGitHubCiStatusInterpretation(DeferrableTestCase):
         self.assertEqual(expected, observation.retry_after)
 
 
+class TestGitHubCiStatusesRequest(DeferrableTestCase):
+    def tearDown(self):
+        unstub()
+
+    def test_queries_all_commits_in_one_request(self):
+        repository = github.GitHubRepo("", "github.com", "owner", "repo", "secret")
+        when(github.interwebs).post(...).thenReturn(ci_response(batch_payload(
+            c0=commit(OID, "FAILURE"), c1=commit(OTHER_OID, "SUCCESS")
+        )))
+
+        observations = github.query_ci_statuses(repository, [OID, OTHER_OID, OID])
+
+        self.assertEqual({
+            OID: github.CiObservation("failure"),
+            OTHER_OID: github.CiObservation("success"),
+        }, observations)
+        verify(github.interwebs, times=1).post(
+            "api.github.com", 443, "/graphql",
+            payload={
+                "query": github.ci_statuses_query(2),
+                "variables": {"owner": "owner", "name": "repo", "c0": OID, "c1": OTHER_OID},
+            },
+            headers={"Authorization": "bearer secret", "Accept": "application/json"},
+            timeout=github.CI_REQUEST_TIMEOUT
+        )
+
+    def test_query_aliases_each_commit(self):
+        query = github.ci_statuses_query(2)
+
+        self.assertIn("$c0: GitObjectID!, $c1: GitObjectID!", query)
+        self.assertIn("c0: object(oid: $c0) { ...Rollup }", query)
+        self.assertIn("c1: object(oid: $c1) { ...Rollup }", query)
+        self.assertNotIn("$c2", query)
+        self.assertIn("fragment Rollup on Commit", query)
+
+    def test_unknown_commits_are_unknown_on_their_own(self):
+        repository = github.GitHubRepo("", "github.com", "owner", "repo", "secret")
+        when(github.interwebs).post(...).thenReturn(ci_response(batch_payload(
+            c0=None, c1=commit(OTHER_OID, None)
+        )))
+
+        observations = github.query_ci_statuses(repository, [OID, OTHER_OID])
+
+        self.assertEqual("unknown", observations[OID].state)
+        self.assertEqual("no_checks", observations[OTHER_OID].state)
+
+    @p.expand([
+        ("graphql errors", lambda: ci_response({**batch_payload(c0=None, c1=None), "errors": [{}]})),
+        ("server error", lambda: ci_response({"message": "oops"}, 502)),
+        ("missing repository", lambda: ci_response({"data": {"repository": None}})),
+    ])
+    def test_failed_requests_fail_every_commit(self, _, response):
+        repository = github.GitHubRepo("", "github.com", "owner", "repo", "secret")
+        when(github.interwebs).post(...).thenReturn(response())
+
+        observations = github.query_ci_statuses(repository, [OID, OTHER_OID])
+
+        self.assertEqual([OID, OTHER_OID], list(observations))
+        self.assertEqual({"unknown"}, {o.state for o in observations.values()})
+        self.assertEqual(1, len(set(observations.values())))
+
+    def test_transport_errors_are_transient_for_every_commit(self):
+        repository = github.GitHubRepo("", "github.com", "owner", "repo", "secret")
+        when(github.interwebs).post(...).thenRaise(TimeoutError())
+
+        observations = github.query_ci_statuses(repository, [OID, OTHER_OID])
+
+        self.assertTrue(all(o.state == "unknown" and o.transient for o in observations.values()))
+
+    @p.expand([
+        ("no commits", "secret", [], {}),
+        ("no token", None, [OID], {OID: github.CiObservation("unknown", "no token")}),
+    ])
+    def test_makes_no_request(self, _, token, oids, expected):
+        repository = github.GitHubRepo("", "github.com", "owner", "repo", token)
+        when(github.interwebs).post(...)
+
+        self.assertEqual(expected, github.query_ci_statuses(repository, oids))
+        verify(github.interwebs, times=0).post(...)
+
+
+def batch_payload(**commits):
+    return {"data": {"repository": commits}}
+
+
+def commit(oid, state="SUCCESS", count=1):
+    return {
+        "oid": oid,
+        "statusCheckRollup": (
+            None if state is None
+            else {"state": state, "contexts": {"totalCount": count}}
+        )
+    }
+
+
 def ci_payload(state="SUCCESS", count=1, oid=OID, pushed_oid=None):
     data = {
         "repository": {

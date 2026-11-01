@@ -14,16 +14,26 @@ detached HEAD's result is published under the branch name "".  These
 lookups are passive: no
 animation and no acknowledgements, only a failure shows as `[red]`.
 
+`on_branches_observed` looks up all pushed local branches with one
+request whenever the branches dashboard refreshes.  Its results are
+published like those of passive lookups.
+
+All observations also publish the plain CI state, e.g. "success", at
+
+    store.current_state(repo_path)["github_ci_results"][(branch, full_sha)]
+
+for the branches dashboard.
+
 The status bar only selects the applicable string; it never schedules
 anything or computes elapsed time.
 
 Threads: the UI thread owns all run and lookup state, `known_sources`,
-and the published cache; every function touching them is
+and the published caches; every function touching them is
 `@must_run_on_ui`.  Not for Sublime's sake: git never blocks the UI
 thread, so its timers keep the animation, polling, and delays on time,
-and the status bar reads the published cache there.  The entry points
-run on the threads that ran git, and do their git reads there; the
-HTTPS requests run on short-lived background threads.  Both hand their
+and the status bar reads the published status texts there.  The entry
+points run on the threads that ran git, and do their git reads there;
+the HTTPS requests run on short-lived background threads.  Both hand their
 results over with `enqueue_on_ui`.  Only `observed_heads` is shared:
 the git threads deduplicate HEADs under `observed_heads_lock` before
 they read any remote info.
@@ -39,6 +49,7 @@ import sublime
 
 from GitSavvy.common.util.debug import dprint
 from GitSavvy.core import store
+from GitSavvy.core.caches import Cache
 from GitSavvy.core.fns import last
 from GitSavvy.core.git_mixins.remotes import by_raw_key
 from GitSavvy.core.runtime import enqueue_on_ui, must_run_on_ui, run_new_daemon_thread
@@ -50,11 +61,13 @@ from GitSavvy.github import github
 from typing import Callable, Dict, List, Literal, NamedTuple, Optional, Sequence, Tuple, TYPE_CHECKING
 if TYPE_CHECKING:
     from GitSavvy.core.git_command import GitCommand
+    from GitSavvy.core.git_mixins.branches import Branch
     from GitSavvy.core.git_mixins.remotes import PushDestination, RemoteInfoBlob
     from GitSavvy.core.git_mixins.status import HeadState
 
 
 __all__ = (
+    "on_branches_observed",
     "on_head_observed",
     "on_successful_push",
     "start",
@@ -76,12 +89,15 @@ LABEL_DURATION = 3.0  # [seconds] to show "CI:" while watching
 ACKNOWLEDGE_DURATION = 5.0  # [seconds] to show a settled result verbosely
 FRAMES = BusyIndicators.STARS
 SETTLE_DELAY = 2.0  # [seconds] HEAD must stay put before a passive lookup
+MAX_BATCH_SIZE = 50  # branches per dashboard lookup
 
 RepoPath = str
 CacheKey = Tuple[str, str]  # (branch name, full commit hash)
 RunKey = Tuple[RepoPath, CacheKey]
 Source = Tuple[str, str, str]  # lowercased (host, owner, repo) of the queried repository
 Result = Literal["success", "failure"]
+# A `github.CiState` but "unknown", which is never published.
+KnownState = Literal["success", "failure", "pending", "no_checks"]
 DETACHED = ""  # the branch name of passive lookups for a detached HEAD
 
 
@@ -121,8 +137,16 @@ class Lookup:
     repository: github.GitHubRepo = field(repr=False)  # carries the token
 
 
+@dataclass(eq=False)
+class BatchLookup:
+    repo_path: RepoPath
+    keys: List[CacheKey]
+    repository: github.GitHubRepo = field(repr=False)  # carries the token
+
+
 runs: Dict[RunKey, Run] = {}
 lookups: Dict[RunKey, Lookup] = {}
+batch_lookups: Dict[RepoPath, BatchLookup] = {}
 # The last HEAD `git status` observed per repository, or `None` if it was
 # not eligible for a lookup.  Written on the threads running `git status`.
 observed_heads: Dict[RepoPath, Optional[CacheKey]] = {}
@@ -226,6 +250,34 @@ def on_head_observed(cmd: GitCommand, head: HeadState) -> None:
         schedule_lookup(repo_path, key, repository, integration_url)
 
 
+def on_branches_observed(cmd: GitCommand, branches: Sequence[Branch]) -> None:
+    """
+    Look up the CI results of all pushed local branches with one request.
+
+    Runs on the thread that refreshed the branches dashboard, after it
+    fetched `branches`.  Eligible are local branches that look pushed:
+    their upstream exists and they are not ahead of it.  At most
+    `MAX_BATCH_SIZE` of them, the most recently committed first.
+
+    Unlike HEAD lookups, every call looks up again, but only one batch
+    per repository is in flight.  Keys a push run owns are skipped.
+    """
+    if not is_enabled():
+        return
+
+    with eat_but_log_errors():
+        keys = branch_keys(branches)
+        if not keys:
+            return
+
+        # Quiet: this runs on every dashboard refresh, also in non-GitHub repos.
+        integration = integration_repository(cmd.get_remote_info(), verbose=False)
+        if not integration:
+            return
+        repository, integration_url = integration
+        enqueue_on_ui(start_batch_lookup, cmd.repo_path, keys, repository, integration_url)
+
+
 @must_run_on_ui
 def start() -> None:
     global unsubscribe_store, settings, was_enabled
@@ -238,7 +290,7 @@ def start() -> None:
 
 @must_run_on_ui
 def stop() -> None:
-    global unsubscribe_store, settings, runs, lookups, known_sources
+    global unsubscribe_store, settings, runs, lookups, batch_lookups, known_sources
     if settings is not None:
         settings.clear_on_change(__name__)
         settings = None
@@ -248,6 +300,7 @@ def stop() -> None:
     for run in list(runs.values()):
         finish(run)
     lookups.clear()
+    batch_lookups.clear()
     forget_observed_heads()
     known_sources.clear()
 
@@ -331,6 +384,7 @@ def advance(run: Run, t: float) -> None:
         # Stay silent while finding out if there are checks at all.
         if run.checks_seen_at is not None:
             publish(run.repo_path, run.key, pending_text(t - run.checks_seen_at))
+            record_results(run.repo_path, {run.key: "pending"})
         return
 
     acknowledged = t - run.settled_at >= ACKNOWLEDGE_DURATION
@@ -397,6 +451,7 @@ def on_observation(run: Run, observation: github.CiObservation) -> None:
             next_request_at = next_discovery_request(run, t)
             if next_request_at is None:
                 dprint("CI status: {} has no checks".format(run.key))
+                record_results(run.repo_path, {run.key: "no_checks"})
                 terminate(run)
                 return
             run.next_request_at = next_request_at
@@ -429,6 +484,7 @@ def next_discovery_request(run: Run, t: float) -> Optional[float]:
 def settle(run: Run, result: Result, t: float) -> None:
     run.result = result
     run.settled_at = t
+    record_results(run.repo_path, {run.key: result})
     advance(run, t)
 
 
@@ -458,19 +514,44 @@ def publish(repo_path: RepoPath, key: CacheKey, text: str) -> None:
 
 
 @must_run_on_ui
+def record_results(repo_path: RepoPath, states: Dict[CacheKey, KnownState]) -> None:
+    """
+    Publish plain CI states.  The dashboard renders them on the worker,
+    so publish a changed copy instead of mutating the published cache.
+    """
+    current = store.current_state(repo_path)["github_ci_results"]
+    changes = {
+        key: state
+        for key, state in states.items()
+        if key not in current or current.get(key) != state
+    }
+    if not changes:
+        return
+    results = Cache(maxsize=current.maxsize)
+    results.update(current)
+    results.update(changes)
+    store.update_state(repo_path, {"github_ci_results": results})
+
+
+@must_run_on_ui
 def reset_repo(repo_path: RepoPath) -> None:
     """Forget all runs and published results of `repo_path`."""
-    global runs, lookups, known_sources
+    global runs, lookups, batch_lookups, known_sources
     for run in list(runs.values()):
         if run.repo_path == repo_path:
             finish(run)
     for run_key in [run_key for run_key in lookups if run_key[0] == repo_path]:
         del lookups[run_key]
+    batch_lookups.pop(repo_path, None)
     known_sources.pop(repo_path, None)
-    cache = store.current_state(repo_path)["github_ci_status"]
+    state = store.current_state(repo_path)
+    cache = state["github_ci_status"]
     if cache:
         cache.clear()
         store.update_state(repo_path, {"github_ci_status": cache})
+    results = state["github_ci_results"]
+    if results:
+        store.update_state(repo_path, {"github_ci_results": Cache(maxsize=results.maxsize)})
 
 
 @must_run_on_ui
@@ -601,20 +682,82 @@ def on_lookup_result(lookup: Lookup, observation: github.CiObservation) -> None:
     del lookups[run_key]
 
     dprint("CI status: {} is {} {}".format(lookup.key, observation.state, observation.reason).rstrip())
-    text = passive_text(observation.state)
-    if text is not None:
-        publish(lookup.repo_path, lookup.key, text)
+    state = observation.state
+    if state != "unknown":
+        publish(lookup.repo_path, lookup.key, passive_text(state))
+        record_results(lookup.repo_path, {lookup.key: state})
 
 
-def passive_text(state: github.CiState) -> Optional[str]:
+@must_run_on_ui
+def start_batch_lookup(
+    repo_path: RepoPath,
+    keys: List[CacheKey],
+    repository: github.GitHubRepo,
+    integration_url: str
+) -> None:
+    global batch_lookups, runs
+    if not is_enabled() or repo_path in batch_lookups:
+        return
+
+    remember_source(repo_path, repository, integration_url)
+    keys = [key for key in keys if (repo_path, key) not in runs]
+    if not keys:
+        return
+    batch = BatchLookup(repo_path, keys, repository)
+    batch_lookups[repo_path] = batch
+    dprint("CI status: look up {} branches at {}/{}".format(
+        len(keys), repository.owner, repository.repo
+    ))
+    request_batch_lookup(batch)
+
+
+def request_batch_lookup(batch: BatchLookup) -> None:
+    run_new_daemon_thread(fetch_batch_lookup, batch)
+
+
+def fetch_batch_lookup(batch: BatchLookup) -> None:
+    observations = github.query_ci_statuses(batch.repository, [sha for _, sha in batch.keys])
+    enqueue_on_ui(on_batch_lookup_result, batch, observations)
+
+
+@must_run_on_ui
+def on_batch_lookup_result(batch: BatchLookup, observations: Dict[str, github.CiObservation]) -> None:
+    global batch_lookups, runs
+    repo_path = batch.repo_path
+    if batch_lookups.get(repo_path) is not batch:
+        return
+    del batch_lookups[repo_path]
+
+    states: Dict[CacheKey, KnownState] = {}
+    unknown: List[str] = []
+    for key in batch.keys:
+        observation = observations.get(key[1])
+        if (repo_path, key) in runs or not observation:
+            continue
+        if observation.state == "unknown":
+            unknown.append("{} ({})".format(key[0], observation.reason))
+            continue
+        states[key] = observation.state
+
+    dprint("CI status: looked up {} branches{}".format(
+        len(states), ", unknown: {}".format(", ".join(unknown)) if unknown else ""
+    ))
+    cache = store.current_state(repo_path)["github_ci_status"]
+    for key, state in states.items():
+        text = passive_text(state)
+        # Only replace what is there, e.g. an earlier `[red]`, with "".
+        if text or key in cache:
+            publish(repo_path, key, text)
+    record_results(repo_path, states)
+
+
+def passive_text(state: KnownState) -> str:
     """
-    Render a passive observation; `None` keeps what was published before.
-    Success and pending render nothing, so a rerun clears an earlier `[red]`.
+    Render a passive observation.  Success and pending render nothing,
+    so a rerun clears an earlier `[red]`.
     """
     if state == "failure":
         return "[red]"
-    if state == "unknown":
-        return None
     return ""
 
 
@@ -641,6 +784,24 @@ def passive_key(cmd: GitCommand, head: HeadState) -> Optional[CacheKey]:
     ):
         return None
     return (head.branch or DETACHED, head.commit_hash)
+
+
+def branch_keys(branches: Sequence[Branch]) -> List[CacheKey]:
+    """
+    Return the keys of the local branches that look pushed, the most
+    recently committed first, at most `MAX_BATCH_SIZE`.
+    """
+    eligible = sorted(
+        (
+            branch for branch in branches
+            if branch.is_local
+            and branch.upstream
+            and branch.upstream.status != "gone"
+            and "ahead" not in branch.upstream.status
+        ),
+        key=lambda branch: -branch.committerdate
+    )
+    return [(branch.name, branch.commit_hash) for branch in eligible[:MAX_BATCH_SIZE]]
 
 
 def integration_repository(

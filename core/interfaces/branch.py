@@ -23,6 +23,7 @@ from GitSavvy.core.fns import chain, filter_, pairwise
 from GitSavvy.core.utils import flash, is_younger_than
 from GitSavvy.core.runtime import enqueue_on_worker, on_new_thread, on_worker
 from GitSavvy.core.types import FullHash, ShortHash
+from GitSavvy.github import ci_status
 
 
 __all__ = (
@@ -51,13 +52,20 @@ __all__ = (
 )
 
 
-from typing import cast, Dict, Iterable, Iterator, List, Optional, Tuple, TypedDict, NamedTuple, Protocol
+from typing import (
+    cast, Dict, Iterable, Iterator, List, Mapping, Optional, Tuple, TypedDict, NamedTuple, Protocol
+)
 from ..git_mixins.active_branch import Commit
 from ..git_mixins.branches import Branch
 from ..git_mixins.worktrees import Worktree
 
 
 SHOW_REMOTES_KEY = "show_remotes_in_branch_dashboard"
+CI_MARKERS = {
+    "success": "[ok]",
+    "failure": "[red]",
+    "pending": "[pending]",
+}
 
 
 class BranchViewState(TypedDict, total=False):
@@ -65,6 +73,7 @@ class BranchViewState(TypedDict, total=False):
     long_status: str
     branches: List[Branch]
     descriptions: Dict[str, str]
+    github_ci_results: Mapping[Tuple[str, str], str]
     remotes: Dict[str, str]
     recent_commits: List[Commit]
     worktrees: List[Worktree]
@@ -156,7 +165,10 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
       REMOTE ({remote_name}):
     {remote_branch_list}"""
 
-    subscribe_to = {"branches", "descriptions", "long_status", "recent_commits", "remotes", "worktrees"}
+    subscribe_to = {
+        "branches", "descriptions", "github_ci_results", "long_status", "recent_commits", "remotes",
+        "worktrees"
+    }
     state: BranchViewState
 
     def initial_state(self) -> Dict:
@@ -177,6 +189,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         else:
             enqueue_on_worker(self.get_branches)
             enqueue_on_worker(self.get_worktrees)
+        enqueue_on_worker(self.look_up_ci_status)
         enqueue_on_worker(self.fetch_branch_description_subjects)
         enqueue_on_worker(self.get_latest_commits)
         enqueue_on_worker(self.get_remotes)
@@ -189,6 +202,9 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
                 self.app_settings.get("group_by_distance_to_head_in_branch_dashboard"),
             'show_help': not self.view.settings().get("git_savvy.help_hidden"),
         })
+
+    def look_up_ci_status(self) -> None:
+        ci_status.on_branches_observed(self, self.current_state().get("branches", []))
 
     @contextmanager
     def keep_cursor_on_something(self):
@@ -239,10 +255,16 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
         return "{0.hash} {0.message}".format(recent_commits[0])
 
     @ui.section("branch_list")
-    def render_branch_list(self, branches, worktrees, sort_by_recent, group_by_distance_to_head):
-        # type: (List[Branch], List[Worktree], bool, bool) -> str
-        # Manually get `descriptions` to not delay the first render.
+    def render_branch_list(
+        self,
+        branches: List[Branch],
+        worktrees: List[Worktree],
+        sort_by_recent: bool,
+        group_by_distance_to_head: bool
+    ) -> str:
+        # Manually get `descriptions` and CI results to not delay the first render.
         descriptions = self.state.get("descriptions", {})
+        ci_results = self.state.get("github_ci_results", {})
         local_branches = [branch for branch in branches if branch.is_local]
         detached_worktrees = [
             DetachedBranch(
@@ -313,7 +335,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
                 self._render_detached_head(branches[0])
                 if section_key == detached_head_key else
                 self._render_branch_list(
-                    None, branches, descriptions, human_dates=section_key != rest_key)
+                    None, branches, descriptions, ci_results, human_dates=section_key != rest_key)
                 for section_key, branches in sorted(grouped.items())
             )
 
@@ -332,7 +354,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
             ]
             sections = [
                 self._render_detached_head(detached_head[0]) if detached_head else "",
-                self._render_branch_list(None, local_branches, descriptions),
+                self._render_branch_list(None, local_branches, descriptions, ci_results),
                 self._render_worktree_branches(worktree_branches) if worktree_branches else "",
                 self._render_worktree_branches(detached_worktrees) if detached_worktrees else ""
             ]
@@ -355,8 +377,14 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
             for branch in branches
         )
 
-    def _render_branch_list(self, remote_name, branches, descriptions, human_dates=True):
-        # type: (Optional[str], List[Branch], Dict[str, str], bool) -> str
+    def _render_branch_list(
+        self,
+        remote_name: Optional[str],
+        branches: List[Branch],
+        descriptions: Dict[str, str],
+        ci_results: Mapping[Tuple[str, str], str],
+        human_dates: bool = True
+    ) -> str:
 
         def get_date(branch):
             if human_dates:
@@ -395,6 +423,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
                             ) if branch.upstream else ""
                         ),
                     ))),
+                    CI_MARKERS.get(ci_results.get((branch.name, branch.commit_hash), ""), ""),
                 ))),
                 description=(
                     " - {}".format(descriptions[branch.canonical_name].rstrip())
@@ -440,7 +469,7 @@ class BranchInterface(ui.ReactiveInterface, GitCommand):
             def render(remote_name=remote_name, branches=branches) -> str:
                 return self.template_remote.format(
                     remote_name=remote_name,
-                    remote_branch_list=self._render_branch_list(remote_name, branches, {})
+                    remote_branch_list=self._render_branch_list(remote_name, branches, {}, {})
                 )
 
             render_fns.append(render)

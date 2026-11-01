@@ -9,7 +9,7 @@ import re
 import subprocess
 import time
 from functools import lru_cache, partial
-from typing import Literal, NamedTuple
+from typing import Literal, NamedTuple, Sequence
 from webbrowser import open as open_in_browser
 
 from ..common import interwebs
@@ -399,6 +399,16 @@ query CiStatus(
 }
 """
 
+CI_ROLLUP_FRAGMENT = """
+fragment Rollup on Commit {
+  oid
+  statusCheckRollup {
+    state
+    contexts { totalCount }
+  }
+}
+"""
+
 CiState = Literal["success", "failure", "pending", "no_checks", "unknown"]
 
 
@@ -458,21 +468,71 @@ def query_ci_status(
     else:
         query = CI_STATUS_QUERY
 
-    host, path = graphql_endpoint(repository)
     try:
-        response = interwebs.post(
-            host, 443, path,
-            payload={"query": query, "variables": variables},
-            headers={
-                "Authorization": "bearer {}".format(repository.token),
-                "Accept": "application/json",
-            },
-            timeout=timeout
-        )
+        response = post_graphql(repository, query, variables, timeout)
     except (OSError, http.client.HTTPException, ValueError) as e:
-        return CiObservation("unknown", "transport error: {}".format(type(e).__name__), transient=True)
+        return transport_failure(e)
 
     return interpret_ci_response(response, oid, verify_push_tip=push_target is not None)
+
+
+def query_ci_statuses(
+    repository: GitHubRepo,
+    oids: Sequence[str],
+    timeout: float = CI_REQUEST_TIMEOUT
+) -> dict[str, CiObservation]:
+    """
+    Observe the commit-check rollups of several commits in `repository`
+    with one request.
+
+    Every oid maps to an observation.  If the request as a whole failed,
+    all oids share the same "unknown" observation; a commit GitHub does
+    not know is "unknown" on its own.  Never raises.
+    """
+    oids = list(dict.fromkeys(oids))
+    if not oids:
+        return {}
+    if not repository.token:
+        return dict.fromkeys(oids, CiObservation("unknown", "no token"))
+
+    variables = {"owner": repository.owner, "name": repository.repo}
+    variables.update({"c{}".format(i): oid for i, oid in enumerate(oids)})
+    try:
+        response = post_graphql(repository, ci_statuses_query(len(oids)), variables, timeout)
+    except (OSError, http.client.HTTPException, ValueError) as e:
+        return dict.fromkeys(oids, transport_failure(e))
+
+    return interpret_ci_statuses_response(response, oids)
+
+
+def ci_statuses_query(count: int) -> str:
+    """
+    Return a query for `count` commits, aliased as `c0`, `c1`, ..., which
+    take their oids from the variables of the same names.
+    """
+    return (
+        "query CiStatuses($owner: String!, $name: String!"
+        + "".join(", $c{}: GitObjectID!".format(i) for i in range(count))
+        + ") {\n  repository(owner: $owner, name: $name) {\n"
+        + "".join("    c{0}: object(oid: $c{0}) {{ ...Rollup }}\n".format(i) for i in range(count))
+        + "  }\n}\n"
+        + CI_ROLLUP_FRAGMENT
+    )
+
+
+def post_graphql(
+    repository: GitHubRepo, query: str, variables: dict, timeout: float
+) -> interwebs.Response:
+    host, path = graphql_endpoint(repository)
+    return interwebs.post(
+        host, 443, path,
+        payload={"query": query, "variables": variables},
+        headers={
+            "Authorization": "bearer {}".format(repository.token),
+            "Accept": "application/json",
+        },
+        timeout=timeout
+    )
 
 
 def graphql_endpoint(repository: GitHubRepo) -> tuple[str, str]:
@@ -481,9 +541,48 @@ def graphql_endpoint(repository: GitHubRepo) -> tuple[str, str]:
     return repository.fqdn, "/api/graphql"
 
 
+def transport_failure(e: Exception) -> CiObservation:
+    return CiObservation("unknown", "transport error: {}".format(type(e).__name__), transient=True)
+
+
 def interpret_ci_response(
     response: interwebs.Response, oid: str, verify_push_tip: bool
 ) -> CiObservation:
+    failure = interpret_graphql_failure(response)
+    if failure:
+        return failure
+
+    data = response.payload.get("data")
+    if verify_push_tip:
+        tip = _dig(data, "pushed", "ref", "target", "oid")
+        if tip != oid:
+            return CiObservation("unknown", "pushed ref does not point at the commit")
+
+    return interpret_commit(_dig(data, "repository", "object"), oid)
+
+
+def interpret_ci_statuses_response(
+    response: interwebs.Response, oids: Sequence[str]
+) -> dict[str, CiObservation]:
+    failure = interpret_graphql_failure(response)
+    if failure:
+        return dict.fromkeys(oids, failure)
+
+    repository = _dig(response.payload, "data", "repository")
+    if not isinstance(repository, dict):
+        return dict.fromkeys(oids, CiObservation("unknown", "repository not found"))
+
+    return {
+        oid: interpret_commit(repository.get("c{}".format(i)), oid)
+        for i, oid in enumerate(oids)
+    }
+
+
+def interpret_graphql_failure(response: interwebs.Response) -> CiObservation | None:
+    """
+    Return why `response` carries no usable data, or `None` if it does.
+    Any GraphQL error, even next to partial data, fails the whole response.
+    """
     status = response.status
     payload = response.payload
     if status in (403, 429):
@@ -507,14 +606,10 @@ def interpret_ci_response(
                 "unknown", "rate limited", retry_after=_retry_after(response, throttled=True)
             )
         return CiObservation("unknown", "GraphQL errors: {}".format(", ".join(error_types)))
+    return None
 
-    data = payload.get("data")
-    if verify_push_tip:
-        tip = _dig(data, "pushed", "ref", "target", "oid")
-        if tip != oid:
-            return CiObservation("unknown", "pushed ref does not point at the commit")
 
-    commit = _dig(data, "repository", "object")
+def interpret_commit(commit: object, oid: str) -> CiObservation:
     if not isinstance(commit, dict) or commit.get("oid") != oid:
         return CiObservation("unknown", "commit not found")
 

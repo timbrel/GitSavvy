@@ -41,6 +41,20 @@
     67df3f5 better-error-handling 12 months ago - desc
 #                                 ^^^^^^^^^^^^^ comment.git-savvy.branches.branch.date
 #                                               ^^^^^^ comment.git-savvy.branches.branch.description keyword
+  ▸ 7f561b6 master Wed 20:04, (origin/master) [ok] - desc
+#                  ^^^^^^^^^ comment.git-savvy.branches.branch.date
+#                             ^^^^^^^^^^^^^^^ comment.git-savvy.branches.branch.tracking-info
+#                                            ^^^^^ meta.git-savvy.branches.branch.ci-status
+#                                              ^^ markup.inserted.git-savvy.ci-status.success
+#                                                 ^^^^^^^ comment.git-savvy.branches.branch.description keyword
+    7f561b6 master (origin/master, behind 2) [red]
+#           ^^^^^^ meta.git-savvy.branches.branch.name
+#                  ^^^^^^^^^^^^^^^^^^^^^^^^^ comment.git-savvy.branches.branch.tracking-info
+#                                           ^^^^^^ meta.git-savvy.branches.branch.ci-status
+#                                             ^^^ markup.deleted.git-savvy.ci-status.failure
+    7f561b6 master (origin/master) [pending]
+#                                 ^^^^^^^^^^ meta.git-savvy.branches.branch.ci-status
+#                                   ^^^^^^^ comment.git-savvy.ci-status.pending
 
 
 
