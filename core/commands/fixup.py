@@ -3,10 +3,16 @@ import re
 from .log import gs_log_current_branch
 from ...common import util
 
+__all__ = (
+    "gs_fixup_from_stage",
+    "gs_quick_stage_current_file_and_fixup",
+)
+
+
 fixup_command = re.compile("^fixup! (.*)")
 
 
-class GsFixupFromStageCommand(gs_log_current_branch):
+class gs_fixup_from_stage(gs_log_current_branch):
     def run(self):  # type: ignore[override]
         status = self.get_working_dir_status()
         if status.unstaged_files or status.merge_conflicts:
@@ -60,7 +66,7 @@ class GsFixupFromStageCommand(gs_log_current_branch):
             util.view.refresh_gitsavvy(self.window.active_view())
 
 
-class GsQuickStageCurrentFileAndFixupCommand(GsFixupFromStageCommand):
+class gs_quick_stage_current_file_and_fixup(gs_fixup_from_stage):
     def run(self):  # type: ignore[override]
         self.git("add", "--", self.file_path)
         super().run()
