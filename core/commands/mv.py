@@ -7,7 +7,12 @@ from ..git_command import GitCommand
 from ..ui_mixins.input_panel import show_single_line_input_panel
 
 
-class GsMvCurrentFileCommand(WindowCommand, GitCommand):
+__all__ = (
+    "gs_mv_current_file",
+)
+
+
+class gs_mv_current_file(WindowCommand, GitCommand):
 
     """
     Prompt the user for a new name for the current file.
