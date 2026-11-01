@@ -8,6 +8,11 @@ from GitSavvy.core.base_commands import GsWindowCommand
 from typing import Iterable, List
 
 
+__all__ = (
+    "gs_generate_change_log",
+)
+
+
 REF_PROMPT = "Ref or commit hash:"
 CHANGELOG_TEMPLATE = """Changes since {ref}:
 {changes}"""
@@ -18,7 +23,7 @@ GROUP_TEMPLATE = """
 """
 
 
-class GsGenerateChangeLogCommand(GsWindowCommand):
+class gs_generate_change_log(GsWindowCommand):
 
     """
     Prompt the user for a ref or commit hash.  Once provided,
