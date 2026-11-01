@@ -729,7 +729,7 @@ class GsInlineDiffFocusEventListener(EventListener):
                 other_view.run_command("gs_inline_diff_refresh", {"sync": False})
 
 
-class gs_inline_diff_stage_or_reset_base(GsTextCommand):
+class GsInlineDiffStageOrResetBase(GsTextCommand):
 
     """
     Base class for any stage or reset operation in the inline-diff view.
@@ -824,7 +824,7 @@ class gs_inline_diff_stage_or_reset_base(GsTextCommand):
         raise NotImplementedError
 
 
-class gs_inline_diff_stage_or_reset_line(gs_inline_diff_stage_or_reset_base):
+class gs_inline_diff_stage_or_reset_line(GsInlineDiffStageOrResetBase):
 
     """
     Given a line number, generate a diff of that single line in the active
@@ -919,7 +919,7 @@ class gs_inline_diff_stage_or_reset_line(gs_inline_diff_stage_or_reset_base):
             )
 
 
-class gs_inline_diff_stage_or_reset_hunk(gs_inline_diff_stage_or_reset_base):
+class gs_inline_diff_stage_or_reset_hunk(GsInlineDiffStageOrResetBase):
 
     """
     Given a line number, generate a diff of the hunk containing that line,
