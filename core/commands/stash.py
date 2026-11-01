@@ -1,8 +1,9 @@
 import re
 
 import sublime
-from sublime_plugin import EventListener, TextCommand, WindowCommand
+from sublime_plugin import EventListener, WindowCommand
 
+from ..base_commands import GsTextCommand
 from ..runtime import enqueue_on_worker
 from ..git_command import GitCommand
 from ..ui__quick_panel import show_noop_panel
@@ -60,7 +61,7 @@ def revalidate(view, stash_id):
         view.settings().set("git_savvy.stash_view.status", "invalid")
 
 
-class SelectStashIdMixin(TextCommand):
+class SelectStashIdMixin(GsTextCommand):
     def run(self, edit, stash_id=None):
         # type: (sublime.Edit, Optional[StashId]) -> None
         if stash_id is not None:
@@ -103,7 +104,7 @@ class SelectStashIdMixin(TextCommand):
         raise NotImplementedError
 
 
-class gs_stash_apply(SelectStashIdMixin, GitCommand):
+class gs_stash_apply(SelectStashIdMixin):
 
     """
     Apply the selected stash.
@@ -118,7 +119,7 @@ class gs_stash_apply(SelectStashIdMixin, GitCommand):
             util.view.refresh_gitsavvy(self.view)
 
 
-class gs_stash_pop(SelectStashIdMixin, GitCommand):
+class gs_stash_pop(SelectStashIdMixin):
 
     """
     Pop the selected stash.
@@ -142,7 +143,7 @@ GitSavvy: Dropped stash ({}), in case you want to undo, run:
 EXTRACT_COMMIT = re.compile(r"\((.*)\)$")
 
 
-class gs_stash_drop(SelectStashIdMixin, GitCommand):
+class gs_stash_drop(SelectStashIdMixin):
 
     """
     Drop the selected stash.
