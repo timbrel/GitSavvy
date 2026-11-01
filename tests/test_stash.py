@@ -7,7 +7,7 @@ import sublime
 
 from GitSavvy.common import util
 from GitSavvy.core.commands import stash
-from GitSavvy.core.commands.stash import GsStashSaveCommand
+from GitSavvy.core.commands.stash import gs_stash_save
 from GitSavvy.tests.mockito import unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized
 
@@ -113,7 +113,7 @@ class TestStashStaged(TestCase):
             f.write(content)
 
 
-class StashCommand(GsStashSaveCommand):
+class StashCommand(gs_stash_save):
     # Pin both dates so the old two-stash implementation deterministically
     # creates identical commits for staged-only changes and an empty message.
     git_version = (2, 35, 0)

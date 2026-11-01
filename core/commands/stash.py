@@ -14,6 +14,17 @@ from ..view import replace_view_content
 from ...common import util
 
 
+__all__ = (
+    "gs_stash_apply",
+    "gs_stash_pop",
+    "gs_stash_drop",
+    "gs_stash",
+    "gs_stash_show",
+    "gs_stash_save",
+    "RevalidateStashView",
+)
+
+
 from typing import Optional, Union
 StashId = Union[int, str]
 
@@ -92,7 +103,7 @@ class SelectStashIdMixin(TextCommand):
         raise NotImplementedError
 
 
-class GsStashApplyCommand(SelectStashIdMixin, GitCommand):
+class gs_stash_apply(SelectStashIdMixin, GitCommand):
 
     """
     Apply the selected stash.
@@ -107,7 +118,7 @@ class GsStashApplyCommand(SelectStashIdMixin, GitCommand):
             util.view.refresh_gitsavvy(self.view)
 
 
-class GsStashPopCommand(SelectStashIdMixin, GitCommand):
+class gs_stash_pop(SelectStashIdMixin, GitCommand):
 
     """
     Pop the selected stash.
@@ -131,7 +142,7 @@ GitSavvy: Dropped stash ({}), in case you want to undo, run:
 EXTRACT_COMMIT = re.compile(r"\((.*)\)$")
 
 
-class GsStashDropCommand(SelectStashIdMixin, GitCommand):
+class gs_stash_drop(SelectStashIdMixin, GitCommand):
 
     """
     Drop the selected stash.
@@ -157,7 +168,7 @@ class GsStashDropCommand(SelectStashIdMixin, GitCommand):
             util.view.refresh_gitsavvy(self.view)
 
 
-class GsStashCommand(PanelCommandMixin, WindowCommand, GitCommand):
+class gs_stash(PanelCommandMixin, WindowCommand, GitCommand):
     default_actions = [
         ["gs_stash_apply", "Apply stash"],
         ["gs_stash_pop", "Pop stash"],
@@ -165,7 +176,7 @@ class GsStashCommand(PanelCommandMixin, WindowCommand, GitCommand):
     ]
 
 
-class GsStashShowCommand(WindowCommand, GitCommand):
+class gs_stash_show(WindowCommand, GitCommand):
 
     """
     For each selected stash, open a new window to display the diff
@@ -209,7 +220,7 @@ class GsStashShowCommand(WindowCommand, GitCommand):
         return ""
 
 
-class GsStashSaveCommand(WindowCommand, GitCommand):
+class gs_stash_save(WindowCommand, GitCommand):
 
     """
     Create a new stash from unstaged changes, or optionally staged changes only.
