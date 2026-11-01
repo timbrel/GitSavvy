@@ -904,7 +904,7 @@ class AwaitTodoListView(sublime_plugin.EventListener):
             view.close()
 
 
-class gs_rebase_quick_action(GsTextCommand, RebaseCommand):
+class GsRebaseQuickActionBase(GsTextCommand, RebaseCommand):
     action = None  # type: QuickAction
     autosquash = False
     rebase_merges = True
@@ -1055,35 +1055,35 @@ def insert_commits(insert_at: str, commits: List[str], _base_commit: str, buffer
     return "\n".join(inner())
 
 
-class gs_rebase_edit_commit(gs_rebase_quick_action):
+class gs_rebase_edit_commit(GsRebaseQuickActionBase):
     action = partial(change_first_action, "edit")
 
 
-class gs_rebase_drop_commits(gs_rebase_quick_action):
+class gs_rebase_drop_commits(GsRebaseQuickActionBase):
     def run(self, edit, base_commit, commits):  # type: ignore[override]
         self.action = partial(drop_commits, commits)
         super().run(edit, base_commit)
 
 
-class gs_rebase_reword_commit(gs_rebase_quick_action):
+class gs_rebase_reword_commit(GsRebaseQuickActionBase):
     action = partial(change_first_action, "reword")
 
 
-class gs_rebase_apply_fixup(gs_rebase_quick_action):
+class gs_rebase_apply_fixup(GsRebaseQuickActionBase):
     def run(self, edit, base_commit, fixes):  # type: ignore[override]
         self.action = partial(fixup_commits, [Commit(*fix) for fix in fixes])
         super().run(edit, base_commit)
 
 
-class gs_rebase_squash_commits(gs_rebase_quick_action):
+class gs_rebase_squash_commits(GsRebaseQuickActionBase):
     def run(self, edit, base_commit, commits):  # type: ignore[override]
         self.action = partial(squash_commits, commits)
         super().run(edit, base_commit)
 
 
-class gs_rebase_insert_commits(gs_rebase_quick_action):
+class gs_rebase_insert_commits(GsRebaseQuickActionBase):
     def run(self, edit, base_commit, insert_at, commits):  # type: ignore[override]
-        # `base_commit` reachability is validated in `gs_rebase_quick_action.run`.
+        # `base_commit` reachability is validated in `GsRebaseQuickActionBase.run`.
         if insert_at != base_commit and not self.commit_is_ancestor_of_head(insert_at):
             flash(self.view, "Insertion point is not part of the current branch.")
             return
