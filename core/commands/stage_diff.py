@@ -12,11 +12,17 @@ from ..view import replace_view_content
 from ...common import util
 
 
+__all__ = (
+    "gs_stage_diff",
+    "gs_stage_diff_apply",
+)
+
+
 TITLE = "STAGE-DIFF: {}"
 MESSAGE = "Press {}-Enter to apply the diff.  Close the window to cancel.".format(util.super_key)
 
 
-class GsStageDiffCommand(WindowCommand, GitCommand):
+class gs_stage_diff(WindowCommand, GitCommand):
 
     """
     Create a new view to display the project's unstaged changes.
@@ -36,7 +42,7 @@ class GsStageDiffCommand(WindowCommand, GitCommand):
         replace_view_content(stage_diff_view, content)
 
 
-class GsStageDiffApplyCommand(TextCommand, GitCommand):
+class gs_stage_diff_apply(TextCommand, GitCommand):
 
     """
     Apply the commit as it is presented in the view to the index. Then close the view.
