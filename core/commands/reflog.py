@@ -1,7 +1,6 @@
-import sublime
-
 from ..ui_mixins.quick_panel import show_paginated_panel
 from GitSavvy.core.base_commands import GsWindowCommand
+from GitSavvy.core.runtime import on_worker
 
 
 __all__ = (
@@ -13,10 +12,8 @@ class RefLogMixin(GsWindowCommand):
 
     _limit = 6000
 
+    @on_worker
     def run(self):
-        sublime.set_timeout_async(self.run_async)
-
-    def run_async(self):
         show_paginated_panel(
             self.reflog_generator(limit=self._limit), self.on_done, limit=self._limit)
 
