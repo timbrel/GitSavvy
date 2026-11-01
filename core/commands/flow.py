@@ -4,6 +4,24 @@ from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.runtime import on_new_thread
 
 
+__all__ = (
+    "gs_git_flow_init",
+    "gs_git_flow_feature_start",
+    "gs_git_flow_feature_finish",
+    "gs_git_flow_feature_publish",
+    "gs_git_flow_feature_track",
+    "gs_git_flow_feature_pull",
+    "gs_git_flow_release_start",
+    "gs_git_flow_release_finish",
+    "gs_git_flow_release_publish",
+    "gs_git_flow_release_track",
+    "gs_git_flow_hotfix_start",
+    "gs_git_flow_hotfix_finish",
+    "gs_git_flow_hotfix_publish",
+    "gs_git_flow_support_start",
+)
+
+
 from typing import List
 
 
@@ -70,7 +88,7 @@ class FlowMixin(GsWindowCommand):
         return selected
 
 
-class GsGitFlowInitCommand(FlowMixin):
+class gs_git_flow_init(FlowMixin):
     branches = []  # type: List[str]
     """
     Through a series of panels, allow the user to initialize git-flow.
@@ -269,32 +287,32 @@ class GenericTrackCommand(CompleteMixin):
             show_single_line_input_panel(self.query, "", self.complete_flow)
 
 
-class GsGitFlowFeatureStartCommand(GenericStartMixin):
+class gs_git_flow_feature_start(GenericStartMixin):
     prefix_setting = 'prefix.feature'
     query = "Feature name?: "
     flow = "feature"
 
 
-class GsGitFlowFeatureFinishCommand(GenericFinishMixin):
+class gs_git_flow_feature_finish(GenericFinishMixin):
     prefix_setting = 'prefix.feature'
     query = 'Finish feature: %s?'
     name_prompt = 'Finish which feature?'
     flow = "feature"
 
 
-class GsGitFlowFeaturePublishCommand(GenericPublishMixin):
+class gs_git_flow_feature_publish(GenericPublishMixin):
     prefix_setting = 'prefix.feature'
     query = 'Publish feature: %s?'
     name_prompt = 'Publish which feature?'
     flow = "feature"
 
 
-class GsGitFlowFeatureTrackCommand(GenericTrackCommand):
+class gs_git_flow_feature_track(GenericTrackCommand):
     query = 'Track which feature?:'
     flow = "feature"
 
 
-class GsGitFlowFeaturePullCommand(CompleteMixin):
+class gs_git_flow_feature_pull(CompleteMixin):
     """
     This command first prompts for a remote name and then a feature to pull,
     before completing the flow.
@@ -305,7 +323,7 @@ class GsGitFlowFeaturePullCommand(CompleteMixin):
     command = 'pull'
 
     def run(self, name=None, **kwargs):
-        super(GsGitFlowFeaturePullCommand, self).run(**kwargs)
+        super(gs_git_flow_feature_pull, self).run(**kwargs)
         self.remotes = list(self.get_remotes().keys())
         self._generic_select('Remote to pull feature from?',
                              self.remotes, self.on_remote_selected,
@@ -324,52 +342,52 @@ class GsGitFlowFeaturePullCommand(CompleteMixin):
         self.show_status_update()
 
 
-class GsGitFlowReleaseStartCommand(GenericStartMixin):
+class gs_git_flow_release_start(GenericStartMixin):
     prefix_setting = 'prefix.release'
     query = "Release version?: "
     flow = "release"
 
 
-class GsGitFlowReleaseFinishCommand(GenericFinishMixin):
+class gs_git_flow_release_finish(GenericFinishMixin):
     prefix_setting = 'prefix.release'
     query = 'Finish release: %s?'
     name_prompt = 'Finish which release?'
     flow = "release"
 
 
-class GsGitFlowReleasePublishCommand(GenericPublishMixin):
+class gs_git_flow_release_publish(GenericPublishMixin):
     prefix_setting = 'prefix.release'
     query = 'Publish release: %s?'
     name_prompt = 'Publish which release?'
     flow = "release"
 
 
-class GsGitFlowReleaseTrackCommand(GenericTrackCommand):
+class gs_git_flow_release_track(GenericTrackCommand):
     query = 'Track which release?:'
     flow = "release"
 
 
-class GsGitFlowHotfixStartCommand(GenericStartMixin):
+class gs_git_flow_hotfix_start(GenericStartMixin):
     prefix_setting = 'prefix.hotfix'
     query = "Hotfix name?: "
     flow = "hotfix"
 
 
-class GsGitFlowHotfixFinishCommand(GenericFinishMixin):
+class gs_git_flow_hotfix_finish(GenericFinishMixin):
     prefix_setting = 'prefix.hotfix'
     query = 'Finish hotfix: %s?'
     name_prompt = 'Finish which hotfix?'
     flow = "hotfix"
 
 
-class GsGitFlowHotfixPublishCommand(GenericPublishMixin):
+class gs_git_flow_hotfix_publish(GenericPublishMixin):
     prefix_setting = 'prefix.hotfix'
     query = 'Publish hotfix: %s?'
     name_prompt = 'Publish which hotfix?'
     flow = "hotfix"
 
 
-class GsGitFlowSupportStartCommand(GenericStartMixin):
+class gs_git_flow_support_start(GenericStartMixin):
     prefix_setting = 'prefix.support'
     query = "Support name?: "
     flow = "support"
