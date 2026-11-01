@@ -11,6 +11,14 @@ from sublime_plugin import WindowCommand, TextCommand
 from ...common import util
 
 
+__all__ = (
+    "gs_help",
+    "gs_help_browse",
+    "gs_help_goto_link",
+    "gs_help_goto_previous",
+)
+
+
 re_anchor = re.compile(r"^#+ .+", flags=re.MULTILINE)
 re_anchor_words = re.compile(r"[a-zA-Z0-9]+")
 re_link_scope = re.compile(r"\bmeta\.link\.inline\.markdown\b")
@@ -49,7 +57,7 @@ def get_page_and_anchor(view):
     return "help.md", None
 
 
-class GsHelp(WindowCommand):
+class gs_help(WindowCommand):
 
     """
     Load and display GitSavvy help message.  If in special GitSavvy view,
@@ -70,7 +78,7 @@ class GsHelp(WindowCommand):
         view.run_command("gs_help_browse", {"page": page, "anchor": anchor})
 
 
-class GsHelpBrowse(TextCommand):
+class gs_help_browse(TextCommand):
 
     """
     Replace the content of the view with the provided text.
@@ -131,7 +139,7 @@ class GsHelpBrowse(TextCommand):
         self.view.fold(links)
 
 
-class GsHelpGotoLink(TextCommand):
+class gs_help_goto_link(TextCommand):
 
     """
     When the user presses SUPER-Enter over a link in a help document (or CTRL-Enter
@@ -166,7 +174,7 @@ class GsHelpGotoLink(TextCommand):
         self.view.run_command("gs_help_browse", {"page": page, "anchor": anchor})
 
 
-class GsHelpGotoPrevious(TextCommand):
+class gs_help_goto_previous(TextCommand):
 
     """
     Take the user to the previous help page.
