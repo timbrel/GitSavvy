@@ -10,6 +10,16 @@ from ..core.settings import SettingsMixin
 from ..core.utils import focus_view
 
 
+__all__ = (
+    "GsAppStateSaver",
+    "GsInterfaceFocusEventListener",
+    "GitCommandFromTerminal",
+    "KeyboardSettingsListener",
+    "gs_edit_settings",
+    "gs_edit_project_settings",
+)
+
+
 IGNORE_NEXT_ACTIVATE = False
 SEEN = set()
 
@@ -144,7 +154,7 @@ class KeyboardSettingsListener(EventListener):
                 w.focus_group(1)
 
 
-class GsEditSettingsCommand(WindowCommand):
+class gs_edit_settings(WindowCommand):
     """
     For some reasons, the command palette doesn't trigger `on_post_window_command` for
     dev version of Sublime Text. The command palette would call `gs_edit_settings` and
@@ -155,7 +165,7 @@ class GsEditSettingsCommand(WindowCommand):
         self.window.run_command("edit_settings", kwargs)
 
 
-class GsEditProjectSettingsCommand(WindowCommand):
+class gs_edit_project_settings(WindowCommand):
     """
     For some reasons, the command palette doesn't trigger `on_post_window_command` for
     dev version of Sublime Text. The command palette would call `gs_edit_settings` and
