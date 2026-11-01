@@ -4,14 +4,14 @@ import os
 from contextlib import contextmanager
 
 import sublime
-from sublime_plugin import WindowCommand, TextCommand, EventListener
+from sublime_plugin import EventListener
 
 from . import diff
 from . import show_file_at_commit
 from .navigate import GsNavigate
-from ..git_command import GitCommand
+from ..base_commands import GsTextCommand, GsWindowCommand
 from ..parse_diff import SplittedDiff, UnsupportedCombinedDiff
-from ..runtime import enqueue_on_ui, enqueue_on_worker
+from ..runtime import enqueue_on_ui, enqueue_on_worker, on_worker
 from ..utils import flash, focus_view
 from ..view import (
     apply_position, capture_cur_position, other_visible_views, place_view,
@@ -124,7 +124,7 @@ def is_interactive_diff(view):
     )
 
 
-class gs_inline_diff(WindowCommand, GitCommand):
+class gs_inline_diff(GsWindowCommand):
 
     """
     Given an open file in a git-tracked directory, show a new view with the
@@ -309,7 +309,7 @@ def disabled_on_activated():
         active_on_activated = True
 
 
-class gs_inline_diff_open(WindowCommand, GitCommand):
+class gs_inline_diff_open(GsWindowCommand):
     def run(
         self,
         repo_path,
@@ -355,7 +355,7 @@ class gs_inline_diff_open(WindowCommand, GitCommand):
         })
 
 
-class gs_inline_diff_refresh(TextCommand, GitCommand):
+class gs_inline_diff_refresh(GsTextCommand):
 
     """
     Diff one version of a file (the base) against another, and display the
@@ -379,7 +379,7 @@ class gs_inline_diff_refresh(TextCommand, GitCommand):
         if sync:
             self._run(sync, match_position, raw_diff)
         else:
-            sublime.set_timeout_async(lambda: self._run(sync, match_position, raw_diff))
+            enqueue_on_worker(self._run, sync, match_position, raw_diff)
 
     def _run(self, runs_on_ui_thread, match_position, raw_diff):
         # type: (bool, Optional[Position], Optional[str]) -> None
@@ -642,7 +642,7 @@ def regions(view, side):
     return [sublime.Region(r.a, r.b - 1) for r in view.get_regions(selector)]
 
 
-class gs_inline_diff_toggle_side(TextCommand, GitCommand):
+class gs_inline_diff_toggle_side(GsTextCommand):
     def run(self, edit, side):
         # type: (sublime.Edit, Literal["a", "b"]) -> None
         view = self.view
@@ -664,7 +664,7 @@ class gs_inline_diff_toggle_side(TextCommand, GitCommand):
             view.fold(a_regions)
 
 
-class gs_inline_diff_toggle_cached_mode(TextCommand, GitCommand):
+class gs_inline_diff_toggle_cached_mode(GsTextCommand):
 
     """
     Toggle `in_cached_mode`.
@@ -729,7 +729,7 @@ class GsInlineDiffFocusEventListener(EventListener):
                 other_view.run_command("gs_inline_diff_refresh", {"sync": False})
 
 
-class gs_inline_diff_stage_or_reset_base(TextCommand, GitCommand):
+class gs_inline_diff_stage_or_reset_base(GsTextCommand):
 
     """
     Base class for any stage or reset operation in the inline-diff view.
@@ -740,11 +740,8 @@ class gs_inline_diff_stage_or_reset_base(TextCommand, GitCommand):
     def is_enabled(self, *args, **kwargs):
         return is_interactive_diff(self.view)
 
-    def run(self, edit, **kwargs):
-        enqueue_on_worker(self.run_async, **kwargs)
-
-    def run_async(self, reset=False):
-        # type: (bool) -> None
+    @on_worker
+    def run(self, edit: sublime.Edit, reset: bool = False) -> None:
         in_cached_mode = self.view.settings().get("git_savvy.inline_diff_view.in_cached_mode")
         if in_cached_mode and reset:
             flash(self.view, "Can't discard staged changes.  Unstage first.")
@@ -966,7 +963,7 @@ class gs_inline_diff_stage_or_reset_hunk(gs_inline_diff_stage_or_reset_base):
         return "".join([stand_alone_header] + hunk_ref.hunk.raw_lines[1:])
 
 
-class gs_inline_diff_previous_commit(TextCommand, GitCommand):
+class gs_inline_diff_previous_commit(GsTextCommand):
     def run(self, edit) -> None:
         view = self.view
         settings = view.settings()
@@ -1004,7 +1001,7 @@ class gs_inline_diff_previous_commit(TextCommand, GitCommand):
         flash(view, "On commit {}".format(new_target_commit))
 
 
-class gs_inline_diff_next_commit(TextCommand, GitCommand):
+class gs_inline_diff_next_commit(GsTextCommand):
     def run(self, edit) -> None:
         view = self.view
         settings = view.settings()
@@ -1047,7 +1044,7 @@ class gs_inline_diff_next_commit(TextCommand, GitCommand):
             flash(view, "On working dir version")
 
 
-class gs_inline_diff_open_file(TextCommand, GitCommand):
+class gs_inline_diff_open_file(GsTextCommand):
 
     """
     Opens an editable view of the file being diff'd.
@@ -1094,7 +1091,7 @@ class gs_inline_diff_open_file(TextCommand, GitCommand):
         )
 
 
-class gs_inline_diff_open_file_at_hunk(TextCommand, GitCommand):
+class gs_inline_diff_open_file_at_hunk(GsTextCommand):
     def run(self, edit):
         view = self.view
         if is_interactive_diff(view):
@@ -1122,7 +1119,7 @@ class gs_inline_diff_open_file_at_hunk(TextCommand, GitCommand):
         })
 
 
-class gs_inline_diff_open_graph_context(TextCommand, GitCommand):
+class gs_inline_diff_open_graph_context(GsTextCommand):
     def run(self, edit):
         view = self.view
         window = view.window()
@@ -1188,7 +1185,7 @@ class gs_inline_diff_navigate_hunk(GsNavigate):
             for hunk in diff_view_hunks[self.view.id()]]
 
 
-class gs_inline_diff_undo(TextCommand, GitCommand):
+class gs_inline_diff_undo(GsTextCommand):
 
     """
     Undo the last action taken in the inline-diff view, if possible.
@@ -1197,10 +1194,8 @@ class gs_inline_diff_undo(TextCommand, GitCommand):
     def is_enabled(self, *args, **kwargs):
         return is_interactive_diff(self.view)
 
+    @on_worker
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
         history = self.view.settings().get("git_savvy.inline_diff.history") or []
         if not history:
             flash(self.view, "Undo stack is empty")
