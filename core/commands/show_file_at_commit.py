@@ -163,7 +163,7 @@ class gs_show_file_at_commit(GsWindowCommand):
         })
 
 
-class _gs_show_file_at_commit_refresh_mixin(GsTextCommand):
+class GsShowFileAtCommitRefreshMixin(GsTextCommand):
     def update_reference_document(self, commit_hash: ShortHash, file_path: FullPath) -> None:
         self.view.set_reference_document(self.previous_file_version(commit_hash, file_path))
         views_with_reference_document.add(self.view)
@@ -179,7 +179,7 @@ class _gs_show_file_at_commit_refresh_mixin(GsTextCommand):
             return ""
 
 
-class gs_show_file_at_commit_just_refresh_reference_document(_gs_show_file_at_commit_refresh_mixin):
+class gs_show_file_at_commit_just_refresh_reference_document(GsShowFileAtCommitRefreshMixin):
     def run(self, edit: sublime.Edit, position: Position = None, sync: bool = True) -> None:
         view = self.view
         settings = view.settings()
@@ -189,7 +189,7 @@ class gs_show_file_at_commit_just_refresh_reference_document(_gs_show_file_at_co
         enqueue_on_worker(self.update_reference_document, commit_hash, file_path)
 
 
-class gs_show_file_at_commit_refresh(_gs_show_file_at_commit_refresh_mixin):
+class gs_show_file_at_commit_refresh(GsShowFileAtCommitRefreshMixin):
     def run(self, edit: sublime.Edit, position: Position = None, sync: bool = True) -> None:
         view = self.view
         settings = view.settings()
