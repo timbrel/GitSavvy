@@ -14,7 +14,7 @@ from sublime_plugin import TextCommand
 from . import util
 from .theme_generator import ColorRef, ScopedStyle, provide
 from ..core.commands import multi_selector
-from ..core.runtime import enqueue_on_worker
+from ..core.runtime import enqueue_on_worker, on_worker
 from ..core.utils import flash, focus_view
 from GitSavvy.core import app_state, store
 from GitSavvy.core.base_commands import GsTextCommand
@@ -708,10 +708,8 @@ class gs_edit_view_complete(TextCommand):
     Invoke callback with edit view content.
     """
 
+    @on_worker
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
         edit_view = edit_views.get(self.view.id(), None)
         if not edit_view:
             sublime.error_message("Unable to complete edit.  Please try again.")
@@ -732,10 +730,8 @@ class gs_edit_view_close(TextCommand):
     Clean up references to closed edit views.
     """
 
+    @on_worker
     def run(self, edit):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
         view_id = self.view.id()
         if view_id in edit_views:
             del edit_views[view_id]
