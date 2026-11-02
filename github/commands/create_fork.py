@@ -2,7 +2,7 @@ import sublime
 
 from .. import github, git_mixins
 from GitSavvy.core.base_commands import GsWindowCommand
-from GitSavvy.core.commands import debug
+from GitSavvy.core import debug
 from GitSavvy.core.runtime import on_worker
 
 

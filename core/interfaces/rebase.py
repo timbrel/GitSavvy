@@ -8,7 +8,7 @@ import sublime
 from ...common import util
 from . import util as interface_util
 from . import dashboard_base as ui
-from ..commands import debug
+from .. import debug
 from ..commands.navigate import GsNavigateBase
 from ..exceptions import GitSavvyError
 from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand

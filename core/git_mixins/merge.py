@@ -9,6 +9,7 @@ from shutil import rmtree, copyfile
 import sublime
 
 from GitSavvy.core.git_command import mixin_base
+from .. import debug
 from ...common import util
 from ..interfaces import util as interface_util
 
@@ -64,8 +65,6 @@ class MergeMixin(mixin_base):
             if sys.platform == "win32":
                 startupinfo = subprocess.STARTUPINFO()
                 startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-
-            from ..commands import debug
 
             debug.log_process(
                 merge_cmd_args, repo_path, os.environ, startupinfo

@@ -5,6 +5,7 @@ import sublime
 from sublime_plugin import TextCommand
 
 from . import diff
+from ..debug import dprint
 from .. import intra_line_colorizer
 from ..fns import filter_, unique
 from GitSavvy.core.base_commands import GsWindowCommand
@@ -230,9 +231,3 @@ class gs_show_commit_info_minimize_view(TextCommand):
             panel_view = ensure_panel(window)
             ensure_panel_is_visible(window)
             window.focus_view(panel_view)
-
-
-def dprint(*args, **kwargs) -> None:
-    from ..commands import debug
-
-    debug.dprint(*args, **kwargs)

@@ -9,7 +9,7 @@ from functools import partial, lru_cache
 from webbrowser import open as open_in_browser
 
 from ..core import interwebs
-from ..core.commands import debug
+from ..core import debug
 from ..core.exceptions import FailedGitLabRequest
 from ..core.settings import app_settings
 

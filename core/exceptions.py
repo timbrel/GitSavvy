@@ -1,4 +1,5 @@
 import sublime
+from . import debug
 
 
 from typing import Optional, Sequence
@@ -17,8 +18,6 @@ class GitSavvyError(Exception):
         if msg:
             if show_panel:
                 self.show_error_panel()
-            from .commands import debug
-
             debug.log_error(msg)
 
     def show_error_panel(self):

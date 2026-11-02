@@ -48,6 +48,7 @@ import time
 import sublime
 
 from GitSavvy.core import store
+from GitSavvy.core.debug import dprint
 from GitSavvy.core.caches import Cache
 from GitSavvy.core.fns import last
 from GitSavvy.core.git_mixins.remotes import by_raw_key
@@ -275,12 +276,6 @@ def on_branches_observed(cmd: GitCommand, branches: Sequence[Branch]) -> None:
             return
         repository, integration_url = integration
         enqueue_on_ui(start_batch_lookup, cmd.repo_path, keys, repository, integration_url)
-
-
-def dprint(*args, **kwargs) -> None:
-    from GitSavvy.core.commands import debug
-
-    debug.dprint(*args, **kwargs)
 
 
 @must_run_on_ui
