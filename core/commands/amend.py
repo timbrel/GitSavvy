@@ -1,5 +1,6 @@
-from sublime_plugin import WindowCommand
 
+
+from GitSavvy.core.base_commands import GsWindowCommand
 from ..git_command import GitCommand
 
 
@@ -9,7 +10,7 @@ __all__ = (
 )
 
 
-class gs_amend(WindowCommand, GitCommand):
+class gs_amend(GsWindowCommand):
     def run(self):
         self.window.run_command("gs_commit", {"amend": True})
 
