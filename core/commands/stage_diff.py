@@ -5,9 +5,9 @@ Implements a special view that displays an editable diff of unstaged changes.
 import os
 
 import sublime
-from sublime_plugin import WindowCommand, TextCommand
 
-from ..git_command import GitCommand
+
+from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand
 from ..view import replace_view_content
 from ...common import util
 
@@ -22,7 +22,7 @@ TITLE = "STAGE-DIFF: {}"
 MESSAGE = "Press {}-Enter to apply the diff.  Close the window to cancel.".format(util.super_key)
 
 
-class gs_stage_diff(WindowCommand, GitCommand):
+class gs_stage_diff(GsWindowCommand):
 
     """
     Create a new view to display the project's unstaged changes.
@@ -42,7 +42,7 @@ class gs_stage_diff(WindowCommand, GitCommand):
         replace_view_content(stage_diff_view, content)
 
 
-class gs_stage_diff_apply(TextCommand, GitCommand):
+class gs_stage_diff_apply(GsTextCommand):
 
     """
     Apply the commit as it is presented in the view to the index. Then close the view.
