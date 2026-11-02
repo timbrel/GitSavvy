@@ -63,7 +63,11 @@ class GsInterfaceFocusEventListener(EventListener):
 
     def on_close(self, view):
         SEEN.discard(view.id())
-        util.view.handle_closed_view(view)
+        settings = view.settings()
+        if settings.get("git_savvy.interface") is not None:
+            view.run_command("gs_interface_close")
+        if settings.get("git_savvy.edit_view"):
+            view.run_command("gs_edit_view_close")
 
 
 NATIVE_GIT_EDITOR_FILES = {

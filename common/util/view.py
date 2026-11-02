@@ -170,14 +170,6 @@ def refresh_gitsavvy(
         window.run_command("refresh_folder_list")
 
 
-def handle_closed_view(view):
-    # type: (sublime.View) -> None
-    if view.settings().get("git_savvy.interface") is not None:
-        view.run_command("gs_interface_close")
-    if view.settings().get("git_savvy.edit_view"):
-        view.run_command("gs_edit_view_close")
-
-
 ############################
 # IN-VIEW HELPER FUNCTIONS #
 ############################

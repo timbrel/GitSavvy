@@ -54,6 +54,20 @@ class TestInterfaceFocusEvents(DeferrableTestCase):
 
         verify(self.dashboard, times=1).run_command("gs_interface_refresh")
 
+    def test_closing_interface_edit_view_cleans_up_both_owners(self) -> None:
+        view = self.make_view(2, {
+            "git_savvy.interface": "rebase",
+            "git_savvy.edit_view": True,
+        })
+        when(view).run_command(...).thenReturn(None)
+        global_events.SEEN.add(view.id())
+
+        self.listener.on_close(view)
+
+        self.assertNotIn(view.id(), global_events.SEEN)
+        verify(view).run_command("gs_interface_close")
+        verify(view).run_command("gs_edit_view_close")
+
     def make_view(self, vid: int, settings: dict) -> sublime.View:
         view = mock()
         when(view).id().thenReturn(vid)
