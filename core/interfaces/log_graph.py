@@ -9,15 +9,15 @@ import sublime
 from sublime_plugin import TextCommand, EventListener
 
 from . import log_graph_colorizer as colorizer
-from . import multi_selector
-from . import show_commit_info
+from ..commands import multi_selector
+from ..commands import show_commit_info
 from .log_graph_helper import (
     COMMIT_LINE,
     FIND_COMMIT_HASH,
     COMMIT_NODE_CHARS,
     GRAPH_HEIGHT,
 )
-from .log import gs_log
+from ..commands.log import gs_log
 from ..base_commands import GsTextCommand, GsWindowCommand
 from ..fns import filter_, flatten, pairwise, partition, take
 from ..git_command import GitCommand

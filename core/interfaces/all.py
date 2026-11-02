@@ -5,6 +5,11 @@ from .dashboard_base import *  # noqa: F401, F403
 from .diff import *  # noqa: F401, F403
 from .inline_diff import *  # noqa: F401, F403
 from .line_history import *  # noqa: F401, F403
+from .log_graph import *  # noqa: F401, F403
+from .log_graph_main_actions import *  # noqa: F401, F403
+from .log_graph_rebase_actions import *  # noqa: F401, F403
+from .log_graph_renderer import *  # noqa: F401, F403
+from .log_graph_smart_copy import *  # noqa: F401, F403
 from .rebase import *  # noqa: F401, F403
 from .remotes import *  # noqa: F401, F403
 from .stash import *  # noqa: F401, F403

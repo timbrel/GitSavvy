@@ -10,9 +10,9 @@ import sublime_plugin
 
 from GitSavvy.common import util
 from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand, ask_for_branch
-from GitSavvy.core.commands import log_graph
-from GitSavvy.core.commands.log_graph_renderer import resolve_commit_to_follow_after_rebase
-from GitSavvy.core.commands.log_graph_helper import (
+from GitSavvy.core.interfaces import log_graph
+from GitSavvy.core.interfaces.log_graph_renderer import resolve_commit_to_follow_after_rebase
+from GitSavvy.core.interfaces.log_graph_helper import (
     LineInfo,
     describe_graph_line,
     describe_head,
@@ -26,7 +26,7 @@ from GitSavvy.core.ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.ui__quick_panel import noop, show_actions_panel, SEPARATOR, show_quick_panel
 from GitSavvy.core.utils import flash, yes_no_switch, get_sublime_executable
 from GitSavvy.core.view import replace_view_content
-from . import multi_selector
+from ..commands import multi_selector
 
 
 __all__ = (

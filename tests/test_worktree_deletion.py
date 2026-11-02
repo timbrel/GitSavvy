@@ -9,7 +9,7 @@ from GitSavvy.common.util import actions
 from GitSavvy.core import runtime
 from GitSavvy.core.commands import worktrees
 from GitSavvy.core.git_mixins.worktrees import WorktreeTarget
-from GitSavvy.core.commands import log_graph_main_actions as graph
+from GitSavvy.core.interfaces import log_graph_main_actions as graph
 from GitSavvy.core.commands import ref_undo
 from GitSavvy.core.exceptions import GitSavvyError
 from GitSavvy.core.interfaces import branch

@@ -15,11 +15,6 @@ from .help_panel import *
 from .ignore import *
 from .init import *
 from .log import *
-from .log_graph import *
-from .log_graph_renderer import *
-from .log_graph_main_actions import *
-from .log_graph_rebase_actions import *
-from .log_graph_smart_copy import *
 from .merge import *
 from .multi_selector import *
 from .mv import *

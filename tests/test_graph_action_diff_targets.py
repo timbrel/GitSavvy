@@ -2,8 +2,8 @@ from unittesting import DeferrableTestCase
 
 from GitSavvy.tests.mockito import mock, unstub, when
 
-from GitSavvy.core.commands import log_graph_main_actions as actions
-from GitSavvy.core.commands.log_graph_helper import describe_graph_line
+from GitSavvy.core.interfaces import log_graph_main_actions as actions
+from GitSavvy.core.interfaces.log_graph_helper import describe_graph_line
 
 
 class TestGraphActionDiffTargets(DeferrableTestCase):

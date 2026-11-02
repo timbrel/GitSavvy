@@ -6,7 +6,7 @@ import sublime
 import sublime_plugin
 
 from . import log_graph
-from . import multi_selector
+from ..commands import multi_selector
 from ..fns import pairwise, peek, take
 from ..text_helper import Region, TextRange, line_from_pt
 from ..utils import flash, flash_regions

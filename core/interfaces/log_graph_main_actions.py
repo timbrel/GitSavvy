@@ -17,10 +17,10 @@ from ..git_mixins.worktrees import WorktreeLocation, WorktreeTarget
 from ..runtime import on_new_thread
 from ..text_helper import line_from_pt
 from ..types import FullPath
-from .worktrees import remove_worktree
+from ..commands.worktrees import remove_worktree
 from ..ui__quick_panel import ActionType, SEPARATOR, show_actions_panel, show_quick_panel
-from . import multi_selector
-from . import ref_undo
+from ..commands import multi_selector
+from ..commands import ref_undo
 from . import log_graph_colorizer as colorizer
 from .log_graph import dot_from_line, follow_dots
 from .log_graph_helper import (

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from unittesting import DeferrableTestCase
 
-from GitSavvy.core.commands import log_graph_main_actions as actions
+from GitSavvy.core.interfaces import log_graph_main_actions as actions
 from GitSavvy.core.git_mixins.worktrees import WorktreeLocation, WorktreeTarget
 from GitSavvy.core.types import FullHash, ShortHash
 from GitSavvy.tests.mockito import mock, unstub, verify, when
