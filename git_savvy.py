@@ -75,7 +75,6 @@ with reloader():
     import sublime
 
     from .common.commands import *
-    from .common.ui import *
     from .common.global_events import *
     from .core.commands import *
     from .core.settings import _AppSettings, app_settings

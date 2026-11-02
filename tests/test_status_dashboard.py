@@ -8,7 +8,7 @@ from GitSavvy.tests.mockito import spy2, unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized as p
 
 from GitSavvy.core import store
-from GitSavvy.common import ui
+from GitSavvy.core.interfaces import dashboard_base as ui
 from GitSavvy.core.interfaces.status import StatusInterfaceCommand, GitCommand
 
 

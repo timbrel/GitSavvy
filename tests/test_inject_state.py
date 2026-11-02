@@ -1,4 +1,4 @@
-from GitSavvy.common import ui
+from GitSavvy.core.interfaces import dashboard_base as ui
 
 from unittesting import DeferrableTestCase
 from GitSavvy.tests.parameterized import parameterized as p

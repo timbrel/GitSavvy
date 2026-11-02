@@ -6,7 +6,7 @@ from typing import TypedDict
 
 
 
-from ...common import ui
+from . import dashboard_base as ui
 from ..commands.navigate import GsNavigateBase
 from GitSavvy.core.base_commands import GsWindowCommand
 from ..git_mixins.active_branch import Commit

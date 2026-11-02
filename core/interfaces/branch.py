@@ -9,7 +9,8 @@ import re
 import sublime
 
 
-from ...common import ui, util
+from ...common import util
+from . import dashboard_base as ui
 from ..commands import ref_undo
 from ..commands.navigate import GsNavigateBase
 from ..git_mixins.worktrees import WorktreeTarget

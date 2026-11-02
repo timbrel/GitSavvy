@@ -5,7 +5,8 @@ import re
 import sublime
 
 
-from ...common import ui, util
+from ...common import util
+from . import dashboard_base as ui
 from ..commands.navigate import GsNavigateBase
 from ..exceptions import GitSavvyError
 from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand

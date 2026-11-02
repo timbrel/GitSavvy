@@ -11,7 +11,7 @@ import sublime
 
 from ..commands import ref_undo
 from ..commands.navigate import GsNavigateBase
-from ...common import ui
+from . import dashboard_base as ui
 from GitSavvy.core.base_commands import GsWindowCommand
 from ..git_command import GitCommand, GitSavvyError
 from ..git_mixins.tags import TagList

@@ -9,7 +9,7 @@ from sublime_plugin import EventListener
 from ..git_mixins.status import FileStatus
 from ..git_mixins.active_branch import format_and_limit
 from ..commands.navigate import GsNavigateBase
-from ...common import ui
+from . import dashboard_base as ui
 from GitSavvy.core.base_commands import GsWindowCommand
 from ..git_command import GitCommand, GitSavvyError
 from ...common import util

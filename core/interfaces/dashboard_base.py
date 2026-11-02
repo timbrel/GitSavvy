@@ -11,11 +11,11 @@ from weakref import WeakKeyDictionary
 import sublime
 from sublime_plugin import TextCommand
 
-from . import util
-from .theme_generator import ColorRef, ScopedStyle, provide
-from ..core.commands import multi_selector
-from ..core.runtime import enqueue_on_worker
-from ..core.utils import flash, focus_view
+from ...common import util
+from ...common.theme_generator import ColorRef, ScopedStyle, provide
+from ..commands import multi_selector
+from ..runtime import enqueue_on_worker
+from ..utils import flash, focus_view
 from GitSavvy.core import app_state, store
 from GitSavvy.core.base_commands import GsTextCommand
 from GitSavvy.core.fns import flatten
