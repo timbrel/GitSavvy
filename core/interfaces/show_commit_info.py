@@ -10,7 +10,6 @@ from ..fns import filter_, unique
 from GitSavvy.core.base_commands import GsWindowCommand
 from ..runtime import enqueue_on_worker, ensure_on_ui, throttled
 from ..view import replace_view_content, scroll_to_pt, y_offset
-from ...common.util.debug import dprint
 
 
 __all__ = (
@@ -231,3 +230,9 @@ class gs_show_commit_info_minimize_view(TextCommand):
             panel_view = ensure_panel(window)
             ensure_panel_is_visible(window)
             window.focus_view(panel_view)
+
+
+def dprint(*args, **kwargs) -> None:
+    from ..commands import debug
+
+    debug.dprint(*args, **kwargs)

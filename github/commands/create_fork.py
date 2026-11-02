@@ -1,8 +1,8 @@
 import sublime
 
-from ...common import util
 from .. import github, git_mixins
 from GitSavvy.core.base_commands import GsWindowCommand
+from GitSavvy.core.commands import debug
 from GitSavvy.core.runtime import on_worker
 
 
@@ -26,7 +26,7 @@ class gs_github_create_fork(GsWindowCommand, git_mixins.GithubRemotesMixin):
             default_branch_only = self.app_settings.get("sparse_fork", True)
         self.window.status_message(START_CREATE_MESSAGE.format(repo=base_remote.url))
         result = github.create_fork(base_remote, default_branch_only=default_branch_only)
-        util.debug.add_to_log({"github: fork result": result})
+        debug.add_to_log({"github: fork result": result})
 
         url = (
             result["ssh_url"]

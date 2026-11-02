@@ -65,7 +65,9 @@ class MergeMixin(mixin_base):
                 startupinfo = subprocess.STARTUPINFO()
                 startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
-            util.debug.log_process(
+            from ..commands import debug
+
+            debug.log_process(
                 merge_cmd_args, repo_path, os.environ, startupinfo
             )
 

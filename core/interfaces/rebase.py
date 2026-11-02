@@ -8,6 +8,7 @@ import sublime
 from ...common import util
 from . import util as interface_util
 from . import dashboard_base as ui
+from ..commands import debug
 from ..commands.navigate import GsNavigateBase
 from ..exceptions import GitSavvyError
 from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand
@@ -345,7 +346,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
                 base_ref = self.nearest_branch(
                     self.get_current_branch_name(),
                     default=(upstream and upstream.canonical_name) or "master")
-                util.debug.add_to_log('Found base ref {}'.format(base_ref))
+                debug.add_to_log('Found base ref {}'.format(base_ref))
 
             branches = self.get_branches()
 

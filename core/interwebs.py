@@ -9,7 +9,6 @@ from base64 import b64encode
 from functools import partial
 from collections import namedtuple
 
-from GitSavvy.common.util.debug import dprint
 from GitSavvy.core.utils import measure_runtime
 
 Response = namedtuple("Response", ("payload", "headers", "status", "is_json"))
@@ -106,3 +105,9 @@ put = partial(request, "PUT")
 get_url = partial(request_url, "GET")
 post_url = partial(request_url, "POST")
 put_url = partial(request_url, "PUT")
+
+
+def dprint(*args, **kwargs):
+    from .commands import debug
+
+    debug.dprint(*args, **kwargs)
