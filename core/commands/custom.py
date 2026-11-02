@@ -1,7 +1,7 @@
 import sublime
-from sublime_plugin import WindowCommand
 
-from ..git_command import GitCommand
+
+from GitSavvy.core.base_commands import GsWindowCommand
 from ..runtime import enqueue_on_worker
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..view import replace_view_content
@@ -14,7 +14,7 @@ __all__ = (
 )
 
 
-class gs_custom(WindowCommand, GitCommand):
+class gs_custom(GsWindowCommand):
 
     """
     Run the specified custom command asynchronously.
