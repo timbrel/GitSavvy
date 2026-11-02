@@ -1,9 +1,9 @@
 import re
 
 import sublime
-from sublime_plugin import EventListener, WindowCommand
+from sublime_plugin import EventListener
 
-from ..base_commands import GsTextCommand
+from ..base_commands import GsTextCommand, GsWindowCommand
 from ..runtime import enqueue_on_worker
 from ..git_command import GitCommand
 from ..ui__quick_panel import show_noop_panel
@@ -169,7 +169,7 @@ class gs_stash_drop(SelectStashIdMixin):
             util.view.refresh_gitsavvy(self.view)
 
 
-class gs_stash(PanelCommandMixin, WindowCommand, GitCommand):
+class gs_stash(PanelCommandMixin, GsWindowCommand):
     default_actions = [
         ["gs_stash_apply", "Apply stash"],
         ["gs_stash_pop", "Pop stash"],
@@ -177,7 +177,7 @@ class gs_stash(PanelCommandMixin, WindowCommand, GitCommand):
     ]
 
 
-class gs_stash_show(WindowCommand, GitCommand):
+class gs_stash_show(GsWindowCommand):
 
     """
     For each selected stash, open a new window to display the diff
@@ -221,7 +221,7 @@ class gs_stash_show(WindowCommand, GitCommand):
         return ""
 
 
-class gs_stash_save(WindowCommand, GitCommand):
+class gs_stash_save(GsWindowCommand):
 
     """
     Create a new stash from unstaged changes, or optionally staged changes only.
