@@ -15,6 +15,7 @@ from ...common import util
 from ..theme_generator import ColorRef, ScopedStyle, provide
 from . import multi_selector
 from ..runtime import enqueue_on_worker
+from ..settings import app_settings
 from ..utils import flash, focus_view
 from GitSavvy.core import app_state, store
 from GitSavvy.core.base_commands import GsTextCommand
@@ -167,7 +168,10 @@ class Interface(metaclass=_PrepareInterface):
         view.set_syntax_file(cls.syntax_file)
         view.set_scratch(True)
         view.set_read_only(True)
-        util.view.disable_other_plugins(view)
+        # Disable key bindings for Vintageous.
+        # https://github.com/guillermooo/Vintageous/wiki/Disabling
+        if app_settings.get("vintageous_friendly", False) is False:
+            view.settings().set("__vi_external_disable", False)
 
         interface = cls(view=view)
         interface.after_view_creation(view)  # before first render

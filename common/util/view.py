@@ -1,7 +1,6 @@
 from collections import ChainMap
 
 import sublime
-from ...core.settings import app_settings
 from ...core.view import place_view
 
 
@@ -172,12 +171,6 @@ def refresh_gitsavvy(
 #################
 # MISCELLANEOUS #
 #################
-
-def disable_other_plugins(view):
-    # Disable key-bindings for Vitageous
-    # https://github.com/guillermooo/Vintageous/wiki/Disabling
-    if app_settings.get("vintageous_friendly", False) is False:
-        view.settings().set("__vi_external_disable", False)
 
 
 def mark_as_lintable(view):
