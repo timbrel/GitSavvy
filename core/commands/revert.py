@@ -1,7 +1,7 @@
-from sublime_plugin import WindowCommand
+
 
 from .log import LogMixin
-from ..git_command import GitCommand
+
 from ...common import util
 from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.runtime import on_worker
@@ -15,7 +15,7 @@ __all__ = (
 )
 
 
-class gs_revert_commit(LogMixin, WindowCommand, GitCommand):
+class gs_revert_commit(LogMixin, GsWindowCommand):
     @on_worker
     def do_action(self, commit_hash, **kwargs):
         try:
