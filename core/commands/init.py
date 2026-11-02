@@ -2,11 +2,11 @@ import os
 import re
 
 import sublime
-from sublime_plugin import WindowCommand
+
 
 from GitSavvy.core.fns import filter_, maybe
 from GitSavvy.core.runtime import enqueue_on_worker
-from ..git_command import GitCommand
+from GitSavvy.core.base_commands import GsWindowCommand
 from ...common import util
 from ..ui_mixins.input_panel import show_single_line_input_panel
 
@@ -41,7 +41,7 @@ DEFAULT_PROJECT_ROOT = (
 views_with_offer_made = set()
 
 
-class gs_offer_init(WindowCommand, GitCommand):
+class gs_offer_init(GsWindowCommand):
 
     """
     If a git command fails indicating no git repo was found, this
@@ -65,7 +65,7 @@ class gs_offer_init(WindowCommand, GitCommand):
             views_with_offer_made.add(vid)
 
 
-class gs_init(WindowCommand, GitCommand):
+class gs_init(GsWindowCommand):
 
     """
     If the active Sublime window has folders added to the project (or if
@@ -146,7 +146,7 @@ def project_name_from_url(input_url):
     return _split_url
 
 
-class gs_clone(WindowCommand, GitCommand):
+class gs_clone(GsWindowCommand):
 
     def run(self, recursive=False):
         self.recursive = recursive
@@ -226,7 +226,7 @@ def open_new_window():
     return sublime.active_window()
 
 
-class gs_setup_user(WindowCommand, GitCommand):
+class gs_setup_user(GsWindowCommand):
 
     """
     Set user's name and email address in global Git config.
