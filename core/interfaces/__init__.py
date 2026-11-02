@@ -1,5 +1,5 @@
 import sublime
-from sublime_plugin import TextCommand
+
 
 from .status import *  # noqa: F401, F403
 from .status_main_actions import *
@@ -7,10 +7,11 @@ from .branch import *  # noqa: F401, F403
 from .remotes import *  # noqa: F401, F403
 from .rebase import *  # noqa: F401, F403
 from .tags import *  # noqa: F401, F403
+from GitSavvy.core.base_commands import GsTextCommand as _GsTextCommand
 from ..git_command import GitCommand
 
 
-class gs_tab_cycle(TextCommand, GitCommand):
+class gs_tab_cycle(_GsTextCommand):
     commands = {
         "status": "gs_show_status",
         "branch": "gs_show_branch",
