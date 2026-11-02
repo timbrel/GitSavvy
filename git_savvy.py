@@ -80,7 +80,7 @@ with reloader():
     from .core.commands import *
     from .core.settings import _AppSettings, app_settings
     from .core.settings import *
-    from .core.interfaces import *
+    from .core.interfaces.all import *
     from .core.runtime import *
     from .core.caches import *
     from .github.commands import *
