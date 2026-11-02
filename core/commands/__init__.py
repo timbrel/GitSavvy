@@ -48,3 +48,4 @@ from .stash import *
 from .status_bar import *
 from .supermove import *
 from .tag import *
+from .worktrees import *

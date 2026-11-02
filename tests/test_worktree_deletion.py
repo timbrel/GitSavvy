@@ -6,7 +6,8 @@ from functools import partial
 from unittesting import DeferrableTestCase
 
 from GitSavvy.common.util import actions
-from GitSavvy.core import runtime, ui__worktrees
+from GitSavvy.core import runtime
+from GitSavvy.core.commands import worktrees
 from GitSavvy.core.git_mixins.worktrees import WorktreeTarget
 from GitSavvy.core.commands import log_graph_main_actions as graph
 from GitSavvy.core.commands import ref_undo
@@ -39,8 +40,8 @@ class TestWorktreeDeletion(DeferrableTestCase):
         when(self.command.interface).just_render().thenReturn(None)
         when(self.command).git(...).thenReturn("")
         when(branch.util.view).refresh_gitsavvy(self.view).thenReturn(None)
-        when(ui__worktrees).busy_indicator(self.view, start_after=0.5).thenReturn(nullcontext())
-        when(ui__worktrees.util.view).refresh_gitsavvy_interfaces(
+        when(worktrees).busy_indicator(self.view, start_after=0.5).thenReturn(nullcontext())
+        when(worktrees.util.view).refresh_gitsavvy_interfaces(
             self.window, refresh_sidebar=True
         ).thenReturn(None)
         when(actions.app_settings).get("prompt_before_destructive_action").thenReturn(False)
@@ -203,7 +204,7 @@ class TestGraphWorktreeDeletion(TestWorktreeDeletion):
         ).thenReturn(None)
 
     def _assert_refreshed(self) -> None:
-        verify(ui__worktrees, atleast=1).busy_indicator(self.view, start_after=0.5)
+        verify(worktrees, atleast=1).busy_indicator(self.view, start_after=0.5)
         verify(graph.util.view, atleast=1).refresh_gitsavvy_interfaces(
             self.window, refresh_sidebar=True
         )

@@ -17,7 +17,7 @@ from ..git_mixins.worktrees import WorktreeLocation, WorktreeTarget
 from ..runtime import on_new_thread
 from ..text_helper import line_from_pt
 from ..types import FullPath
-from ..ui__worktrees import remove_worktree
+from .worktrees import remove_worktree
 from ..ui__quick_panel import ActionType, SEPARATOR, show_actions_panel, show_quick_panel
 from . import multi_selector
 from . import ref_undo

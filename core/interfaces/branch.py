@@ -13,7 +13,7 @@ from ...common import ui, util
 from ..commands import ref_undo
 from ..commands.navigate import GsNavigateBase
 from ..git_mixins.worktrees import WorktreeTarget
-from ..ui__worktrees import remove_worktree
+from ..commands.worktrees import remove_worktree
 from ..commands.log import LogMixin
 from ..commands import multi_selector
 from GitSavvy.core.base_commands import GsWindowCommand
