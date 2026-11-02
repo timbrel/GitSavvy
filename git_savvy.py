@@ -74,7 +74,6 @@ def reloader(package_name=__spec__.parent, plugin_name=__name__):
 with reloader():
     import sublime
 
-    from .common.commands import *
     from .core.global_events import *
     from .core.output_panel import *
     from .core.commands import *

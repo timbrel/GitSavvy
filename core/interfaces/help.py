@@ -8,8 +8,8 @@ import webbrowser
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
-from ..util.file import get_syntax_for_file
-from ...core.view import create_scratch_view
+from ...common.util.file import get_syntax_for_file
+from ..view import create_scratch_view
 
 
 __all__ = (
