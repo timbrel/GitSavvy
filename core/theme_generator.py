@@ -10,9 +10,9 @@ import traceback
 
 import sublime
 
-from ..core import app_state
-from ..core.runtime import enqueue_on_ui
-from ..core.settings import color_value
+from . import app_state
+from .runtime import enqueue_on_ui
+from .settings import color_value
 
 from typing import Callable, Mapping, NamedTuple, Sequence, TypeVar
 from typing_extensions import ParamSpec

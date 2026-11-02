@@ -20,7 +20,7 @@ from ..ui_mixins.quick_panel import LogHelperMixin
 from ..utils import focus_view
 from ..view import replace_view_content
 from ...common import util
-from ...common.theme_generator import ColorRef, ScopedStyle, provide
+from ..theme_generator import ColorRef, ScopedStyle, provide
 
 
 __all__ = (

@@ -44,7 +44,7 @@ from ..caches import Cache
 from ..utils import add_selection_to_jump_history, flash, focus_view
 from ...common import util
 from GitSavvy.core import app_state
-from ...common.theme_generator import ColorRef, ScopedStyle, provide
+from ..theme_generator import ColorRef, ScopedStyle, provide
 
 
 __all__ = (

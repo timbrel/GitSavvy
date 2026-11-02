@@ -3,7 +3,7 @@ from __future__ import annotations
 import sublime
 from unittesting import DeferrableTestCase
 
-from GitSavvy.common import global_events
+from GitSavvy.core import global_events
 from GitSavvy.tests.mockito import mock, unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized as p
 

@@ -75,7 +75,7 @@ with reloader():
     import sublime
 
     from .common.commands import *
-    from .common.global_events import *
+    from .core.global_events import *
     from .core.commands import *
     from .core.settings import _AppSettings, app_settings
     from .core.settings import *
@@ -95,7 +95,7 @@ UNUSED_APP_SETTINGS = (
 
 
 def plugin_loaded() -> None:
-    from .common.theme_generator import start_watchers
+    from .core.theme_generator import start_watchers
     from .core.commands.context_menu import start_context_menu_watcher
     from .github import ci_status
     prepare_gitsavvy()
@@ -105,7 +105,7 @@ def plugin_loaded() -> None:
 
 
 def plugin_unloaded() -> None:
-    from .common.theme_generator import shutdown_executor, stop_watchers
+    from .core.theme_generator import shutdown_executor, stop_watchers
     from .core import app_state
     from .core.commands.context_menu import stop_context_menu_watcher
     from .github import ci_status

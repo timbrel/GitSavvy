@@ -32,7 +32,7 @@ from ..view import (
     capture_cur_position, clamp, replace_view_content, scroll_to_pt,
     place_view, place_cursor_and_show, visible_views, y_offset, Position)
 from ...common import util
-from ...common.theme_generator import ColorRef, ScopedStyle, provide
+from ..theme_generator import ColorRef, ScopedStyle, provide
 
 
 __all__ = (

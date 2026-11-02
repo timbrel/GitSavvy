@@ -5,8 +5,8 @@ import tempfile
 
 from unittesting import DeferrableTestCase
 
-from GitSavvy.common import theme_generator
-from GitSavvy.common.theme_generator import ColorRef, ScopedStyle
+from GitSavvy.core import theme_generator
+from GitSavvy.core.theme_generator import ColorRef, ScopedStyle
 from GitSavvy.tests.mockito import unstub, when
 
 

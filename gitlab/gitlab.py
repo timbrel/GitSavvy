@@ -8,7 +8,8 @@ from collections import namedtuple
 from functools import partial, lru_cache
 from webbrowser import open as open_in_browser
 
-from ..common import interwebs, util
+from ..common import util
+from ..core import interwebs
 from ..core.exceptions import FailedGitLabRequest
 from ..core.settings import app_settings
 
