@@ -10,7 +10,7 @@ from sublime_plugin import EventListener, ViewEventListener
 
 from .diff import DECODE_ERROR_MESSAGE, compute_reference_document
 from ..commands import intra_line_colorizer
-from ..commands import multi_selector
+from . import multi_selector
 from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand
 from ..git_command import GitSavvyError
 from ..fns import flatten, head

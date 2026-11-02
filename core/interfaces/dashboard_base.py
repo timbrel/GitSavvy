@@ -13,7 +13,7 @@ from sublime_plugin import TextCommand
 
 from ...common import util
 from ...common.theme_generator import ColorRef, ScopedStyle, provide
-from ..commands import multi_selector
+from . import multi_selector
 from ..runtime import enqueue_on_worker
 from ..utils import flash, focus_view
 from GitSavvy.core import app_state, store

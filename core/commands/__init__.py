@@ -15,7 +15,6 @@ from .ignore import *
 from .init import *
 from .log import *
 from .merge import *
-from .multi_selector import *
 from .mv import *
 from .next_hunk import *
 from .output_panel import *

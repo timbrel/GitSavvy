@@ -19,7 +19,7 @@ from ..text_helper import line_from_pt
 from ..types import FullPath
 from ..commands.worktrees import remove_worktree
 from ..ui__quick_panel import ActionType, SEPARATOR, show_actions_panel, show_quick_panel
-from ..commands import multi_selector
+from . import multi_selector
 from ..commands import ref_undo
 from . import log_graph_colorizer as colorizer
 from .log_graph import dot_from_line, follow_dots

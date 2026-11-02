@@ -17,7 +17,7 @@ from sublime_plugin import TextCommand, EventListener
 
 from . import inline_diff
 from ..commands import intra_line_colorizer
-from ..commands import multi_selector
+from . import multi_selector
 from ..commands import stage_hunk
 from ..commands.navigate import GsNavigateBase
 from ..fns import head, filter_, flatten, pairwise, unique

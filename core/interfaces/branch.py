@@ -16,7 +16,7 @@ from ..commands.navigate import GsNavigateBase
 from ..git_mixins.worktrees import WorktreeTarget
 from ..commands.worktrees import remove_worktree
 from ..commands.log import LogMixin
-from ..commands import multi_selector
+from . import multi_selector
 from GitSavvy.core.base_commands import GsWindowCommand
 from ..git_command import GitCommand, GitSavvyError
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel

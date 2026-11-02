@@ -11,6 +11,7 @@ from .log_graph_main_actions import *  # noqa: F401, F403
 from .log_graph_rebase_actions import *  # noqa: F401, F403
 from .log_graph_renderer import *  # noqa: F401, F403
 from .log_graph_smart_copy import *  # noqa: F401, F403
+from .multi_selector import *  # noqa: F401, F403
 from .rebase import *  # noqa: F401, F403
 from .remotes import *  # noqa: F401, F403
 from .show_commit import *  # noqa: F401, F403

@@ -26,7 +26,7 @@ from GitSavvy.core.ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.ui__quick_panel import noop, show_actions_panel, SEPARATOR, show_quick_panel
 from GitSavvy.core.utils import flash, yes_no_switch, get_sublime_executable
 from GitSavvy.core.view import replace_view_content
-from ..commands import multi_selector
+from . import multi_selector
 
 
 __all__ = (

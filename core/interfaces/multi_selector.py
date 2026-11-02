@@ -42,7 +42,7 @@ def get_multi_selection_if_multi(view: sublime.View) -> Iterable[sublime.Region]
 
 class gs_log_graph_multiselect(TextCommand):
     def run(self, edit) -> None:
-        from ..interfaces.log_graph import COMMIT_LINE
+        from .log_graph import COMMIT_LINE
 
         view = self.view
         frozen_sel = list(view.sel())
