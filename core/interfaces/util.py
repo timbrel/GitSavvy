@@ -1,6 +1,7 @@
 import sublime
 
 from ..settings import app_settings
+from ..view import visible_views
 
 from typing import Optional
 
@@ -48,11 +49,7 @@ def refresh_gitsavvy_interfaces(
         if av:
             av.run_command("gs_update_status")
 
-    for group in range(window.num_groups()):
-        view = window.active_view_in_group(group)
-        if view is None:
-            continue
-
+    for view in visible_views(window):
         if view.settings().get("git_savvy.interface") is not None:
             view.run_command("gs_interface_refresh")
 
