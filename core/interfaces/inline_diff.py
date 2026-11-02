@@ -1050,15 +1050,12 @@ class gs_inline_diff_open_file(GsTextCommand):
     Opens an editable view of the file being diff'd.
     """
 
-    @util.view.single_cursor_coords
-    def run(self, coords, edit):
-        window = self.view.window()
-        if not window:
+    def run(self, edit):
+        frozen_sel = list(self.view.sel())
+        if not frozen_sel:
             return
 
-        if not coords:
-            return
-        row, col = coords
+        row, col = self.view.rowcol(frozen_sel[0].a)
 
         settings = self.view.settings()
         file_path = settings.get("git_savvy.file_path")
@@ -1077,7 +1074,7 @@ class gs_inline_diff_open_file(GsTextCommand):
                     (None, file_path),
                     line_no
                 )
-        self.open_file(window, file_path, line_no, col_no)
+        self.open_file(self.window, file_path, line_no, col_no)
 
     def open_file(self, window, file_path, line_no, col_no):
         # type: (sublime.Window, str, LineNo, ColNo) -> None

@@ -7,23 +7,6 @@ from ...core.view import place_view
 from typing import Callable, Mapping, Optional
 
 
-##############
-# DECORATORS #
-##############
-
-def single_cursor_coords(run):
-    def decorated_run(self, *args, **kwargs):
-        view = self.view if hasattr(self, "view") else self.window.active_view()
-        cursors = view.sel()
-        if not cursors:
-            return
-        coords = view.rowcol(cursors[0].a)
-
-        return run(self, coords, *args, **kwargs)
-
-    return decorated_run
-
-
 #############################
 # NEW-VIEW HELPER FUNCTIONS #
 #############################
