@@ -38,13 +38,13 @@ class TestGitStdoutFormatter(DeferrableTestCase):
     def test_formats_stdout_in_the_panel_but_returns_it_raw(self):
         panel = object()
         logged = []
-        when(git_command.util.log).init_panel(...).thenReturn(panel)
-        when(git_command.util.log).append_to_panel(panel, ...).thenAnswer(
+        when(git_command.output_panel).init_panel(...).thenReturn(panel)
+        when(git_command.output_panel).append_to_panel(panel, ...).thenAnswer(
             lambda panel, message: logged.append(message)
         )
-        when(git_command.util.log).start_abortable_command(...)
-        when(git_command.util.log).finish_abortable_command(...)
-        when(git_command.util.log).append_done_message(...)
+        when(git_command.output_panel).start_abortable_command(...)
+        when(git_command.output_panel).finish_abortable_command(...)
+        when(git_command.output_panel).append_done_message(...)
         when(git_command.subprocess).Popen(...).thenReturn(
             StreamingProcess(b"keep\ndrop\n", b"warning\n")
         )

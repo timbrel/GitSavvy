@@ -17,7 +17,6 @@ from .log import *
 from .merge import *
 from .mv import *
 from .next_hunk import *
-from .output_panel import *
 from .pull import *
 from .push import *
 from .quick_commit import *

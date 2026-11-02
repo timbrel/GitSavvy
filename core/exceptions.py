@@ -21,7 +21,9 @@ class GitSavvyError(Exception):
             util.debug.log_error(msg)
 
     def show_error_panel(self):
-        util.log.display_panel(self.window or sublime.active_window(), self.message)
+        from . import output_panel
+
+        output_panel.display_panel(self.window or sublime.active_window(), self.message)
 
 
 class AbortedGitCall(GitSavvyError):

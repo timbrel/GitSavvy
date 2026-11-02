@@ -21,6 +21,7 @@ import traceback
 import sublime
 
 from ..common import util
+from . import output_panel
 from .settings import SettingsMixin
 from .utils import (
     try_kill_proc, paths_upwards, proc_has_been_aborted_by_user,
@@ -315,8 +316,8 @@ class _GitCommand(SettingsMixin):
 
         log = None
         if show_panel:
-            panel = util.log.init_panel(window)
-            log = partial(util.log.append_to_panel, panel)
+            panel = output_panel.init_panel(window)
+            log = partial(output_panel.append_to_panel, panel)
             log("$ {}\n".format(command_str))
 
         if not working_dir:
@@ -365,7 +366,7 @@ class _GitCommand(SettingsMixin):
                 return p
 
             if log:
-                util.log.start_abortable_command(panel, p)
+                output_panel.start_abortable_command(panel, p)
 
             if isinstance(stdin, str):
                 stdin = stdin.encode(encoding=stdin_encoding)
@@ -426,8 +427,8 @@ class _GitCommand(SettingsMixin):
                 util.debug.log_git(final_args, working_dir, stdin, stdout, stderr, end - start)
                 if log:
                     aborted = proc_has_been_aborted_by_user(p) if p else False
-                    util.log.finish_abortable_command(panel, p)
-                    util.log.append_done_message(
+                    output_panel.finish_abortable_command(panel, p)
+                    output_panel.append_done_message(
                         panel,
                         end - start,
                         "Aborted" if aborted else "Done"

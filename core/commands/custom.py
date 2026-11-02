@@ -2,6 +2,7 @@ import sublime
 
 
 from GitSavvy.core.base_commands import GsWindowCommand
+from .. import output_panel
 from ..runtime import enqueue_on_worker
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..view import replace_view_content
@@ -64,7 +65,7 @@ class gs_custom(GsWindowCommand):
             self.window.status_message(complete_msg)
 
             if output_to_panel:
-                util.log.display_panel(self.window, stdout)
+                output_panel.display_panel(self.window, stdout)
             if output_to_buffer:
                 view = self.window.new_file()
                 view.set_scratch(True)

@@ -76,6 +76,7 @@ with reloader():
 
     from .common.commands import *
     from .core.global_events import *
+    from .core.output_panel import *
     from .core.commands import *
     from .core.settings import _AppSettings, app_settings
     from .core.settings import *

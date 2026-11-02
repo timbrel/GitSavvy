@@ -1,16 +1,37 @@
+from __future__ import annotations
+
 import re
 import subprocess
-import sublime
 
+import sublime
+import sublime_plugin
+
+from GitSavvy.core.utils import abort_proc, flash
 from GitSavvy.core.view import replace_view_content
 
 from typing import Dict, List, Optional
+
+
+__all__ = (
+    "gs_abort_output_panel",
+)
 
 
 PANEL_NAME = "GitSavvy"
 ABORT_HINT = "\n[ctrl+z to abort]"
 ANSI_ESCAPE_RE = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
 RUNNING_PROCESSES: Dict[int, List[subprocess.Popen]] = {}
+
+
+class gs_abort_output_panel(sublime_plugin.TextCommand):
+    def run(self, edit) -> None:
+        proc = running_process_for_panel(self.view)
+        if not proc:
+            flash(self.view, "No process is currently running")
+            return
+
+        abort_proc(proc)
+        flash(self.view, "Aborting git command…")
 
 
 def normalize(string: str) -> str:
