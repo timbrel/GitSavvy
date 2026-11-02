@@ -6,9 +6,9 @@ from contextlib import contextmanager
 import sublime
 from sublime_plugin import EventListener
 
-from ..interfaces import diff
-from . import show_file_at_commit
-from .navigate import GsNavigateBase
+from . import diff
+from ..commands import show_file_at_commit
+from ..commands.navigate import GsNavigateBase
 from ..base_commands import GsTextCommand, GsWindowCommand
 from ..parse_diff import SplittedDiff, UnsupportedCombinedDiff
 from ..runtime import enqueue_on_ui, enqueue_on_worker, on_worker

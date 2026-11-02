@@ -15,7 +15,7 @@ import re
 import sublime
 from sublime_plugin import TextCommand, EventListener
 
-from ..commands import inline_diff
+from . import inline_diff
 from ..commands import intra_line_colorizer
 from ..commands import multi_selector
 from ..commands import stage_hunk

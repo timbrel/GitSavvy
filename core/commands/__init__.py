@@ -14,7 +14,6 @@ from .flow import *
 from .help_panel import *
 from .ignore import *
 from .init import *
-from .inline_diff import *
 from .log import *
 from .log_graph import *
 from .log_graph_renderer import *
