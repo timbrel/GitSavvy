@@ -11,7 +11,6 @@ from .custom import *
 from .fetch import *
 from .fixup import *
 from .flow import *
-from .help_panel import *
 from .ignore import *
 from .init import *
 from .log import *
