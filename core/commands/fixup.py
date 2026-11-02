@@ -1,7 +1,7 @@
 import sublime
 import re
 from .log import gs_log_current_branch
-from ...common import util
+from ..interfaces import util as interface_util
 
 __all__ = (
     "gs_fixup_from_stage",
@@ -63,7 +63,7 @@ class gs_fixup_from_stage(gs_log_current_branch):
             sublime.message_dialog("Error encountered. Cannot autosquash fixup.")
             raise e
         finally:
-            util.view.refresh_gitsavvy(self.window.active_view())
+            interface_util.refresh_gitsavvy(self.window.active_view())
 
 
 class gs_quick_stage_current_file_and_fixup(gs_fixup_from_stage):

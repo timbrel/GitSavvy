@@ -15,7 +15,7 @@ from . import dashboard_base as ui
 from GitSavvy.core.base_commands import GsWindowCommand
 from ..git_command import GitCommand, GitSavvyError
 from ..git_mixins.tags import TagList
-from ...common import util
+from . import util as interface_util
 from GitSavvy.core import app_state
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.runtime import enqueue_on_worker, on_worker, run_on_new_thread
@@ -433,7 +433,7 @@ class gs_tags_refresh(TagsInterfaceCommand):
         if reset_remotes:
             interface.state["remote_tags_info"] = {}
 
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
 
 
 class gs_tags_smart_tag(TagsInterfaceCommand):
@@ -470,7 +470,7 @@ class gs_tags_delete(TagsInterfaceCommand):
             flash(self.view, TAG_DELETE_MESSAGE)
             if remote_tags:
                 self.interface.state["remote_tags_info"] = {}
-            util.view.refresh_gitsavvy(self.view)
+            interface_util.refresh_gitsavvy(self.view)
 
     def delete_local(self):
         # type: () -> List[str]
@@ -605,7 +605,7 @@ class gs_tags_push(TagsInterfaceCommand):
 
         interface = self.interface
         interface.state["remote_tags_info"] = {}
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
 
 
 TAG_ALREADY_EXISTS_ON_REMOTE_RE = re.compile(

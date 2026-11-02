@@ -7,7 +7,7 @@ import sublime
 from GitSavvy.core.fns import filter_, maybe
 from GitSavvy.core.runtime import enqueue_on_worker
 from GitSavvy.core.base_commands import GsWindowCommand
-from ...common import util
+from ..interfaces import util as interface_util
 from ..ui_mixins.input_panel import show_single_line_input_panel
 
 
@@ -104,7 +104,7 @@ class gs_init(GsWindowCommand):
                 word_start="Re-i" if re_init else "I"
             )
         )
-        util.view.refresh_gitsavvy(self.window.active_view())
+        interface_util.refresh_gitsavvy(self.window.active_view())
 
 
 HUBS = [
@@ -217,7 +217,7 @@ class gs_clone(GsWindowCommand):
         window.status_message("Cloned repo successfully.")
         if not window.is_sidebar_visible():
             self.window.run_command("toggle_side_bar")
-        util.view.refresh_gitsavvy_interfaces(window, refresh_sidebar=True)
+        interface_util.refresh_gitsavvy_interfaces(window, refresh_sidebar=True)
 
 
 def open_new_window():

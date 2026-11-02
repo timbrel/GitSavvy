@@ -6,6 +6,7 @@ from . import push, ref_undo
 from ..git_command import GitSavvyError
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ...common import util
+from ..interfaces import util as interface_util
 from GitSavvy.core.base_commands import (
     ask_for_local_branch, call_with_wanted_args, std_undo_owner,
     GsWindowCommand)
@@ -123,7 +124,7 @@ class gs_create_branch(GsWindowCommand):
             branch_name,
             " at {}".format(start_point) if start_point else "")
         )
-        util.view.refresh_gitsavvy_interfaces(self.window)
+        interface_util.refresh_gitsavvy_interfaces(self.window)
 
 
 class gs_rename_branch(GsWindowCommand):
@@ -141,7 +142,7 @@ class gs_rename_branch(GsWindowCommand):
             return
         self.git("branch", "-m", branch, new_name)
         self.window.status_message("Renamed {} -> {}".format(branch, new_name))
-        util.view.refresh_gitsavvy_interfaces(self.window)
+        interface_util.refresh_gitsavvy_interfaces(self.window)
 
 
 class gs_unset_tracking_information(GsWindowCommand):
@@ -152,7 +153,7 @@ class gs_unset_tracking_information(GsWindowCommand):
     def run(self, branch):
         self.git("branch", branch, "--unset-upstream")
         self.window.status_message("Removed the upstream information for {}".format(branch))
-        util.view.refresh_gitsavvy_interfaces(self.window)
+        interface_util.refresh_gitsavvy_interfaces(self.window)
 
 
 class gs_delete_branch(GsWindowCommand):
@@ -195,7 +196,7 @@ class gs_delete_branch(GsWindowCommand):
             "Deleted local branch ({}).".format(branch)
             + (" Open Sublime console for undo instructions." if match else "")
         )
-        util.view.refresh_gitsavvy_interfaces(self.window)
+        interface_util.refresh_gitsavvy_interfaces(self.window)
 
     def offer_force_deletion(self, branch_name: str, undo_owner: Optional[sublime.ViewId]) -> None:
         show_actions_panel(self.window, [

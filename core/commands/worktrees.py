@@ -5,7 +5,7 @@ import re
 
 import sublime
 
-from ...common import util
+from ..interfaces import util as interface_util
 from . import ref_undo
 from ..exceptions import GitSavvyError
 from ..git_command import GitCommand
@@ -55,7 +55,7 @@ def remove_worktree(
     else:
         ref_undo.add_worktree_undo(target, view.id())
     finally:
-        util.view.refresh_gitsavvy_interfaces(window, refresh_sidebar=True)
+        interface_util.refresh_gitsavvy_interfaces(window, refresh_sidebar=True)
 
 
 LOCKED_WORKTREE_RE = re.compile(r"cannot remove a locked working tree(?:, lock reason: ([^\n]*))?")

@@ -3,7 +3,7 @@ from functools import partial
 
 import sublime
 
-from ...common import util
+from ..interfaces import util as interface_util
 from ...github import ci_status
 from ..ui_mixins.quick_panel import show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
@@ -67,7 +67,7 @@ class PushMixin(GsWindowCommand):
             set_upstream=set_upstream
         )
         self.window.status_message(END_PUSH_MESSAGE)
-        util.view.refresh_gitsavvy_interfaces(self.window)
+        interface_util.refresh_gitsavvy_interfaces(self.window)
         with eat_but_log_errors():
             ci_status.on_successful_push(
                 self,

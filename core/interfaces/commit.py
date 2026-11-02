@@ -20,6 +20,7 @@ from ..ui_mixins.quick_panel import LogHelperMixin
 from ..utils import focus_view
 from ..view import replace_view_content
 from ...common import util
+from . import util as interface_util
 from ..theme_generator import ColorRef, ScopedStyle, provide
 
 
@@ -147,7 +148,7 @@ class gs_commit(GsWindowCommand):
             settings.set("git_savvy.commit_on_close", commit_on_close)
             prompt_on_abort_commit = self.app_settings.get("prompt_on_abort_commit")
             settings.set("git_savvy.prompt_on_abort_commit", prompt_on_abort_commit)
-            util.view.mark_as_lintable(view)
+            interface_util.mark_as_lintable(view)
 
             view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.sublime-syntax")
             view.run_command("gs_handle_vintageous")
@@ -658,7 +659,7 @@ class gs_commit_view_do_commit(GsTextCommand):
         for v in diff_views:
             if v not in handled:
                 v.run_command("gs_diff_refresh", {"sync": False})
-        util.view.refresh_gitsavvy_interfaces(window)
+        interface_util.refresh_gitsavvy_interfaces(window)
 
 
 def adjacent_views_on_the_left(view):

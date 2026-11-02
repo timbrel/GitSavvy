@@ -9,6 +9,7 @@ import sublime
 
 
 from ...common import util
+from . import util as interface_util
 from ..fns import filter_, take, unique
 from GitSavvy.core.base_commands import GsWindowCommand
 from ..git_command import GitCommand
@@ -651,7 +652,7 @@ class gs_log_graph_action(GsWindowCommand):
 
     def move_branch(self, branch_name, target):
         self.git("branch", "-f", branch_name, target)
-        util.view.refresh_gitsavvy_interfaces(self.window)
+        interface_util.refresh_gitsavvy_interfaces(self.window)
 
     def delete_branch(self, branch_name: str, undo_owner: sublime.ViewId):
         self.window.run_command("gs_delete_branch", {
@@ -690,7 +691,7 @@ class gs_log_graph_action(GsWindowCommand):
         try:
             self.git("cherry-pick", *commit_hash)
         finally:
-            util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+            interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
     def revert_commit(self, *commit_hash):
         self.window.run_command("gs_revert_commit", {"commit_hash": commit_hash})
@@ -765,7 +766,7 @@ class gs_log_graph_action(GsWindowCommand):
             file_path
         )
         self.checkout_ref(commit_hash, fpath=file_path)
-        util.view.refresh_gitsavvy_interfaces(self.window)
+        interface_util.refresh_gitsavvy_interfaces(self.window)
 
 
 def branch_and_worktree_delete_actions(
@@ -845,7 +846,7 @@ def delete_tag_from_graph(
     ):
         cmd.git("tag", "-d", tag_name)
     window.status_message("Deleted tag '{}'.".format(tag_name))
-    util.view.refresh_gitsavvy_interfaces(window)
+    interface_util.refresh_gitsavvy_interfaces(window)
 
 
 def is_log_graph_view(view: sublime.View) -> bool:

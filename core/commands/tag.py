@@ -8,7 +8,7 @@ import sublime
 
 from . import ref_undo
 from .. import output_panel
-from ...common import util
+from ..interfaces import util as interface_util
 from ..fns import unique
 from ..git_command import GitSavvyError
 from ..git_mixins.tags import is_version_tag
@@ -234,7 +234,7 @@ class gs_create_tag(GsWindowCommand):
             )
 
         self.window.status_message(TAG_CREATE_MESSAGE.format(tag_name))
-        util.view.refresh_gitsavvy_interfaces(self.window)
+        interface_util.refresh_gitsavvy_interfaces(self.window)
 
 
 class gs_smart_tag(GsWindowCommand):

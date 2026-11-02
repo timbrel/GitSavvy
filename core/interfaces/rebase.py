@@ -6,6 +6,7 @@ import sublime
 
 
 from ...common import util
+from . import util as interface_util
 from . import dashboard_base as ui
 from ..commands.navigate import GsNavigateBase
 from ..exceptions import GitSavvyError
@@ -468,7 +469,7 @@ class gs_rebase_undo(RebaseInterfaceCommand):
         finally:
             self.checkout_ref(branch_name)
             self.interface.set_log(log, cursor)
-            util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
+            interface_util.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
 
 class gs_rebase_redo(RebaseInterfaceCommand):
@@ -503,7 +504,7 @@ class gs_rebase_redo(RebaseInterfaceCommand):
         finally:
             self.checkout_ref(branch_name)
             self.interface.set_log(log, cursor)
-            util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
+            interface_util.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
 
 class RewriteBase(RebaseInterfaceCommand):
@@ -568,7 +569,7 @@ class RewriteBase(RebaseInterfaceCommand):
         finally:
             self.interface.complete_action(branch_name, ref, success, description)
 
-        util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
+        interface_util.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
 
 class gs_rebase_squash(RewriteBase):
@@ -860,7 +861,7 @@ class gs_rebase_stage_file(RebaseInterfaceCommand):
                  for line in self.view.substr(reg).split("\n") if line)
         for path in paths:
             self.stage_file(path)
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
 
 
 class gs_rebase_use_commit_version(RebaseInterfaceCommand):
@@ -881,7 +882,7 @@ class gs_rebase_use_commit_version(RebaseInterfaceCommand):
             else:
                 self.git("checkout", "--theirs", "--", path)
                 self.stage_file(path)
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
 
     def is_commit_version_deleted(self, path, conflicts):
         for conflict in conflicts:
@@ -907,7 +908,7 @@ class gs_rebase_use_base_version(RebaseInterfaceCommand):
             else:
                 self.git("checkout", "--ours", "--", path)
                 self.stage_file(path)
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
 
     def is_base_version_deleted(self, path, conflicts):
         for conflict in conflicts:
@@ -971,7 +972,7 @@ class gs_rebase_define_base_ref(PanelActionMixin, RebaseInterfaceCommand):
     def set_base_ref(self, ref):
         if ref:
             self.view.settings().set("git_savvy.rebase.base_ref", ref)
-            util.view.refresh_gitsavvy(self.view)
+            interface_util.refresh_gitsavvy(self.view)
 
 
 class gs_rebase_on_top_of(gs_rebase_define_base_ref):
@@ -999,7 +1000,7 @@ class gs_rebase_on_top_of(gs_rebase_define_base_ref):
                 "--rebase-merges" if self.interface.preserve_merges() else None,
                 selection)
         finally:
-            util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
+            interface_util.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
 
 class gs_rebase_toggle_preserve_mode(RebaseInterfaceCommand):
@@ -1008,7 +1009,7 @@ class gs_rebase_toggle_preserve_mode(RebaseInterfaceCommand):
         preserve = self.view.settings().get("git_savvy.rebase.preserve_merges", False)
         self.view.settings().set("git_savvy.rebase.preserve_merges", not preserve)
         self.app_settings.set("rebase_preserve_merges", not preserve)
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
 
 
 class gs_rebase_navigate_commits(GsNavigateBase):

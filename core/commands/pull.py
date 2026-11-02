@@ -1,4 +1,4 @@
-from ...common import util
+from ..interfaces import util as interface_util
 from GitSavvy.core.base_commands import GsWindowCommand, ask_for_branch
 from GitSavvy.core.fns import flatten, unique
 from GitSavvy.core.runtime import on_worker
@@ -24,7 +24,7 @@ class GsPullBase(GsWindowCommand):
         self.window.status_message(
             output if output == "Already up to date." else "Pull complete."
         )
-        util.view.refresh_gitsavvy(self.window.active_view())
+        interface_util.refresh_gitsavvy(self.window.active_view())
 
 
 class gs_pull(GsPullBase):

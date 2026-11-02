@@ -15,6 +15,7 @@ from ..git_mixins.branches import Branch
 from ..utils import uprint
 from ..view import replace_view_content
 from ...common import util
+from ..interfaces import util as interface_util
 from GitSavvy.core.base_commands import ask_for_branch, GsWindowCommand
 from ..ui__quick_panel import noop, show_actions_panel
 
@@ -112,7 +113,7 @@ class gs_checkout_branch(GsWindowCommand):
             f"Checked out `{display_name}`."
         )
         self.window.status_message(message)
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
 class gs_checkout_new_branch(GsWindowCommand):
@@ -177,7 +178,7 @@ class gs_checkout_new_branch(GsWindowCommand):
                 raise
 
         self.window.status_message("Created and checked out `{}` branch.".format(branch_name))
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
 class gs_checkout_remote_branch(GsWindowCommand):
@@ -197,7 +198,7 @@ class gs_checkout_remote_branch(GsWindowCommand):
         self.git("checkout", "-b", local_name, "--track", remote_branch)
         self.window.status_message(
             "Checked out `{}` as local branch `{}`.".format(remote_branch, local_name))
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
 class gs_checkout_current_file_at_commit(LogMixin, GsWindowCommand):
@@ -229,7 +230,7 @@ class gs_checkout_current_file_at_commit(LogMixin, GsWindowCommand):
                     self.to_short_hash(commit_hash)
                 )
             )
-            util.view.refresh_gitsavvy_interfaces(self.window)
+            interface_util.refresh_gitsavvy_interfaces(self.window)
 
 
 class gs_show_file_diff(GsWindowCommand):

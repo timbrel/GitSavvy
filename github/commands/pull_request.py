@@ -5,6 +5,7 @@ import urllib
 from .. import github
 from .. import git_mixins
 from ...common import util
+from ...core.interfaces import util as interface_util
 from ...core.commands.push import gs_push_to_branch_name
 from ...core.fns import filter_
 from ...core.ui_mixins.quick_panel import show_paginated_panel
@@ -158,7 +159,7 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
             if checkout:
                 self.window.run_command("gs_checkout_branch", {"branch": branch_name})
             else:
-                util.view.refresh_gitsavvy_interfaces(self.window)
+                interface_util.refresh_gitsavvy_interfaces(self.window)
             return
 
         url = self.best_remote_url_for_pr()
@@ -202,7 +203,7 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
         if checkout:
             self.window.run_command("gs_checkout_branch", {"branch": branch_name})
         else:
-            util.view.refresh_gitsavvy_interfaces(self.window)
+            interface_util.refresh_gitsavvy_interfaces(self.window)
 
     def best_remote_url_for_pr(self):
         clone_url = self.pr["head"]["repo"]["clone_url"]

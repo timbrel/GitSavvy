@@ -9,11 +9,10 @@ from typing import Optional
 ##########
 
 def refresh_gitsavvy_interfaces(
-    window,
-    refresh_sidebar=False,
-    refresh_status_bar=True,
-):
-    # type: (Optional[sublime.Window], bool, bool) -> None
+    window: Optional[sublime.Window],
+    refresh_sidebar: bool = False,
+    refresh_status_bar: bool = True
+) -> None:
     """
     Looks for GitSavvy interface views in the current window and refresh them.
 
@@ -43,11 +42,10 @@ def refresh_gitsavvy_interfaces(
 
 
 def refresh_gitsavvy(
-    view,
-    refresh_sidebar=False,
-    refresh_status_bar=True,
-):
-    # type: (Optional[sublime.View], bool, bool) -> None
+    view: Optional[sublime.View],
+    refresh_sidebar: bool = False,
+    refresh_status_bar: bool = True
+) -> None:
     """
     Called after GitSavvy action was taken that may have effected the
     state of the Git repo.
@@ -74,5 +72,5 @@ def refresh_gitsavvy(
 #################
 
 
-def mark_as_lintable(view):
+def mark_as_lintable(view: sublime.View) -> None:
     view.settings().set("SublimeLinter.enabled?", True)

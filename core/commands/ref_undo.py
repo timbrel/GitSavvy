@@ -11,7 +11,7 @@ from typing_extensions import TypeAlias
 import sublime
 from sublime_plugin import EventListener
 
-from ...common import util
+from ..interfaces import util as interface_util
 from ..base_commands import GsTextCommand
 from ..git_command import GitCommand
 from ..git_mixins.worktrees import WorktreeTarget
@@ -51,7 +51,7 @@ class gs_ref_undo(GsTextCommand):
             self.git(*undo_action.command)
             remove_undo_action(undo_owner, undo_action)
             self.window.status_message(undo_action.description + ".")
-            util.view.refresh_gitsavvy_interfaces(
+            interface_util.refresh_gitsavvy_interfaces(
                 self.window, refresh_sidebar=undo_action.command[0] == "worktree"
             )
 

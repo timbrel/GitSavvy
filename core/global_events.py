@@ -3,7 +3,7 @@ import os
 import sublime
 from sublime_plugin import EventListener, WindowCommand
 
-from ..common import util
+from .interfaces import util as interface_util
 from .theme_generator import migrate_color_scheme
 from . import app_state
 from .settings import SettingsMixin
@@ -59,7 +59,7 @@ class GsInterfaceFocusEventListener(EventListener):
 
         migrate_color_scheme(view)
         SEEN.add(vid)
-        util.view.refresh_gitsavvy(view)
+        interface_util.refresh_gitsavvy(view)
 
     def on_close(self, view):
         SEEN.discard(view.id())
@@ -89,7 +89,7 @@ class GitCommandFromTerminal(EventListener, SettingsMixin):
         if basename in NATIVE_GIT_EDITOR_FILES:
             view.set_scratch(True)
             if basename != 'git-rebase-todo':
-                util.view.mark_as_lintable(view)
+                interface_util.mark_as_lintable(view)
 
             # Sublime has problems focusing the view for example if we
             # start a "rebase -i" session from within Sublime itself,

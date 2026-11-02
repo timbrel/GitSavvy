@@ -10,6 +10,7 @@ import sublime
 
 
 from ...common import util
+from . import util as interface_util
 from . import dashboard_base as ui
 from ..commands import ref_undo
 from ..commands.navigate import GsNavigateBase
@@ -717,7 +718,7 @@ class gs_branches_create_new_worktree(CommandForSingleItem):
         worktree_path = self.create_new_worktree(self.selected_item.commit_hash)
 
         self.view.settings().set("git_savvy.update_view_in_a_blocking_manner", True)
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
 
         normalized_worktree_path = worktree_path.replace("\\", "/")
         displayed_path = self.nice_path(normalized_worktree_path)
@@ -807,7 +808,7 @@ class gs_branches_delete(BranchInterfaceCommand):
             *branch_names
         )
         self.window.status_message(f"Deleted remote branch{es}.")
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
         self.view.run_command("gs_clear_multiselect")
 
     @util.actions.destructive(description="delete local branches")
@@ -826,7 +827,7 @@ class gs_branches_delete(BranchInterfaceCommand):
         else:
             record_deleted_branch_undos(self, branch_names, stdout, self.view.id())
         self.window.status_message("Deleted local branches.")
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
         self.view.run_command("gs_clear_multiselect")
 
     @util.actions.destructive(description="delete a worktree")
@@ -840,7 +841,7 @@ class gs_branches_delete(BranchInterfaceCommand):
         finally:
             self.interface.state["worktree_deletions_in_progress"].discard(path)
             self.view.settings().set("git_savvy.update_view_in_a_blocking_manner", True)
-            util.view.refresh_gitsavvy(self.view)
+            interface_util.refresh_gitsavvy(self.view)
 
 
 DELETED_BRANCH_RE = re.compile(r"^Deleted branch (.+?) \\(was ([0-9a-f]+)\\)\\.$", re.MULTILINE)
@@ -888,7 +889,7 @@ class gs_branches_rename(CommandForSingleItem):
             return
 
         self.move_worktree(current_path, new_path)
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
 
 
 class gs_branches_configure_tracking(CommandForSingleBranch):
@@ -910,7 +911,7 @@ class gs_branches_configure_tracking(CommandForSingleBranch):
 
     def on_branch_selection(self, local_branch, remote_branch):
         self.git("branch", "-u", remote_branch, local_branch)
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
 
 
 class gs_branches_push_selected(CommandForSingleBranch):
@@ -941,7 +942,7 @@ class gs_branches_push_all(BranchInterfaceCommand):
         self.window.status_message("Pushing all branches to `{}`...".format(remote))
         self.git("push", remote, "--all")
         self.window.status_message("Push successful.")
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
 
 
 class gs_branches_merge_selected(BranchInterfaceCommand):
@@ -960,7 +961,7 @@ class gs_branches_merge_selected(BranchInterfaceCommand):
             self.merge(branches)
             self.window.status_message("Merge complete.")
         finally:
-            util.view.refresh_gitsavvy(self.view)
+            interface_util.refresh_gitsavvy(self.view)
 
 
 class gs_branches_fetch_and_merge(BranchInterfaceCommand):
@@ -990,7 +991,7 @@ class gs_branches_fetch_and_merge(BranchInterfaceCommand):
             self.merge(branches_strings)
             self.window.status_message("Fetch and merge complete.")
         finally:
-            util.view.refresh_gitsavvy(self.view)
+            interface_util.refresh_gitsavvy(self.view)
 
 
 def active_branch_name(interface: BranchInterface) -> Optional[str]:
@@ -1064,7 +1065,7 @@ class gs_branches_refresh(BranchInterfaceCommand):
     """
 
     def run(self, edit):
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
 
 
 class gs_branches_toggle_remotes(BranchInterfaceCommand):
@@ -1123,7 +1124,7 @@ class gs_branches_edit_branch_description(CommandForSingleBranch):
             "branch.{}.description".format(branch_name),
             new_description.strip("\n")
         )
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
 
 
 class gs_branches_navigate_branch(GsNavigateBase):

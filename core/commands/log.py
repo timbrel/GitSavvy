@@ -13,7 +13,7 @@ from ..ui_mixins.quick_panel import PanelActionMixin, PanelCommandMixin
 from ..ui_mixins.quick_panel import show_log_panel, show_branch_panel
 from ..ui__quick_panel import show_quick_panel
 from ..view import capture_cur_position, Position
-from ...common import util
+from ..interfaces import util as interface_util
 from GitSavvy.core.fns import chain
 
 from typing import Callable, Union
@@ -234,11 +234,11 @@ class gs_log_action(PanelActionMixin, WindowCommand):
 
     def checkout_commit(self):
         self.checkout_ref(self._commit_hash)
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
     def cherry_pick(self):
         self.git("cherry-pick", self._commit_hash)
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
     def revert_commit(self):
         self.window.run_command("gs_revert_commit", {"commit_hash": self._commit_hash})
@@ -306,4 +306,4 @@ class gs_log_action(PanelActionMixin, WindowCommand):
             self._file_path
         )
         self.checkout_ref(self._commit_hash, fpath=file_path)
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)

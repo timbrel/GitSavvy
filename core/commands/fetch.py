@@ -1,5 +1,5 @@
 from ..runtime import on_worker
-from ...common import util
+from ..interfaces import util as interface_util
 from ..ui_mixins.quick_panel import show_remote_panel
 from GitSavvy.core.base_commands import ask_for_branch, GsWindowCommand
 
@@ -37,7 +37,7 @@ class gs_fetch(GsWindowCommand):
 
         self.fetch(None if fetch_all else remote, refspec)
         self.window.status_message("Fetch complete.")
-        util.view.refresh_gitsavvy_interfaces(self.window)
+        interface_util.refresh_gitsavvy_interfaces(self.window)
 
 
 class gs_ff_update_branch(GsWindowCommand):

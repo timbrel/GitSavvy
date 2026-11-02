@@ -2,7 +2,7 @@ import os
 
 from ..base_commands import GsWindowCommand
 from ..runtime import on_worker
-from ...common import util
+from ..interfaces import util as interface_util
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui__quick_panel import show_noop_panel, show_quick_panel
 
@@ -31,7 +31,7 @@ class gs_ignore(GsWindowCommand):
 
         self.add_ignore(os.path.join("/", file_path_or_pattern))
         self.window.status_message("Ignored file `{}`.".format(file_path_or_pattern))
-        util.view.refresh_gitsavvy(self.window.active_view())
+        interface_util.refresh_gitsavvy(self.window.active_view())
 
 
 class gs_ignore_pattern(GsWindowCommand):
@@ -47,7 +47,7 @@ class gs_ignore_pattern(GsWindowCommand):
     def on_done(self, ignore_pattern):
         self.add_ignore(ignore_pattern)
         self.window.status_message("Ignored pattern `{}`.".format(ignore_pattern))
-        util.view.refresh_gitsavvy(self.window.active_view())
+        interface_util.refresh_gitsavvy(self.window.active_view())
 
 
 class gs_assume_unchanged(GsWindowCommand):
@@ -69,7 +69,7 @@ class gs_assume_unchanged(GsWindowCommand):
         fpath = self._unstaged_files[index]
         self.git("update-index", "--assume-unchanged", fpath)
 
-        util.view.refresh_gitsavvy(self.window.active_view())
+        interface_util.refresh_gitsavvy(self.window.active_view())
 
 
 class gs_restore_assumed_unchanged(GsWindowCommand):
@@ -98,6 +98,6 @@ class gs_restore_assumed_unchanged(GsWindowCommand):
         fpath = self._ignored_files[index]
         self.git("update-index", "--no-assume-unchanged", fpath)
 
-        util.view.refresh_gitsavvy(self.window.active_view())
+        interface_util.refresh_gitsavvy(self.window.active_view())
 
         self.window.run_command("gs_restore_assumed_unchanged")

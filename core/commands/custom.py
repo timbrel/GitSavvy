@@ -6,7 +6,7 @@ from .. import output_panel
 from ..runtime import enqueue_on_worker
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..view import replace_view_content
-from ...common import util
+from ..interfaces import util as interface_util
 from GitSavvy.core.runtime import run_new_daemon_thread
 
 
@@ -73,7 +73,7 @@ class gs_custom(GsWindowCommand):
                     view.set_syntax_file(syntax)
                 replace_view_content(view, stdout.replace("\r", "\n"))
 
-            util.view.refresh_gitsavvy_interfaces(self.window)
+            interface_util.refresh_gitsavvy_interfaces(self.window)
 
         if run_in_thread:
             run_new_daemon_thread(program)

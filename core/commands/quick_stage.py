@@ -2,7 +2,7 @@ from collections import namedtuple
 
 from ..base_commands import GsWindowCommand
 from ..runtime import on_worker
-from ...common import util
+from ..interfaces import util as interface_util
 from ..ui__quick_panel import show_quick_panel
 
 
@@ -80,7 +80,7 @@ class gs_quick_stage(GsWindowCommand):
 
             self.window.status_message("Successfully added `{}`.".format(
                 scope_of_action))
-            util.view.refresh_gitsavvy(self.window.active_view())
+            interface_util.refresh_gitsavvy(self.window.active_view())
 
             self.run()
 

@@ -8,7 +8,7 @@ import shlex
 import sublime
 import sublime_plugin
 
-from GitSavvy.common import util
+from . import util as interface_util
 from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand, ask_for_branch
 from GitSavvy.core.interfaces import log_graph
 from GitSavvy.core.interfaces.log_graph_renderer import resolve_commit_to_follow_after_rebase
@@ -822,7 +822,7 @@ class RebaseCommand(GitCommand):
                 window.status_message("rebase needs your attention")
             else:
                 window.status_message(ok_message)
-            util.view.refresh_gitsavvy_interfaces(window, refresh_sidebar=True)
+            interface_util.refresh_gitsavvy_interfaces(window, refresh_sidebar=True)
 
     def _merge_commits_within_reach(self, commit_hash):
         # type: (str) -> str

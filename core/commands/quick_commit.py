@@ -1,6 +1,6 @@
 from ..base_commands import GsWindowCommand
 from ..runtime import on_worker
-from ...common import util
+from ..interfaces import util as interface_util
 from ..ui_mixins.input_panel import show_single_line_input_panel
 
 
@@ -32,7 +32,7 @@ class gs_quick_commit(GsWindowCommand):
         self.window.status_message("Commiting...")
         self.git("commit", "-q", "-F", "-", stdin=commit_message)
         self.window.status_message("Committed successfully.")
-        util.view.refresh_gitsavvy(self.window.active_view())
+        interface_util.refresh_gitsavvy(self.window.active_view())
 
 
 class gs_quick_stage_current_file_commit(GsWindowCommand):
@@ -56,4 +56,4 @@ class gs_quick_stage_current_file_commit(GsWindowCommand):
         self.git("add", "--", self.file_path)
         self.git("commit", "-q", "-F", "-", stdin=commit_message)
         self.window.status_message("Committed successfully.")
-        util.view.refresh_gitsavvy(self.window.active_view())
+        interface_util.refresh_gitsavvy(self.window.active_view())

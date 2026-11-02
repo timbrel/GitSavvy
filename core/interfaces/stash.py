@@ -13,6 +13,7 @@ from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..utils import flash, hprint, uprint
 from ..view import create_scratch_view, replace_view_content
 from ...common import util
+from . import util as interface_util
 
 
 __all__ = (
@@ -116,7 +117,7 @@ class gs_stash_apply(SelectStashIdMixin):
             self.apply_stash(stash_id)
             flash(self.view, "Successfully applied stash ({}).".format(stash_id))
         finally:
-            util.view.refresh_gitsavvy(self.view)
+            interface_util.refresh_gitsavvy(self.view)
 
 
 class gs_stash_pop(SelectStashIdMixin):
@@ -133,7 +134,7 @@ class gs_stash_pop(SelectStashIdMixin):
             if self.view.settings().get("git_savvy.stash_view.stash_id", None) == stash_id:
                 self.view.close()
         finally:
-            util.view.refresh_gitsavvy(self.view)
+            interface_util.refresh_gitsavvy(self.view)
 
 
 DROP_UNDO_MESSAGE = """\
@@ -166,7 +167,7 @@ class gs_stash_drop(SelectStashIdMixin):
         if self.view.settings().get("git_savvy.stash_view.stash_id", None) == stash_id:
             self.view.close()
         else:
-            util.view.refresh_gitsavvy(self.view)
+            interface_util.refresh_gitsavvy(self.view)
 
 
 class gs_stash(PanelCommandMixin, GsWindowCommand):
@@ -240,4 +241,4 @@ class gs_stash_save(GsWindowCommand):
             return
         else:
             self.git("stash", "push", "--staged", "--message" if description else None, description or None)
-        util.view.refresh_gitsavvy(self.window.active_view())
+        interface_util.refresh_gitsavvy(self.window.active_view())

@@ -185,7 +185,7 @@ class TestMissingPullRequestHead(DeferrableTestCase):
         when(command).git("fetch", "upstream", "refs/pull/42/head").thenReturn("")
         when(command).git("branch", "--no-track", "pr-42", "FETCH_HEAD").thenReturn("")
         when(window).run_command("gs_checkout_branch", {"branch": "pr-42"}).thenReturn(None)
-        when(pull_request.util.view).refresh_gitsavvy_interfaces(window).thenReturn(None)
+        when(pull_request.interface_util).refresh_gitsavvy_interfaces(window).thenReturn(None)
         when(pull_request.sublime).yes_no_cancel_dialog(...).thenRaise(AssertionError("Unexpected prompt"))
 
         gs_github_pull_request.create_branch_for_pr(command, "pr-42", checkout=checkout)
@@ -193,7 +193,7 @@ class TestMissingPullRequestHead(DeferrableTestCase):
         verify(command).git("fetch", "upstream", "refs/pull/42/head")
         verify(command).git("branch", "--no-track", "pr-42", "FETCH_HEAD")
         verify(window, times=int(checkout)).run_command("gs_checkout_branch", {"branch": "pr-42"})
-        verify(pull_request.util.view, times=int(not checkout)).refresh_gitsavvy_interfaces(window)
+        verify(pull_request.interface_util, times=int(not checkout)).refresh_gitsavvy_interfaces(window)
 
 
 class TestPullRequestTransport(DeferrableTestCase):

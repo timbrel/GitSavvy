@@ -2,7 +2,7 @@
 
 from .log import LogMixin
 
-from ...common import util
+from ..interfaces import util as interface_util
 from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.runtime import on_worker
 
@@ -21,7 +21,7 @@ class gs_revert_commit(LogMixin, GsWindowCommand):
         try:
             self.git("revert", *(commit_hash if isinstance(commit_hash, list) else [commit_hash]))
         finally:
-            util.view.refresh_gitsavvy(self.window.active_view(), refresh_sidebar=True)
+            interface_util.refresh_gitsavvy(self.window.active_view(), refresh_sidebar=True)
 
 
 class gs_revert_abort(GsWindowCommand):
@@ -30,7 +30,7 @@ class gs_revert_abort(GsWindowCommand):
         try:
             self.git("revert", "--abort")
         finally:
-            util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+            interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
 class gs_revert_continue(GsWindowCommand):
@@ -39,7 +39,7 @@ class gs_revert_continue(GsWindowCommand):
         try:
             self.git("revert", "--continue")
         finally:
-            util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+            interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
 class gs_revert_skip(GsWindowCommand):
@@ -48,4 +48,4 @@ class gs_revert_skip(GsWindowCommand):
         try:
             self.git("revert", "--skip")
         finally:
-            util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+            interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)

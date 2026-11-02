@@ -118,8 +118,8 @@ def plugin_unloaded() -> None:
 
 
 def prepare_gitsavvy() -> None:
-    from .common import util
     from .core import app_state, runtime, store
+    from .core.interfaces import util as interface_util
 
     app_state.load()
     store.load_app_state()
@@ -127,7 +127,7 @@ def prepare_gitsavvy() -> None:
 
     # Ensure all interfaces are ready.
     def prepare_views() -> None:
-        util.view.refresh_gitsavvy(sublime.active_window().active_view())
+        interface_util.refresh_gitsavvy(sublime.active_window().active_view())
 
     sublime.set_timeout_async(prepare_views)
 

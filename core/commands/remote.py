@@ -3,6 +3,7 @@ import sublime
 
 from . import init
 from ...common import util
+from ..interfaces import util as interface_util
 from ..ui_mixins.quick_panel import show_remote_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.runtime import run_on_new_thread
@@ -64,7 +65,7 @@ class gs_remote_add(GsWindowCommand):
             run_on_new_thread(self.git, "config", "--local", "gitsavvy.pushdefault", remote_name)
             self.update_store({"last_remote_used_for_push": remote_name})
 
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_status_bar=False)
+        interface_util.refresh_gitsavvy_interfaces(self.window, refresh_status_bar=False)
         if self.app_settings.get("fetch_new_remotes", True) or sublime.ok_cancel_dialog(
             "Your remote was added successfully.  "
             "Would you like to fetch from this remote?"
@@ -90,7 +91,7 @@ class gs_remote_remove(GsWindowCommand):
     def on_remote_selection(self, remote: str) -> None:
         self.git("remote", "remove", remote)
         self.remove_remote_tracking_refs(remote)
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_status_bar=False)
+        interface_util.refresh_gitsavvy_interfaces(self.window, refresh_status_bar=False)
 
     def remove_remote_tracking_refs(self, remote: str) -> None:
         prefix = f"refs/remotes/{remote}/"
@@ -124,4 +125,4 @@ class gs_remote_rename(GsWindowCommand):
             return
         self.git("remote", "rename", self.remote, new_name)
         self.window.status_message("remote {} was renamed as {}.".format(self.remote, new_name))
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_status_bar=False)
+        interface_util.refresh_gitsavvy_interfaces(self.window, refresh_status_bar=False)

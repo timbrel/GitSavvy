@@ -10,6 +10,7 @@ import sublime
 
 from GitSavvy.core.git_command import mixin_base
 from ...common import util
+from ..interfaces import util as interface_util
 
 
 class MergeMixin(mixin_base):
@@ -97,7 +98,7 @@ class MergeMixin(mixin_base):
     def resolve_merge(self, path):
         self.git("add", path)
         sublime.set_timeout_async(
-            lambda: util.view.refresh_gitsavvy(sublime.active_window().active_view()))
+            lambda: interface_util.refresh_gitsavvy(sublime.active_window().active_view()))
 
     def get_configured_tool(self):
         return self.git("config", "merge.tool").strip()
