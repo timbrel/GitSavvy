@@ -7,11 +7,12 @@ from textwrap import indent
 from webbrowser import open as open_in_browser
 
 import sublime
-from sublime_plugin import WindowCommand
+
 
 from ..commands import ref_undo
 from ..commands.navigate import GsNavigateBase
 from ...common import ui
+from GitSavvy.core.base_commands import GsWindowCommand
 from ..git_command import GitCommand, GitSavvyError
 from ..git_mixins.tags import TagList
 from ...common import util
@@ -94,7 +95,7 @@ TAG_DELETE_MESSAGE = "Tag(s) deleted."
 SHORT_VERSION_TAG_RE = re.compile(r"^v\d+(?:\.\d+)?$")
 
 
-class gs_show_tags(WindowCommand, GitCommand):
+class gs_show_tags(GsWindowCommand):
 
     """
     Open a branch dashboard for the active Git repository.
