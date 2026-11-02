@@ -4,12 +4,13 @@ from contextlib import contextmanager
 import os
 
 import sublime
-from sublime_plugin import EventListener, WindowCommand
+from sublime_plugin import EventListener
 
 from ..git_mixins.status import FileStatus
 from ..git_mixins.active_branch import format_and_limit
 from ..commands.navigate import GsNavigateBase
 from ...common import ui
+from GitSavvy.core.base_commands import GsWindowCommand
 from ..git_command import GitCommand, GitSavvyError
 from ...common import util
 from GitSavvy.core.fns import filter_
@@ -90,7 +91,7 @@ EXTRACT_FILENAME_RE = (
 ITEMS_IN_THE_RECENT_LIST = 5
 
 
-class gs_show_status(WindowCommand, GitCommand):
+class gs_show_status(GsWindowCommand):
 
     """
     Open a status view for the active git repository.
