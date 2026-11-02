@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from unittesting import DeferrableTestCase
 
-from GitSavvy.core.commands import show_commit
+from GitSavvy.core.interfaces import show_commit
 from GitSavvy.github import github
 from GitSavvy.github.commands import pull_request
 from GitSavvy.github.commands.pull_request import gs_github_pull_request

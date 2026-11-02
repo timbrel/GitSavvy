@@ -4,11 +4,11 @@ from webbrowser import open as open_in_browser
 import sublime
 from sublime_plugin import EventListener, TextCommand
 
-from ..interfaces import diff
-from . import intra_line_colorizer
-from ..interfaces import log_graph_rebase_actions
-from . import show_commit_info
-from ..interfaces import show_file_at_commit
+from . import diff
+from ..commands import intra_line_colorizer
+from . import log_graph_rebase_actions
+from ..commands import show_commit_info
+from . import show_file_at_commit
 from ..fns import filter_, flatten, unique
 from ..git_command import GitCommand
 from ..parse_diff import SplittedDiff
