@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import sublime
-import sublime_plugin
 
 import os
 
-from GitSavvy.core.git_command import GitCommand
+from GitSavvy.core.base_commands import GsWindowCommand
 
 
 __all__ = (
@@ -14,7 +13,7 @@ __all__ = (
 )
 
 
-class gs_open_repo_config(sublime_plugin.WindowCommand, GitCommand):
+class gs_open_repo_config(GsWindowCommand):
     """
     Open the repository config file.
 
@@ -57,7 +56,7 @@ class gs_open_repo_config(sublime_plugin.WindowCommand, GitCommand):
         return None
 
 
-class gs_open_repo_exclude(sublime_plugin.WindowCommand, GitCommand):
+class gs_open_repo_exclude(GsWindowCommand):
     def run(self) -> None:
         try:
             repo_path = self.get_repo_path()
