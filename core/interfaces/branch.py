@@ -7,7 +7,7 @@ import os
 import re
 
 import sublime
-from sublime_plugin import WindowCommand
+
 
 from ...common import ui, util
 from ..commands import ref_undo
@@ -16,6 +16,7 @@ from ..git_mixins.worktrees import WorktreeTarget
 from ..ui__worktrees import remove_worktree
 from ..commands.log import LogMixin
 from ..commands import multi_selector
+from GitSavvy.core.base_commands import GsWindowCommand
 from ..git_command import GitCommand, GitSavvyError
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
@@ -102,7 +103,7 @@ class BranchWithWorktree(Protocol):
     def worktree_path(self) -> str: ...
 
 
-class gs_show_branch(WindowCommand, GitCommand):
+class gs_show_branch(GsWindowCommand):
 
     """
     Open a branch dashboard for the active Git repository.
