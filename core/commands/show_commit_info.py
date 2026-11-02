@@ -2,12 +2,12 @@ from collections import defaultdict
 from contextlib import contextmanager
 
 import sublime
-from sublime_plugin import TextCommand, WindowCommand
+from sublime_plugin import TextCommand
 
 from . import diff
 from . import intra_line_colorizer
 from ..fns import filter_, unique
-from ..git_command import GitCommand
+from GitSavvy.core.base_commands import GsWindowCommand
 from ..runtime import enqueue_on_worker, ensure_on_ui, throttled
 from ..view import replace_view_content, scroll_to_pt, y_offset
 from ...common.util.debug import dprint
@@ -62,7 +62,7 @@ def ensure_panel_is_visible(window, name=PANEL_NAME):
         window.run_command("show_panel", {"panel": "output.{}".format(name)})
 
 
-class gs_show_commit_info(WindowCommand, GitCommand):
+class gs_show_commit_info(GsWindowCommand):
     def run(self, commit_hash, file_path=None, from_log_graph=False):
         commit_hash = self.to_short_hash(commit_hash) if commit_hash else ""
 
