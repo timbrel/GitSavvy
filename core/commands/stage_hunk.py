@@ -1,10 +1,10 @@
 from itertools import chain
 
 import sublime
-from sublime_plugin import TextCommand
+
 
 from ..fns import accumulate, filter_, unique
-from ..git_command import GitCommand
+from GitSavvy.core.base_commands import GsTextCommand
 from ..parse_diff import SplittedDiff, UnsupportedCombinedDiff
 from ..utils import flash
 
@@ -27,7 +27,7 @@ class Hunk(NamedTuple):
     content: str
 
 
-class gs_stage_hunk(TextCommand, GitCommand):
+class gs_stage_hunk(GsTextCommand):
     def run(self, edit):
         # type: (sublime.Edit) -> None
         view = self.view
