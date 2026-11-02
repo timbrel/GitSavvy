@@ -28,7 +28,6 @@ from .reflog import *
 from .remote import *
 from .reset import *
 from .revert import *
-from .stage_diff import *
 from .stage_hunk import *
 from .status_bar import *
 from .supermove import *

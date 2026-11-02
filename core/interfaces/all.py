@@ -16,6 +16,7 @@ from .remotes import *  # noqa: F401, F403
 from .show_commit import *  # noqa: F401, F403
 from .show_commit_info import *  # noqa: F401, F403
 from .show_file_at_commit import *  # noqa: F401, F403
+from .stage_diff import *  # noqa: F401, F403
 from .stash import *  # noqa: F401, F403
 from .status import *  # noqa: F401, F403
 from .status_main_actions import *  # noqa: F401, F403
