@@ -6,7 +6,7 @@ import re
 import shlex
 
 import sublime
-from sublime_plugin import WindowCommand, TextCommand, EventListener
+from sublime_plugin import TextCommand, EventListener
 
 from . import log_graph_colorizer as colorizer
 from . import multi_selector
@@ -18,7 +18,7 @@ from .log_graph_helper import (
     GRAPH_HEIGHT,
 )
 from .log import gs_log
-from ..base_commands import GsTextCommand
+from ..base_commands import GsTextCommand, GsWindowCommand
 from ..fns import filter_, flatten, pairwise, partition, take
 from ..git_command import GitCommand
 from ..text_helper import Region, TextRange, line_from_pt
@@ -154,7 +154,7 @@ def compute_identifier_for_view(view):
     )
 
 
-class gs_graph(WindowCommand, GitCommand):
+class gs_graph(GsWindowCommand):
     def run(
         self,
         repo_path=None,
@@ -265,7 +265,7 @@ class gs_graph(WindowCommand, GitCommand):
             view.run_command("gs_log_graph_refresh")
 
 
-class gs_graph_current_file(WindowCommand, GitCommand):
+class gs_graph_current_file(GsWindowCommand):
     def run(self, **kwargs):
         file_path = self.file_path
         if file_path:
@@ -274,7 +274,7 @@ class gs_graph_current_file(WindowCommand, GitCommand):
             self.window.status_message("View has no filename to track.")
 
 
-class gs_graph_current_path(WindowCommand, GitCommand):
+class gs_graph_current_path(GsWindowCommand):
     def run(self, **kwargs) -> None:
         if (
             (file_path := self.file_path)
@@ -285,7 +285,7 @@ class gs_graph_current_path(WindowCommand, GitCommand):
             self.window.status_message("View has no path to track.")
 
 
-class gs_graph_pickaxe(TextCommand, GitCommand):
+class gs_graph_pickaxe(GsTextCommand):
     def run(self, edit):
         # type: (sublime.Edit) -> None
         view = self.view
@@ -327,7 +327,7 @@ class gs_log_graph_tab_out(GsTextCommand):
         self.view.run_command("gs_tab_cycle", {"source": "graph", "reverse": reverse})
 
 
-class gs_log_graph_tab_in(WindowCommand, GitCommand):
+class gs_log_graph_tab_in(GsWindowCommand):
     def run(self, file_path=None):
         for view in self.window.views():
             settings = view.settings()
@@ -365,7 +365,7 @@ class gs_log_graph(gs_log):
     ]
 
 
-class gs_log_graph_current_branch(WindowCommand, GitCommand):
+class gs_log_graph_current_branch(GsWindowCommand):
     def run(self, file_path=None):
         branches_to_show = self.compute_branches_to_show("HEAD")
         self.window.run_command('gs_graph', {
@@ -375,7 +375,7 @@ class gs_log_graph_current_branch(WindowCommand, GitCommand):
         })
 
 
-class gs_log_graph_all_branches(WindowCommand, GitCommand):
+class gs_log_graph_all_branches(GsWindowCommand):
     def run(self, file_path=None):
         self.window.run_command('gs_graph', {
             'file_path': file_path,
@@ -383,7 +383,7 @@ class gs_log_graph_all_branches(WindowCommand, GitCommand):
         })
 
 
-class gs_log_graph_by_author(WindowCommand, GitCommand):
+class gs_log_graph_by_author(GsWindowCommand):
 
     """
     Open a quick panel containing all committers for the active
@@ -419,7 +419,7 @@ class gs_log_graph_by_author(WindowCommand, GitCommand):
         )
 
 
-class gs_log_graph_by_branch(WindowCommand, GitCommand):
+class gs_log_graph_by_branch(GsWindowCommand):
     """Open graph for a specific branch.
 
     Include the upstream of the branch (if any).  If no `branch`
@@ -819,7 +819,7 @@ def next_symbol_upwards(view, symbols, dot):
     return None
 
 
-class gs_log_graph_edit_files(TextCommand, GitCommand):
+class gs_log_graph_edit_files(GsTextCommand):
     def run(self, edit, selected_index=-1):
         view = self.view
         settings = view.settings()
@@ -887,7 +887,7 @@ class gs_log_graph_edit_files(TextCommand, GitCommand):
         ).strip().splitlines()
 
 
-class gs_log_graph_toggle_all_setting(TextCommand, GitCommand):
+class gs_log_graph_toggle_all_setting(GsTextCommand):
     def run(self, edit):
         settings = self.view.settings()
         overview = settings.get("git_savvy.log_graph_view.overview")
@@ -1560,7 +1560,7 @@ def extract_commit_hash(line):
     return match.group('commit_hash') if match else ""
 
 
-class gs_log_graph_toggle_commit_info_panel(WindowCommand, GitCommand):
+class gs_log_graph_toggle_commit_info_panel(GsWindowCommand):
     """ Toggle commit info output panel."""
     def run(self):
         if show_commit_info.panel_is_visible(self.window):
@@ -1569,7 +1569,7 @@ class gs_log_graph_toggle_commit_info_panel(WindowCommand, GitCommand):
             self.window.run_command("show_panel", {"panel": "output.show_commit_info"})
 
 
-class gs_log_graph_show_and_focus_panel(WindowCommand, GitCommand):
+class gs_log_graph_show_and_focus_panel(GsWindowCommand):
     def run(self, panel: str) -> None:
         if self.window.active_panel() != f"output.{panel}":
             self.window.run_command("show_panel", {"panel": f"output.{panel}"})
