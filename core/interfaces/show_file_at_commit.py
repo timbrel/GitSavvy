@@ -20,7 +20,7 @@ from ...common import util
 from GitSavvy.core.git_command import GitCommand, GitSavvyError
 from GitSavvy.core.git_mixins.history import CommitInfo
 
-from .log import LogMixin
+from ..commands.log import LogMixin
 
 
 __all__ = (

@@ -7,7 +7,7 @@ import sublime
 from sublime_plugin import EventListener
 
 from . import diff
-from ..commands import show_file_at_commit
+from . import show_file_at_commit
 from ..commands.navigate import GsNavigateBase
 from ..base_commands import GsTextCommand, GsWindowCommand
 from ..parse_diff import SplittedDiff, UnsupportedCombinedDiff

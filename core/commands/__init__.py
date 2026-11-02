@@ -30,7 +30,6 @@ from .reset import *
 from .revert import *
 from .show_commit import *
 from .show_commit_info import *
-from .show_file_at_commit import *
 from .stage_diff import *
 from .stage_hunk import *
 from .status_bar import *
