@@ -14,7 +14,7 @@ from sublime_plugin import TextCommand
 from . import util
 from .theme_generator import ColorRef, ScopedStyle, provide
 from ..core.commands import multi_selector
-from ..core.runtime import enqueue_on_worker, on_worker
+from ..core.runtime import enqueue_on_worker
 from ..core.utils import flash, focus_view
 from GitSavvy.core import app_state, store
 from GitSavvy.core.base_commands import GsTextCommand
@@ -30,8 +30,6 @@ __all__ = (
     "gs_interface_refresh",
     "gs_interface_toggle_help",
     "gs_interface_show_commit",
-    "gs_edit_view_complete",
-    "gs_edit_view_close",
 )
 
 
@@ -72,10 +70,7 @@ class SectionFn(RenderFn[T_R]):
 
 
 interfaces = {}  # type: Dict[sublime.ViewId, Interface]
-edit_views = {}
 known_interface_types = {}  # type: Dict[str, Type[Interface]]
-
-EDIT_DEFAULT_HELP_TEXT = "## To finalize your edit, press {super_key}+Enter.  To cancel, close the view.\n"
 
 
 class _PrepareInterface(type):
@@ -667,71 +662,3 @@ class gs_interface_show_commit(TextCommand):
                 for line in view.lines(s):
                     if line.a <= r.a < line.b:
                         window.run_command("gs_show_commit", {"commit_hash": view.substr(r)})
-
-
-class EditView():
-
-    def __init__(self, content, on_done, repo_path, help_text=None, window=None):
-        self.window = window or sublime.active_window()
-        self.view = self.window.new_file()
-
-        self.view.set_scratch(True)
-        self.view.set_read_only(False)
-        self.view.set_name("EDIT")
-        self.view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.sublime-syntax")
-        self.view.settings().set("git_savvy.edit_view", True)
-        self.view.settings().set("git_savvy.repo_path", repo_path)
-
-        self.on_done = on_done
-        self.render(content, help_text)
-
-        edit_views[self.view.id()] = self
-
-    def render(self, starting_content, help_text):
-        regions = {}
-
-        starting_content += "\n\n"
-
-        regions["content"] = (0, len(starting_content))
-        content = starting_content + (help_text or EDIT_DEFAULT_HELP_TEXT).format(super_key=util.super_key)
-        regions["help"] = (len(starting_content), len(content))
-
-        self.view.run_command("gs_new_content_and_regions", {
-            "content": content,
-            "regions": regions
-        })
-
-
-class gs_edit_view_complete(TextCommand):
-
-    """
-    Invoke callback with edit view content.
-    """
-
-    @on_worker
-    def run(self, edit):
-        edit_view = edit_views.get(self.view.id(), None)
-        if not edit_view:
-            sublime.error_message("Unable to complete edit.  Please try again.")
-            return
-
-        help_region = self.view.get_regions("git_savvy_interface.help")[0]
-        content_before = self.view.substr(sublime.Region(0, help_region.begin()))
-        content_after = self.view.substr(sublime.Region(help_region.end(), self.view.size() - 1))
-        content = (content_before + content_after).strip()
-
-        self.view.close()
-        edit_view.on_done(content)
-
-
-class gs_edit_view_close(TextCommand):
-
-    """
-    Clean up references to closed edit views.
-    """
-
-    @on_worker
-    def run(self, edit):
-        view_id = self.view.id()
-        if view_id in edit_views:
-            del edit_views[view_id]
