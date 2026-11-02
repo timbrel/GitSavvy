@@ -7,7 +7,7 @@ from unittesting import DeferrableTestCase
 from GitSavvy.tests.mockito import unstub, when
 from GitSavvy.tests.parameterized import parameterized as p
 
-from GitSavvy.core.commands.commit import extract_commit_message, gs_prepare_commit_refresh_diff
+from GitSavvy.core.interfaces.commit import extract_commit_message, gs_prepare_commit_refresh_diff
 
 
 examples = [
