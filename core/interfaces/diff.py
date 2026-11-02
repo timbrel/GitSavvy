@@ -15,11 +15,11 @@ import re
 import sublime
 from sublime_plugin import TextCommand, EventListener
 
-from . import inline_diff
-from . import intra_line_colorizer
-from . import multi_selector
-from . import stage_hunk
-from .navigate import GsNavigateBase
+from ..commands import inline_diff
+from ..commands import intra_line_colorizer
+from ..commands import multi_selector
+from ..commands import stage_hunk
+from ..commands.navigate import GsNavigateBase
 from ..fns import head, filter_, flatten, pairwise, unique
 from ..parse_diff import SplittedDiff
 from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand

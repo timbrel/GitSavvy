@@ -8,7 +8,6 @@ from .commit_compare import *
 from .config import *
 from .context_menu import *
 from .custom import *
-from .diff import *
 from .fetch import *
 from .fixup import *
 from .flow import *

@@ -4,7 +4,7 @@ from contextlib import contextmanager
 import sublime
 from sublime_plugin import TextCommand
 
-from . import diff
+from ..interfaces import diff
 from . import intra_line_colorizer
 from ..fns import filter_, unique
 from GitSavvy.core.base_commands import GsWindowCommand

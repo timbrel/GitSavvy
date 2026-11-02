@@ -8,7 +8,7 @@ import sublime
 from sublime_plugin import TextCommand
 from sublime_plugin import EventListener, ViewEventListener
 
-from ..commands.diff import DECODE_ERROR_MESSAGE, compute_reference_document
+from .diff import DECODE_ERROR_MESSAGE, compute_reference_document
 from ..commands import intra_line_colorizer
 from ..commands import multi_selector
 from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand

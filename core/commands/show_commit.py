@@ -4,7 +4,7 @@ from webbrowser import open as open_in_browser
 import sublime
 from sublime_plugin import EventListener, TextCommand
 
-from . import diff
+from ..interfaces import diff
 from . import intra_line_colorizer
 from . import log_graph_rebase_actions
 from . import show_commit_info

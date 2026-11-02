@@ -8,8 +8,8 @@ from unittesting import DeferrableTestCase, AWAIT_WORKER
 from GitSavvy.tests.mockito import mock, unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized as p
 
-import GitSavvy.core.commands.diff as module
-from GitSavvy.core.commands.diff import gs_diff, gs_diff_refresh
+import GitSavvy.core.interfaces.diff as module
+from GitSavvy.core.interfaces.diff import gs_diff, gs_diff_refresh
 
 
 THIS_DIRNAME = os.path.dirname(os.path.realpath(__file__))

@@ -1,7 +1,7 @@
 import unittest
 
 from GitSavvy.core.parse_diff import SplittedDiff
-import GitSavvy.core.commands.diff as module
+import GitSavvy.core.interfaces.diff as module
 
 
 def marked_diff_case(text):

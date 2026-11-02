@@ -6,7 +6,7 @@ from contextlib import contextmanager
 import sublime
 from sublime_plugin import EventListener
 
-from . import diff
+from ..interfaces import diff
 from . import show_file_at_commit
 from .navigate import GsNavigateBase
 from ..base_commands import GsTextCommand, GsWindowCommand

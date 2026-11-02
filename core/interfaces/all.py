@@ -1,6 +1,7 @@
 from .blame import *  # noqa: F401, F403
 from .branch import *  # noqa: F401, F403
 from .commit import *  # noqa: F401, F403
+from .diff import *  # noqa: F401, F403
 from .line_history import *  # noqa: F401, F403
 from .rebase import *  # noqa: F401, F403
 from .remotes import *  # noqa: F401, F403

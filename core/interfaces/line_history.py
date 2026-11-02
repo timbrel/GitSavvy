@@ -6,7 +6,7 @@ import random
 import sublime
 
 
-from ..commands import diff
+from . import diff
 from ..commands import inline_diff
 from ..commands.navigate import GsNavigateBase
 from ..fns import filter_, pairwise

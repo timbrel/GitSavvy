@@ -2,7 +2,7 @@ from unittesting import DeferrableTestCase
 from GitSavvy.tests.parameterized import parameterized as p
 from GitSavvy.core.fns import accumulate, unzip
 
-import GitSavvy.core.commands.diff as module
+import GitSavvy.core.interfaces.diff as module
 from GitSavvy.core.parse_diff import HunkHeader
 
 
