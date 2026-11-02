@@ -5,9 +5,9 @@ from functools import partial
 from itertools import chain, takewhile
 
 import sublime
-import sublime_plugin
 
 from GitSavvy.core.fns import pairwise
+from GitSavvy.core.base_commands import GsTextCommand
 from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core.utils import flash
 from GitSavvy.core.view import line_distance, show_region, touching_regions
@@ -26,7 +26,7 @@ T = TypeVar("T")
 LINE_DISTANCE_BETWEEN_EDITS = 2
 
 
-class gs_next_hunk(sublime_plugin.TextCommand, GitCommand):
+class gs_next_hunk(GsTextCommand):
     def is_enabled(self) -> bool:
         return len(self.view.sel()) > 0
 
@@ -44,7 +44,7 @@ class gs_next_hunk(sublime_plugin.TextCommand, GitCommand):
         flash(view, "No hunk to jump to")
 
 
-class gs_prev_hunk(sublime_plugin.TextCommand, GitCommand):
+class gs_prev_hunk(GsTextCommand):
     def is_enabled(self) -> bool:
         return len(self.view.sel()) > 0
 
