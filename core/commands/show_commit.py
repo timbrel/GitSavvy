@@ -2,7 +2,7 @@ import re
 from webbrowser import open as open_in_browser
 
 import sublime
-from sublime_plugin import EventListener, TextCommand, WindowCommand
+from sublime_plugin import EventListener, TextCommand
 
 from . import diff
 from . import intra_line_colorizer
@@ -41,7 +41,7 @@ __all__ = (
 
 
 from typing import Dict, Optional, Sequence, Tuple, Union
-from GitSavvy.core.base_commands import GsCommand, Args, Kont
+from GitSavvy.core.base_commands import GsCommand, Args, Kont, GsTextCommand, GsWindowCommand
 
 
 SUBLIME_SUPPORTS_REGION_ANNOTATIONS = int(sublime.version()) >= 4050
@@ -57,7 +57,7 @@ def compute_identifier_for_view(view):
     ) if settings.get('git_savvy.show_commit_view') else None
 
 
-class gs_show_commit(WindowCommand, GitCommand):
+class gs_show_commit(GsWindowCommand):
 
     def run(self, commit_hash):
         repo_path = self.repo_path
@@ -305,7 +305,7 @@ class gs_show_commit_toggle_setting(TextCommand):
         self.view.run_command("gs_show_commit_refresh")
 
 
-class gs_show_commit_open_previous_commit(TextCommand, GitCommand):
+class gs_show_commit_open_previous_commit(GsTextCommand):
     def run(self, edit):
         # type: (...) -> None
         view = self.view
@@ -333,7 +333,7 @@ class gs_show_commit_open_previous_commit(TextCommand, GitCommand):
         flash(view, "On commit {}".format(previous_commit))
 
 
-class gs_show_commit_open_next_commit(TextCommand, GitCommand):
+class gs_show_commit_open_next_commit(GsTextCommand):
     def run(self, edit):
         # type: (...) -> None
         view = self.view
@@ -365,7 +365,7 @@ class gs_show_commit_open_next_commit(TextCommand, GitCommand):
         flash(view, "On commit {}".format(commit))
 
 
-class gs_show_commit_open_graph_context(TextCommand, GitCommand):
+class gs_show_commit_open_graph_context(GsTextCommand):
     def run(self, edit):
         # type: (...) -> None
         window = self.view.window()
