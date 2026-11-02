@@ -6,7 +6,7 @@ from typing import Any
 import sublime
 from sublime_plugin import ListInputHandler
 
-from . import intra_line_colorizer
+from .. import intra_line_colorizer
 from .branch import ask_for_name
 from .log import LogMixin
 from ..git_command import GitSavvyError

@@ -4,15 +4,15 @@ from itertools import groupby, zip_longest
 import re
 
 import sublime
-from ..fns import accumulate, filter_, flatten
-from ..parse_diff import Hunk, SplittedDiff
-from ..text_helper import Region
-from ..utils import eat_but_log_errors, line_indentation
-from ..runtime import cooperative_thread_hopper, AWAIT_WORKER, HopperR
+from .fns import accumulate, filter_, flatten
+from .parse_diff import Hunk, SplittedDiff
+from .text_helper import Region
+from .utils import eat_but_log_errors, line_indentation
+from .runtime import cooperative_thread_hopper, AWAIT_WORKER, HopperR
 
 
 from typing import Callable, List, Tuple, Sequence
-from ..parse_diff import HunkLine
+from .parse_diff import HunkLine
 Chunk = List[HunkLine]
 
 

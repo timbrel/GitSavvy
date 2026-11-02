@@ -5,7 +5,7 @@ import sublime
 from sublime_plugin import TextCommand
 
 from . import diff
-from ..commands import intra_line_colorizer
+from .. import intra_line_colorizer
 from ..fns import filter_, unique
 from GitSavvy.core.base_commands import GsWindowCommand
 from ..runtime import enqueue_on_worker, ensure_on_ui, throttled
