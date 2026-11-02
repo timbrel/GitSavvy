@@ -28,6 +28,20 @@ def annotate_intra_line_differences(view, diff_text=None, offset=0):
     compute_intra_line_diffs(view, diff)
 
 
+def intra_line_diffs_for_hunk(hunk: Hunk) -> Tuple[List[Region], List[Region]]:
+    from_regions = []
+    to_regions = []
+    for chunk in group_non_context_lines(hunk):
+        if not is_modification_group(chunk):
+            continue
+
+        chunk_from_regions, chunk_to_regions = intra_line_diff_for_chunk(chunk)
+        from_regions.extend(chunk_from_regions)
+        to_regions.extend(chunk_to_regions)
+
+    return from_regions, to_regions
+
+
 def view_has_changed_factory(view):
     # type: (sublime.View) -> Callable[[], bool]
     cc = view.change_count()

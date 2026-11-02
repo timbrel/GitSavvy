@@ -9,6 +9,7 @@ from sublime_plugin import EventListener
 from . import diff
 from . import util as interface_util
 from . import show_file_at_commit
+from .. import intra_line_colorizer
 from ..commands.navigate import GsNavigateBase
 from ..base_commands import GsTextCommand, GsWindowCommand
 from ..parse_diff import Hunk, SplittedDiff, UnsupportedCombinedDiff
@@ -550,7 +551,7 @@ class gs_inline_diff_refresh(GsTextCommand):
         remove_regions = []  # type: List[sublime.Region]
         remove_bold_regions = []
 
-        for section_start, section_end, hunk, line_types, raw_lines in replaced_lines:
+        for section_start, section_end, hunk, line_types, _ in replaced_lines:
             for line_type, lines_ in groupby(
                 range(section_start, section_end),
                 key=lambda line: line_types[line - section_start]
@@ -567,32 +568,13 @@ class gs_inline_diff_refresh(GsTextCommand):
                 container = add_regions if line_type == "+" else remove_regions
                 container.append(region)
 
-            # For symmetric modifications show highlighting for the in-line changes
-            if sum(1 if t == "+" else -1 for t in line_types) == 0:
-                # Determine start of hunk/section.
-                section_start_idx = self.view.text_point(section_start, 0)
-
-                # Removed lines come first in a hunk.
-                remove_start = section_start_idx
-                first_added_line = line_types.index("+")
-                add_start = section_start_idx + len("".join(raw_lines[:first_added_line]))
-
-                removed_part = "".join(raw_lines[:first_added_line])
-                added_part = "".join(raw_lines[first_added_line:])
-                changes = util.diff_string.get_changes(removed_part, added_part)
-
-                for change in changes:
-                    if change.type in (util.diff_string.DELETE, util.diff_string.REPLACE):
-                        # Display bold color in removed hunk area.
-                        region_start = remove_start + change.old_start
-                        region_end = remove_start + change.old_end
-                        remove_bold_regions.append(sublime.Region(region_start, region_end))
-
-                    if change.type in (util.diff_string.INSERT, util.diff_string.REPLACE):
-                        # Display bold color in added hunk area.
-                        region_start = add_start + change.new_start
-                        region_end = add_start + change.new_end
-                        add_bold_regions.append(sublime.Region(region_start, region_end))
+            from_regions, to_regions = intra_line_colorizer.intra_line_diffs_for_hunk(hunk)
+            remove_bold_regions.extend(
+                translate_intra_line_regions(self.view, hunk, section_start, from_regions)
+            )
+            add_bold_regions.extend(
+                translate_intra_line_regions(self.view, hunk, section_start, to_regions)
+            )
 
         self.view.add_regions(
             "git-savvy-added-lines",
@@ -618,6 +600,29 @@ class gs_inline_diff_refresh(GsTextCommand):
             scope="diff.deleted.char.git-savvy.inline-diff",
             flags=sublime.RegionFlags.NO_UNDO
         )
+
+
+def translate_intra_line_regions(
+    view: sublime.View,
+    hunk: Hunk,
+    section_start: Row,
+    regions: Iterable[sublime.Region]
+) -> List[sublime.Region]:
+    hunk_lines = hunk.content().lines()
+    translated = []
+    for region in regions:
+        line_index, line = next(
+            (index, line)
+            for index, line in enumerate(hunk_lines)
+            if line.a + line.mode_len <= region.a < line.b
+        )
+        content_start = line.a + line.mode_len
+        inline_start = view.text_point(section_start + line_index, 0)
+        translated.append(sublime.Region(
+            inline_start + region.a - content_start,
+            inline_start + region.b - content_start
+        ))
+    return translated
 
 
 @contextmanager
