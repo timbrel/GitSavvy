@@ -6,10 +6,11 @@ from itertools import chain
 from typing import Callable, Dict, List, Optional, Sequence
 
 import sublime
-from sublime_plugin import WindowCommand
+
 
 from ...common import util
 from ..fns import filter_, take, unique
+from GitSavvy.core.base_commands import GsWindowCommand
 from ..git_command import GitCommand
 from ..git_mixins.branches import Branch
 from ..git_mixins.worktrees import WorktreeLocation, WorktreeTarget
@@ -32,10 +33,15 @@ from .log_graph_helper import (
 )
 
 
+__all__ = (
+    "gs_log_graph_delete_decoration",
+    "gs_log_graph_action"
+)
+
 FOLLOW_DECORATION_LIMIT = 100
 
 
-class gs_log_graph_delete_decoration(WindowCommand, GitCommand):
+class gs_log_graph_delete_decoration(GsWindowCommand):
     def run(self) -> None:
         view = self.window.active_view()
         if view is None or not is_log_graph_view(view):
@@ -82,7 +88,7 @@ class gs_log_graph_delete_decoration(WindowCommand, GitCommand):
         delete_tag_from_graph(self, self.window, tag_name, undo_owner)
 
 
-class gs_log_graph_action(WindowCommand, GitCommand):
+class gs_log_graph_action(GsWindowCommand):
     selected_index = 0
 
     def run(self) -> None:
