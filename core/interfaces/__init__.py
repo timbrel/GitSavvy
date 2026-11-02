@@ -7,6 +7,7 @@ from .status_main_actions import *
 from .blame import *
 from .branch import *  # noqa: F401, F403
 from .commit import *
+from .line_history import *
 from .remotes import *  # noqa: F401, F403
 from .rebase import *  # noqa: F401, F403
 from .tags import *  # noqa: F401, F403

@@ -6,9 +6,9 @@ import random
 import sublime
 
 
-from . import diff
-from . import inline_diff
-from .navigate import GsNavigateBase
+from ..commands import diff
+from ..commands import inline_diff
+from ..commands.navigate import GsNavigateBase
 from ..fns import filter_, pairwise
 from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand
 from ..parse_diff import SplittedDiff
