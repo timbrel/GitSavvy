@@ -1,5 +1,4 @@
 from collections import ChainMap
-import bisect
 
 import sublime
 from ...core.settings import app_settings
@@ -168,42 +167,6 @@ def refresh_gitsavvy(
     window = view.window()
     if window and refresh_sidebar:
         window.run_command("refresh_folder_list")
-
-
-############################
-# IN-VIEW HELPER FUNCTIONS #
-############################
-
-def _region_within_regions(all_outer, inner):
-    for outer in all_outer:
-        if outer.begin() <= inner.begin() and outer.end() >= inner.end():
-            return True
-    return False
-
-
-def get_lines_from_regions(view, regions, valid_ranges=None):
-    if valid_ranges == []:
-        return []
-
-    line_regions = (line for region in regions for line in view.lines(region))
-
-    valid_regions = ([region for region in line_regions if _region_within_regions(valid_ranges, region)]
-                     if valid_ranges else
-                     line_regions)
-
-    return [view.substr(region) for region in valid_regions]
-
-
-def get_instance_before_pt(view, pt, pattern):
-    instances = tuple(region.a for region in view.find_all(pattern))
-    instance_index = bisect.bisect(instances, pt) - 1
-    return instances[instance_index] if instance_index >= 0 else None
-
-
-def get_instance_after_pt(view, pt, pattern):
-    instances = tuple(region.a for region in view.find_all(pattern))
-    instance_index = bisect.bisect(instances, pt)
-    return instances[instance_index] if instance_index < len(instances) else None
 
 
 #################
