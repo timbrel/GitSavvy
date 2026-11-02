@@ -1,6 +1,7 @@
 import sublime
 
 
+from .stash import *
 from .status import *  # noqa: F401, F403
 from .status_main_actions import *
 from .branch import *  # noqa: F401, F403

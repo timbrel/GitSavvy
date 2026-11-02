@@ -6,8 +6,8 @@ from unittest import TestCase
 import sublime
 
 from GitSavvy.common import util
-from GitSavvy.core.commands import stash
-from GitSavvy.core.commands.stash import gs_stash_save
+from GitSavvy.core.interfaces import stash
+from GitSavvy.core.interfaces.stash import gs_stash_save
 from GitSavvy.tests.mockito import unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized
 
