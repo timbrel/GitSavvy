@@ -5,13 +5,14 @@ import re
 import os
 
 import sublime
-from sublime_plugin import WindowCommand, TextCommand
+from sublime_plugin import TextCommand
 from sublime_plugin import EventListener, ViewEventListener
 
 from .diff import DECODE_ERROR_MESSAGE, compute_reference_document
 from . import intra_line_colorizer
 from . import multi_selector
-from ..git_command import GitCommand, GitSavvyError
+from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand
+from ..git_command import GitSavvyError
 from ..fns import flatten, head
 from ..runtime import enqueue_on_worker, text_command
 from ..settings import SettingsMixin
@@ -106,7 +107,7 @@ def view_has_simple_cursor(view):
     return len(view.sel()) == 1 and view.sel()[0].empty()
 
 
-class gs_commit(WindowCommand, GitCommand):
+class gs_commit(GsWindowCommand):
 
     """
     Display a transient window to capture the user's desired commit message.
@@ -211,7 +212,7 @@ def generate_help_text(view, with_patch_commands=False):
     return help_text
 
 
-class gs_prepare_commit_refresh_diff(TextCommand, GitCommand):
+class gs_prepare_commit_refresh_diff(GsTextCommand):
     def run(self, edit, sync=True, just_switched=False):
         # type: (sublime.Edit, bool, bool) -> None
         if sync:
@@ -379,7 +380,7 @@ def commit_view_prelude(view: sublime.View) -> str:
     return ""
 
 
-class gs_commit_view_unstage_in_all_mode(TextCommand, GitCommand):
+class gs_commit_view_unstage_in_all_mode(GsTextCommand):
     def run(self, edit, whole_file=False):
         # type: (sublime.Edit, bool) -> None
         view = self.view
@@ -566,7 +567,7 @@ def extract_commit_hash_from_output(commit_output):
     return None
 
 
-class gs_commit_view_do_commit(TextCommand, GitCommand):
+class gs_commit_view_do_commit(GsTextCommand):
 
     """
     Take the text of the current view (minus the help message text) and
@@ -688,7 +689,7 @@ def is_relevant_diff_view(view, repo_path):
     )
 
 
-class gs_commit_view_sign(TextCommand, GitCommand):
+class gs_commit_view_sign(GsTextCommand):
 
     """
     Sign off on the commit with full name and email.
@@ -707,7 +708,7 @@ class gs_commit_view_sign(TextCommand, GitCommand):
         replace_view_content(self.view, new_view_text)
 
 
-class gs_commit_view_close(TextCommand, GitCommand):
+class gs_commit_view_close(GsTextCommand):
 
     """
     Perform commit action on commit view close if `commit_on_close` setting
