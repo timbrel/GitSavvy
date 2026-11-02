@@ -4,7 +4,7 @@ from itertools import chain, dropwhile, groupby, takewhile
 import re
 
 import sublime
-from .fns import flatten, pairwise, tail
+from .fns import pairwise, tail
 from .text_helper import TextRange
 
 
@@ -146,7 +146,35 @@ class FileHeader(TextRange):
         return self.text[:self.text.index('\n')]
 
 
+class HunkMetadata(NamedTuple):
+    from_start: LineNo
+    from_length: int
+    to_start: LineNo
+    to_length: int
+
+
 class Hunk(TextRange):
+    def metadata(self) -> HunkMetadata:
+        return self.header().parse()
+
+    def lines_with_positions(self) -> Iterator[PositionedHunkLine]:
+        metadata = self.metadata()
+        from_line = metadata.from_start
+        to_line = metadata.to_start
+
+        for line in self.content().lines():
+            if line.is_no_newline_marker():
+                continue
+
+            yield PositionedHunkLine(line, from_line, to_line)
+            if line.is_context():
+                from_line += 1
+                to_line += 1
+            elif line.is_from_line():
+                from_line += 1
+            elif line.is_to_line():
+                to_line += 1
+
     def mode_len(self):
         # type: () -> int
         return len(list(takewhile(lambda x: x == '@', self.text))) - 1
@@ -184,8 +212,7 @@ class HunkHeader(TextRange):
         metadata = self.safely_parse_metadata()
         return metadata[-1][0]
 
-    def parse(self):
-        # type: () -> Tuple[LineNo, int, LineNo, int]
+    def parse(self) -> HunkMetadata:
         """Extract the line start and length data for a normal patch.
 
         T.i. for "@@ -685,8 +686,14 @@ ..." extract `(685, 8, 686, 14)`.
@@ -196,7 +223,12 @@ class HunkHeader(TextRange):
         if len(metadata) > 2:
             raise UnsupportedCombinedDiff(self.text)
         assert len(metadata) == 2
-        return tuple(flatten(metadata))  # type: ignore[return-value]
+        return HunkMetadata(
+            metadata[0][0],
+            metadata[0][1],
+            metadata[1][0],
+            metadata[1][1]
+        )
 
     def safely_parse_metadata(self):
         # type: () -> List[Tuple[LineNo, int]]
@@ -244,6 +276,12 @@ class HunkLine(TextRange):
 
     def is_no_newline_marker(self):
         return self.text.strip() == "\\ No newline at end of file"
+
+
+class PositionedHunkLine(NamedTuple):
+    line: HunkLine
+    from_line: LineNo
+    to_line: LineNo
 
 
 class HunkContent(TextRange):

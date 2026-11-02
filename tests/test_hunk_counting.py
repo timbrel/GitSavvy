@@ -3,7 +3,7 @@ from GitSavvy.tests.parameterized import parameterized as p
 from GitSavvy.core.fns import accumulate, unzip
 
 import GitSavvy.core.interfaces.diff as module
-from GitSavvy.core.parse_diff import HunkHeader
+from GitSavvy.core.parse_diff import HunkHeader, SplittedDiff
 
 
 f1 = """\
@@ -103,6 +103,43 @@ class TestDiffRecountingLinesFunctions(DeferrableTestCase):
         hunk = diff.hunks[0]
         actual = module.recount_lines_for_jump_to_file(hunk)
         self.assertEqual(EXPECTED, [line.b for line in actual])
+
+
+class TestParsedHunk(DeferrableTestCase):
+    def test_metadata_has_named_from_and_to_fields(self):
+        hunk = SplittedDiff.from_string(f4).hunks[0]
+
+        metadata = hunk.metadata()
+
+        self.assertEqual(metadata.from_start, 383)
+        self.assertEqual(metadata.from_length, 4)
+        self.assertEqual(metadata.to_start, 383)
+        self.assertEqual(metadata.to_length, 3)
+        self.assertEqual(tuple(metadata), (383, 4, 383, 3))
+
+    def test_lines_with_positions_tracks_both_sides(self):
+        hunk = SplittedDiff.from_string(f1).hunks[0]
+
+        actual = [
+            (positioned.line.mode, positioned.from_line, positioned.to_line)
+            for positioned in hunk.lines_with_positions()
+        ]
+
+        self.assertEqual(actual, [
+            (" ", 383, 383),
+            ("-", 384, 384),
+            ("+", 385, 384),
+            (" ", 385, 385),
+        ])
+
+    def test_lines_with_positions_ignores_no_newline_markers(self):
+        hunk = SplittedDiff.from_string(
+            "@@ -1 +1 @@\n-old\n\\ No newline at end of file\n+new\n"
+        ).hunks[0]
+
+        actual = [positioned.line.mode for positioned in hunk.lines_with_positions()]
+
+        self.assertEqual(actual, ["-", "+"])
 
 
 header = """\

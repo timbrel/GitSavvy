@@ -11,7 +11,7 @@ from . import util as interface_util
 from . import show_file_at_commit
 from ..commands.navigate import GsNavigateBase
 from ..base_commands import GsTextCommand, GsWindowCommand
-from ..parse_diff import SplittedDiff, UnsupportedCombinedDiff
+from ..parse_diff import Hunk, SplittedDiff, UnsupportedCombinedDiff
 from ..runtime import enqueue_on_ui, enqueue_on_worker, on_worker
 from ..utils import flash, focus_view
 from ..view import (
@@ -39,15 +39,14 @@ __all__ = (
 )
 
 
-from typing import Dict, Iterable, List, Literal, NamedTuple, Optional, Tuple
+from typing import Dict, Iterable, List, Literal, NamedTuple, Optional, Sequence, Tuple
 from ..types import LineNo, ColNo, Row, FullPath, ShortHash
-from GitSavvy.common.util.parse_diff import Hunk as InlineDiff_Hunk
 
 
 class HunkReference(NamedTuple):
     section_start: Row
     section_end: Row
-    hunk: InlineDiff_Hunk
+    hunk: Hunk
     line_types: List[str]
     lines: List[str]  # sic! => "line_contents"
 
@@ -81,23 +80,25 @@ def translate_row_to_inline_diff(diff_view, row):
 def count_deleted_lines_before_line(hunks, line):
     # type: (Iterable[HunkReference], LineNo) -> int
     return sum(
-        hunk.head_length
+        hunk.metadata().from_length
         for hunk in takewhile(
-            lambda hunk: line >= real_saved_start(hunk),
+            lambda hunk: line >= real_to_start(hunk),
             (hunk_ref.hunk for hunk_ref in hunks)
         )
     )
 
 
-def real_saved_start(hunk):
+def real_to_start(hunk: Hunk) -> LineNo:
     # For removal only hunks git reports a line decremented by one. We reverse
     # compensate here
-    return hunk.saved_start + (1 if hunk_of_removals_only(hunk) else 0)
+    metadata = hunk.metadata()
+    return metadata.to_start + (1 if hunk_of_removals_only(hunk) else 0)
 
 
-def hunk_of_removals_only(hunk):
+def hunk_of_removals_only(hunk: Hunk) -> bool:
     # Note that this can only ever be true for zero context diffs
-    return hunk.saved_length == 0 and hunk.head_length > 0
+    metadata = hunk.metadata()
+    return metadata.to_length == 0 and metadata.from_length > 0
 
 
 def compute_identifier_for_view(view):
@@ -416,7 +417,9 @@ class gs_inline_diff_refresh(GsTextCommand):
             settings.set("git_savvy.inline_diff.encoding", encoding)
 
         try:
-            diff = util.parse_diff(raw_diff)
+            diff = SplittedDiff.from_string(raw_diff).hunks
+            for hunk in diff:
+                hunk.metadata()
         except UnsupportedCombinedDiff:
             sublime.error_message("Inline-diff cannot be displayed for this file - "
                                   "it has a merge conflict.")
@@ -485,8 +488,11 @@ class gs_inline_diff_refresh(GsTextCommand):
 
             self.highlight_regions(hunks)
 
-    def get_inline_diff_contents(self, original_contents, diff):
-        # type: (str, List[InlineDiff_Hunk]) -> Tuple[str, List[HunkReference]]
+    def get_inline_diff_contents(
+        self,
+        original_contents: str,
+        diff: Sequence[Hunk]
+    ) -> Tuple[str, List[HunkReference]]:
         """
         Given a file's original contents and an array of hunks that could be
         applied to it, return a string with the diff lines inserted inline.
@@ -503,20 +509,20 @@ class gs_inline_diff_refresh(GsTextCommand):
         adjustment = 0
 
         for hunk in diff:
+            metadata = hunk.metadata()
             # Git line-numbers are 1-indexed, lists are 0-indexed.
-            head_start = hunk.head_start - 1
-            # If the change includes only added lines, the head_start value
+            from_start = metadata.from_start - 1
+            # If the change includes only added lines, the from_start value
             # will be off-by-one.
-            head_start += 1 if hunk.head_length == 0 else 0
-            head_end = head_start + hunk.head_length
+            from_start += 1 if metadata.from_length == 0 else 0
+            from_end = from_start + metadata.from_length
 
-            # Remove the `@@` header line.
-            diff_lines = hunk.raw_lines[1:]
+            diff_lines = hunk.content().lines()
 
-            section_start = head_start + adjustment
+            section_start = from_start + adjustment
             section_end = section_start + len(diff_lines)
-            line_types = [line[0] for line in diff_lines]
-            raw_lines = [line[1:] for line in diff_lines]
+            line_types = [line.mode for line in diff_lines]
+            raw_lines = [line.content for line in diff_lines]
 
             # Store information about this hunk, with proper references, so actions
             # can be taken when triggered by the user (e.g. stage line X in diff_view).
@@ -524,9 +530,9 @@ class gs_inline_diff_refresh(GsTextCommand):
                 section_start, section_end, hunk, line_types, raw_lines
             ))
 
-            tail = lines[head_end + adjustment + (1 if line_types[-1] == "\\" else 0):]
+            tail = lines[from_end + adjustment + (1 if line_types[-1] == "\\" else 0):]
             lines = lines[:section_start] + raw_lines + tail
-            adjustment += len(diff_lines) - hunk.head_length
+            adjustment += len(diff_lines) - metadata.from_length
 
         diff_view_hunks[self.view.id()] = hunks
         return "".join(lines), hunks
@@ -873,10 +879,11 @@ class gs_inline_diff_stage_or_reset_line(GsInlineDiffStageOrResetBase):
 
         # Removed lines are always first with `git diff -U0 ...`. Therefore, the
         # line to remove will be the Nth line, where N is the line index in the hunk.
+        metadata = hunk_ref.hunk.metadata()
         head_start = (
-            hunk_ref.hunk.head_start
+            metadata.from_start
             if line_type == "+"
-            else hunk_ref.hunk.head_start + index_in_hunk
+            else metadata.from_start + index_in_hunk
         )
 
         if reset:
@@ -949,19 +956,23 @@ class gs_inline_diff_stage_or_reset_hunk(GsInlineDiffStageOrResetBase):
         else:
             return None
 
+        metadata = hunk_ref.hunk.metadata()
         stand_alone_header = (
             "@@ -{head_start},{head_length} +{new_start},{new_length} @@\n".format(
-                head_start=hunk_ref.hunk.head_start + (add_length_earlier_in_diff if reset else 0),
-                head_length=hunk_ref.hunk.head_length,
+                head_start=metadata.from_start + (add_length_earlier_in_diff if reset else 0),
+                head_length=metadata.from_length,
                 # If head_length is zero, diff will report original start position
                 # as one less than where the content is inserted, for example:
                 #   @@ -75,0 +76,3 @@
-                new_start=hunk_ref.hunk.head_start + (0 if hunk_ref.hunk.head_length else 1),
-                new_length=hunk_ref.hunk.saved_length
+                new_start=metadata.from_start + (0 if metadata.from_length else 1),
+                new_length=metadata.to_length
             )
         )
 
-        return "".join([stand_alone_header] + hunk_ref.hunk.raw_lines[1:])
+        return "".join(
+            [stand_alone_header]
+            + [line.text for line in hunk_ref.hunk.content().lines()]
+        )
 
 
 class gs_inline_diff_previous_commit(GsTextCommand):
@@ -1144,16 +1155,17 @@ def translate_pos_from_diff_view_to_file(view, line_no, col_no=1):
     # The selected line is within the hunk.
     if hunk_ref.section_end >= line_no:
         hunk_change_index = line_no - hunk_ref.section_start - 1
-        change = hunk_ref.hunk.changes[hunk_change_index]
+        positioned_line = list(hunk_ref.hunk.lines_with_positions())[hunk_change_index]
         # For removed lines, we use the previous or next visible line.
         # We reset the column "1".
-        return change.saved_pos, col_no if change.type == "+" else 1
+        return positioned_line.to_line, col_no if positioned_line.line.is_to_line() else 1
 
     # The selected line is after the hunk.
     else:
         lines_after_hunk_end = line_no - hunk_ref.section_end - 1
-        hunk_end_in_saved = real_saved_start(hunk_ref.hunk) + hunk_ref.hunk.saved_length
-        return hunk_end_in_saved + lines_after_hunk_end, col_no
+        metadata = hunk_ref.hunk.metadata()
+        hunk_end_in_to = real_to_start(hunk_ref.hunk) + metadata.to_length
+        return hunk_end_in_to + lines_after_hunk_end, col_no
 
 
 def closest_hunk_ref_before_line(hunks, line):
