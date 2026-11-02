@@ -11,7 +11,7 @@ from ..ui_mixins.quick_panel import PanelCommandMixin
 from ..ui_mixins.quick_panel import show_stash_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..utils import flash, hprint, uprint
-from ..view import replace_view_content
+from ..view import create_scratch_view, replace_view_content
 from ...common import util
 
 
@@ -204,7 +204,7 @@ class gs_stash_show(GsWindowCommand):
         description = self.description_of_stash(str(stash_id))
         if description:
             title += " - " + description
-        stash_view = util.view.create_scratch_view(self.window, "stash", {
+        stash_view = create_scratch_view(self.window, "stash", {
             "title": title,
             "syntax": "Packages/GitSavvy/syntax/diff.sublime-syntax",
             "git_savvy.repo_path": self.repo_path,

@@ -8,7 +8,7 @@ import sublime
 
 
 from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand
-from ..view import replace_view_content
+from ..view import create_scratch_view, replace_view_content
 from ...common import util
 
 
@@ -30,7 +30,7 @@ class gs_stage_diff(GsWindowCommand):
 
     def run(self):
         repo_path = self.repo_path
-        stage_diff_view = util.view.create_scratch_view(self.window, "git_stage_diff", {
+        stage_diff_view = create_scratch_view(self.window, "git_stage_diff", {
             "syntax": "Packages/GitSavvy/syntax/diff.sublime_syntax",
             "title": TITLE.format(os.path.basename(repo_path)),
             "read_only": False,

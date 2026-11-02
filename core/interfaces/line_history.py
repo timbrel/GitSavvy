@@ -15,8 +15,7 @@ from ..parse_diff import SplittedDiff
 from ..runtime import run_on_new_thread
 from ..ui__busy_spinner import busy_indicator
 from ..utils import flash
-from ..view import clamp, replace_view_content
-from ...common import util
+from ..view import clamp, create_scratch_view, replace_view_content
 
 
 __all__ = (
@@ -237,7 +236,7 @@ class gs_open_line_history(GsWindowCommand):
             ]
             + [' L{}-{}'.format(lr[0], lr[1]) for lr in ranges]
         )
-        view = util.view.create_scratch_view(
+        view = create_scratch_view(
             self.window,
             "line_history",
             {

@@ -17,8 +17,7 @@ from ..text_helper import TextRange
 from ..types import ShortHash
 from ..caches import Cache, cached_until_focus_switch
 from ..utils import flash, flash_regions, focus_view
-from ..view import replace_view_content
-from ...common import util
+from ..view import create_scratch_view, replace_view_content
 
 from GitSavvy.github import github
 from GitSavvy.github.git_mixins import GithubRemotesMixin
@@ -76,7 +75,7 @@ class gs_show_commit(GsWindowCommand):
                 break
         else:
             title = SHOW_COMMIT_TITLE.format(commit_hash)
-            view = util.view.create_scratch_view(self.window, "show_commit", {
+            view = create_scratch_view(self.window, "show_commit", {
                 "title": title,
                 "syntax": "Packages/GitSavvy/syntax/show_commit.sublime-syntax",
                 "git_savvy.repo_path": repo_path,

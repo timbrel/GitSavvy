@@ -30,6 +30,7 @@ from ..runtime import (
     HopperR
 )
 from ..view import (
+    create_scratch_view,
     find_by_selector,
     join_regions,
     line_distance,
@@ -42,7 +43,6 @@ from ..ui__toast_popup import show_toast
 from ..ui_mixins.quick_panel import show_branch_panel
 from ..caches import Cache
 from ..utils import add_selection_to_jump_history, flash, focus_view
-from ...common import util
 from GitSavvy.core import app_state
 from ..theme_generator import ColorRef, ScopedStyle, provide
 
@@ -231,7 +231,7 @@ class gs_graph(GsWindowCommand):
             show_commit_info_panel = bool(
                 app_state.get(GRAPH_SHOW_MORE_COMMIT_INFO_KEY, True)
             )
-            view = util.view.create_scratch_view(self.window, "log_graph", {
+            view = create_scratch_view(self.window, "log_graph", {
                 "title": title,
                 "syntax": "Packages/GitSavvy/syntax/graph.sublime-syntax",
                 "git_savvy.repo_path": repo_path,

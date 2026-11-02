@@ -8,6 +8,9 @@ import webbrowser
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
+from ..util.file import get_syntax_for_file
+from ...core.view import create_scratch_view
+
 
 __all__ = (
     "gs_help",
@@ -73,10 +76,10 @@ class gs_help(WindowCommand):
         current_view = self.window.active_view()
         page, anchor = get_page_and_anchor(current_view)
 
-        syntax_file = util.file.get_syntax_for_file(
+        syntax_file = get_syntax_for_file(
             "*.md", default="Packages/Markdown/Markdown.sublime-syntax"
         )
-        view = util.view.create_scratch_view(self.window, "help", {
+        view = create_scratch_view(self.window, "help", {
             "title": "GITSAVVY HELP",
             "syntax": syntax_file,
         })

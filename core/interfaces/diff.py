@@ -29,9 +29,8 @@ from ..ui_mixins.quick_panel import LogHelperMixin
 from ..ui__quick_panel import show_quick_panel
 from ..utils import flash, focus_view, hprint, line_indentation
 from ..view import (
-    capture_cur_position, clamp, replace_view_content, scroll_to_pt,
+    capture_cur_position, clamp, create_scratch_view, replace_view_content, scroll_to_pt,
     place_view, place_cursor_and_show, visible_views, y_offset, Position)
-from ...common import util
 from ..theme_generator import ColorRef, ScopedStyle, provide
 
 
@@ -256,7 +255,7 @@ class gs_diff(GsWindowCommand):
                     os.path.basename(file_path) if file_path else os.path.basename(repo_path)
                 )
             show_diffstat = self.app_settings.get("show_diffstat", True)
-            diff_view = util.view.create_scratch_view(self.window, "diff", {
+            diff_view = create_scratch_view(self.window, "diff", {
                 "title": title,
                 "syntax": "Packages/GitSavvy/syntax/diff_view.sublime-syntax",
                 "git_savvy.repo_path": repo_path,

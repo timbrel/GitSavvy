@@ -14,7 +14,7 @@ from ..parse_diff import SplittedDiff, UnsupportedCombinedDiff
 from ..runtime import enqueue_on_ui, enqueue_on_worker, on_worker
 from ..utils import flash, focus_view
 from ..view import (
-    apply_position, capture_cur_position, other_visible_views, place_view,
+    apply_position, capture_cur_position, create_scratch_view, other_visible_views, place_view,
     replace_view_content, y_offset, Position)
 from ...common import util
 
@@ -337,7 +337,7 @@ class gs_inline_diff_open(GsWindowCommand):
         else:
             _title = INLINE_DIFF_CACHED_TITLE if cached else INLINE_DIFF_TITLE
             title = _title.format(os.path.basename(file_path))
-            diff_view = util.view.create_scratch_view(self.window, "inline_diff", {
+            diff_view = create_scratch_view(self.window, "inline_diff", {
                 "title": title,
                 "syntax": syntax,
                 "git_savvy.repo_path": repo_path,

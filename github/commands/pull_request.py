@@ -10,7 +10,7 @@ from ...core.fns import filter_
 from ...core.ui_mixins.quick_panel import show_paginated_panel
 from ...core.ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.ui__quick_panel import show_quick_panel
-from ...core.view import replace_view_content
+from ...core.view import create_scratch_view, replace_view_content
 from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.runtime import on_worker, run_as_future
 
@@ -212,7 +212,7 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
     def view_diff_for_pr(self):
         diff = github.get_pull_request_diff(self.pr["number"], self.base_remote)
 
-        diff_view = util.view.create_scratch_view(self.window, "pr_diff", {
+        diff_view = create_scratch_view(self.window, "pr_diff", {
             "title": "PR #{}".format(self.pr["number"]),
             "syntax": "Packages/GitSavvy/syntax/diff.sublime-syntax",
         })

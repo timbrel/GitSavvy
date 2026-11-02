@@ -116,7 +116,7 @@ class TestPullRequestDiff(DeferrableTestCase):
         window, view = mock(), mock()
         command = mock({"window": window, "base_remote": repository, "pr": {"number": 42}})
         when(github).get_pull_request_diff(42, repository).thenReturn("diff content")
-        when(pull_request.util.view).create_scratch_view(window, "pr_diff", ...).thenReturn(view)
+        when(pull_request).create_scratch_view(window, "pr_diff", ...).thenReturn(view)
         when(pull_request).replace_view_content(view, "diff content").thenReturn(None)
 
         gs_github_pull_request.view_diff_for_pr(command)

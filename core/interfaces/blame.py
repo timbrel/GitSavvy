@@ -15,7 +15,7 @@ from ..git_mixins.history import CommitInfo, LogEntry, is_dynamic_ref
 from ..runtime import enqueue_on_ui, enqueue_on_worker, on_worker, run_as_text_command, throttled
 from ..ui_mixins.quick_panel import PanelCommandMixin, show_log_panel
 from ..types import FullHash, FullPath, LineNo, Row, ShortHash
-from ..view import scroll_to_pt, y_offset, Position
+from ..view import create_scratch_view, scroll_to_pt, y_offset, Position
 from ...common import util
 from GitSavvy.core import app_state
 from GitSavvy.core.base_commands import GsTextCommand
@@ -333,7 +333,7 @@ class gs_blame(GsTextCommand):
                 run_as_text_command(scroll_to_lineno, view, lineno, offset)
                 break
         else:
-            view = util.view.create_scratch_view(
+            view = create_scratch_view(
                 self.window,
                 "blame",
                 {

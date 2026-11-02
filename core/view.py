@@ -6,16 +6,76 @@ import sublime
 from .runtime import text_command
 
 
-from typing import Callable, ContextManager, Iterator, List, NamedTuple, Optional, TypeVar
+from typing import Callable, ContextManager, Dict, Iterator, List, Mapping, NamedTuple, Optional, TypeVar
 from .types import Row, Col
 WrapperFn = Callable[[sublime.View], ContextManager[None]]
 T_float = TypeVar("T_float", int, float)
+
+
+# https://github.com/sublimehq/sublime_text/issues/5772
+SUBLIME_HAS_NEW_VIEW_PLACEMENT_BUG = int(sublime.version()) < 4144
 
 
 class Position(NamedTuple):
     row: Row
     col: Col
     offset: Optional[float]
+
+
+def create_scratch_view(
+    window: sublime.Window,
+    typ: str,
+    options: Mapping[str, object] = {}
+) -> sublime.View:
+    """
+    Create a new view.  By default "read_only" and "scratch" is set.
+
+    The third argument takes a mapping, "read_only", "scratch", "title",
+    and "syntax" are supported to configure the new view.  Any further
+    key-value-pairs are treated as view settings.
+    """
+    if SUBLIME_HAS_NEW_VIEW_PLACEMENT_BUG:
+        active_view = window.active_view()
+        view = window.new_file()
+        if active_view:
+            place_view(window, view, after=active_view)
+    else:
+        view = window.new_file()
+
+    type_str = "git_savvy.{}_view".format(typ)
+    if type_str in options:
+        raise TypeError(
+            "Do not declare '{}' which is already given by the second argument"
+            .format(type_str))
+
+    defaults = {
+        type_str: True,
+        "scratch": True,
+        "read_only": True
+    }
+    merged_options: Dict[str, object] = dict(defaults)
+    merged_options.update(options)
+    _update_view(view, merged_options)
+    # Call `focus_view` so that `result_file_regex` et.al. settings get applied.
+    # This does *not* in turn sends `on_activated` as the view gets activated
+    # directly after its creation.
+    window.focus_view(view)
+    return view
+
+
+def _update_view(view: sublime.View, options: Mapping[str, object]) -> None:
+    special_setters: Mapping[str, Callable] = {
+        "syntax": view.set_syntax_file,
+        "title": view.set_name,
+        "scratch": view.set_scratch,
+        "read_only": view.set_read_only,
+    }
+    settings = view.settings()
+    for key, value in options.items():
+        if key in special_setters:
+            special_setters[key](value)
+        else:
+            settings.set(key, value)
 
 
 def find_by_selector(view, selector):
