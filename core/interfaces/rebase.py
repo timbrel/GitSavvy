@@ -3,11 +3,12 @@ import os
 import re
 
 import sublime
-from sublime_plugin import WindowCommand
+
 
 from ...common import ui, util
 from ..commands.navigate import GsNavigateBase
 from ..exceptions import GitSavvyError
+from GitSavvy.core.base_commands import GsWindowCommand
 from ..git_command import GitCommand
 from ..git_mixins.rebase import NearestBranchMixin
 from ..ui_mixins.quick_panel import PanelActionMixin, show_log_panel, show_branch_panel
@@ -62,7 +63,7 @@ def move_cursor(view, line_change):
     sels.add_all(new_sels)
 
 
-class gs_show_rebase(WindowCommand, GitCommand):
+class gs_show_rebase(GsWindowCommand):
 
     """
     Open a status view for the active git repository.
