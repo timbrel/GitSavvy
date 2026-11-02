@@ -1,5 +1,5 @@
-from sublime_plugin import TextCommand
-from ...core.git_command import GitCommand
+
+from GitSavvy.core.base_commands import GsTextCommand
 
 
 __all__ = (
@@ -8,7 +8,7 @@ __all__ = (
 )
 
 
-class gs_handle_vintageous(TextCommand, GitCommand):
+class gs_handle_vintageous(GsTextCommand):
 
     """
     Set the vintageous_friendly view setting if needed.
@@ -26,7 +26,7 @@ class gs_handle_vintageous(TextCommand, GitCommand):
                 self.view.run_command("nv_enter_insert_mode")  # since NeoVintageous 1.22.0
 
 
-class gs_handle_arrow_keys(TextCommand, GitCommand):
+class gs_handle_arrow_keys(GsTextCommand):
 
     """
     Set the arrow_keys_navigation view setting if needed.
