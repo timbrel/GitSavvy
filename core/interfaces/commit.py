@@ -151,7 +151,7 @@ class gs_commit(GsWindowCommand):
             interface_util.mark_as_lintable(view)
 
             view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.sublime-syntax")
-            view.run_command("gs_handle_vintageous")
+            interface_util.handle_vintageous(view)
 
             title = COMMIT_TITLE.format(os.path.basename(repo_path))
             view.set_name(title)

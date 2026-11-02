@@ -5,6 +5,7 @@ import sublime
 from sublime_plugin import EventListener, TextCommand
 
 from . import diff
+from . import util as interface_util
 from .. import intra_line_colorizer
 from . import log_graph_rebase_actions
 from . import show_commit_info
@@ -89,7 +90,7 @@ class gs_show_commit(GsWindowCommand):
             })
 
             view.run_command("gs_show_commit_refresh")
-            view.run_command("gs_handle_vintageous")
+            interface_util.handle_vintageous(view)
 
 
 url_cache = Cache()  # type: Dict[str, str]

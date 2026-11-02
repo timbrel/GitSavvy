@@ -16,6 +16,7 @@ import sublime
 from sublime_plugin import TextCommand, EventListener
 
 from . import inline_diff
+from . import util as interface_util
 from .. import intra_line_colorizer
 from . import multi_selector
 from ..commands import stage_hunk
@@ -274,7 +275,7 @@ class gs_diff(GsWindowCommand):
                 "result_line_regex": LINE_RE,
                 "result_base_dir": repo_path,
             })
-            diff_view.run_command("gs_handle_vintageous")
+            interface_util.handle_vintageous(diff_view)
 
         # Assume diffing a single file is very fast and do it
         # sync because it looks better.

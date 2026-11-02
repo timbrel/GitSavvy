@@ -11,9 +11,9 @@ from weakref import WeakKeyDictionary
 import sublime
 from sublime_plugin import TextCommand
 
-from ...common import util
 from ..theme_generator import ColorRef, ScopedStyle, provide
 from . import multi_selector
+from . import util as interface_util
 from ..runtime import enqueue_on_worker
 from ..settings import app_settings
 from ..utils import flash, focus_view
@@ -517,8 +517,8 @@ class gs_new_content_and_regions(TextCommand):
         self.current_region_names = regions.keys()
 
         if self.view.settings().get("git_savvy.interface"):
-            self.view.run_command("gs_handle_vintageous")
-            self.view.run_command("gs_handle_arrow_keys")
+            interface_util.handle_vintageous(self.view)
+            interface_util.handle_arrow_keys(self.view)
 
 
 class gs_update_region(TextCommand):

@@ -9,6 +9,7 @@ import sublime
 from sublime_plugin import TextCommand, EventListener
 
 from . import log_graph_colorizer as colorizer
+from . import util as interface_util
 from . import multi_selector
 from . import show_commit_info
 from .log_graph_helper import (
@@ -246,8 +247,8 @@ class gs_graph(GsWindowCommand):
                 "git_savvy.log_graph_view.apply_filters": apply_filters,
                 "git_savvy.log_graph_view.show_commit_info_panel": show_commit_info_panel,
             })
-            view.run_command("gs_handle_vintageous")
-            view.run_command("gs_handle_arrow_keys")
+            interface_util.handle_vintageous(view)
+            interface_util.handle_arrow_keys(view)
 
             # We need to ensure the panel has been created, so it appears
             # e.g. in the menu. Otherwise Sublime will not handle `show_panel`

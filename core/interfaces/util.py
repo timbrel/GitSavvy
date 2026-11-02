@@ -1,7 +1,26 @@
 import sublime
 
+from ..settings import app_settings
 
 from typing import Optional
+
+
+def handle_vintageous(view: sublime.View) -> None:
+    """Configure a view for Vintageous or NeoVintageous when requested."""
+    if app_settings.get("vintageous_friendly"):
+        view.settings().set("git_savvy.vintageous_friendly", True)
+        if app_settings.get("vintageous_enter_insert_mode"):
+            view.settings().set("vintageous_reset_mode_when_switching_tabs", False)
+            # NeoVintageous renamed the command starting with v1.22.0.
+            # Call both commands for backwards compatibility.
+            view.run_command("_enter_insert_mode")
+            view.run_command("nv_enter_insert_mode")
+
+
+def handle_arrow_keys(view: sublime.View) -> None:
+    """Enable arrow-key navigation for a view when requested."""
+    if app_settings.get("arrow_keys_navigation"):
+        view.settings().set("git_savvy.arrow_keys_navigation", True)
 
 
 ##########

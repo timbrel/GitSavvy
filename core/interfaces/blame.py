@@ -9,6 +9,7 @@ import unicodedata
 import sublime
 from sublime_plugin import EventListener
 
+from . import util as interface_util
 from ..commands.navigate import GsNavigateBase
 from ..fns import filter_
 from ..git_mixins.history import CommitInfo, LogEntry, is_dynamic_ref
@@ -351,7 +352,7 @@ class gs_blame(GsTextCommand):
             )
 
             view.run_command("gs_blame_refresh", {"scroll_to": (lineno, offset)})
-            view.run_command("gs_handle_vintageous")
+            interface_util.handle_vintageous(view)
 
 
 class gs_blame_open_log(GsTextCommand):

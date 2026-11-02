@@ -7,6 +7,7 @@ import sublime
 from sublime_plugin import EventListener
 
 from . import diff
+from . import util as interface_util
 from . import show_file_at_commit
 from ..commands.navigate import GsNavigateBase
 from ..base_commands import GsTextCommand, GsWindowCommand
@@ -347,7 +348,7 @@ class gs_inline_diff_open(GsWindowCommand):
                 "git_savvy.inline_diff_view.target_commit": target_commit,
             })
             show_file_at_commit.pass_next_commits_info_along(active_view, to=diff_view)
-            diff_view.run_command("gs_handle_vintageous")
+            interface_util.handle_vintageous(diff_view)
 
         diff_view.run_command("gs_inline_diff_refresh", {
             "match_position": match_position,
