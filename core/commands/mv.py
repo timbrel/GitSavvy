@@ -1,9 +1,9 @@
 import functools
 import os
 import sublime
-from sublime_plugin import WindowCommand
 
-from ..git_command import GitCommand
+
+from GitSavvy.core.base_commands import GsWindowCommand
 from ..ui_mixins.input_panel import show_single_line_input_panel
 
 
@@ -12,7 +12,7 @@ __all__ = (
 )
 
 
-class gs_mv_current_file(WindowCommand, GitCommand):
+class gs_mv_current_file(GsWindowCommand):
 
     """
     Prompt the user for a new name for the current file.
