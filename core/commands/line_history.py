@@ -4,13 +4,13 @@ import os
 import random
 
 import sublime
-from sublime_plugin import TextCommand, WindowCommand
+
 
 from . import diff
 from . import inline_diff
 from .navigate import GsNavigateBase
 from ..fns import filter_, pairwise
-from ..git_command import GitCommand
+from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand
 from ..parse_diff import SplittedDiff
 from ..runtime import run_on_new_thread
 from ..ui__busy_spinner import busy_indicator
@@ -33,7 +33,7 @@ from ..types import LineNo
 LineRange = Tuple[LineNo, LineNo]
 
 
-class gs_line_history(TextCommand, GitCommand):
+class gs_line_history(GsTextCommand):
     def run(self, edit):
         # type: (sublime.Edit) -> None
         view = self.view
@@ -224,7 +224,7 @@ def line_on_point(view, pt):
     return row + 1
 
 
-class gs_open_line_history(WindowCommand, GitCommand):
+class gs_open_line_history(GsWindowCommand):
     def run(self, repo_path, file_path, ranges, commit=None):
         # type: (str, str, List[LineRange], str) -> None
         rel_file_path = os.path.relpath(file_path, repo_path)
@@ -278,7 +278,7 @@ class gs_open_line_history(WindowCommand, GitCommand):
         run_on_new_thread(render)
 
 
-class gs_line_history_open_commit(TextCommand, GitCommand):
+class gs_line_history_open_commit(GsTextCommand):
     def run(self, edit):
         # type: (sublime.Edit) -> None
         view = self.view
@@ -292,7 +292,7 @@ class gs_line_history_open_commit(TextCommand, GitCommand):
             window.run_command('gs_show_commit', {'commit_hash': c})
 
 
-class gs_line_history_open_graph_context(TextCommand, GitCommand):
+class gs_line_history_open_graph_context(GsTextCommand):
     def run(self, edit):
         # type: (sublime.Edit) -> None
         view = self.view
