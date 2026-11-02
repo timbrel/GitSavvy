@@ -8,9 +8,9 @@ from typing import Callable, Dict, List, Optional, Sequence
 import sublime
 
 
-from ...common import util
 from . import util as interface_util
 from ..fns import filter_, take, unique
+from ..utils import destructive
 from GitSavvy.core.base_commands import GsWindowCommand
 from ..git_command import GitCommand
 from ..git_mixins.branches import Branch
@@ -822,7 +822,7 @@ def worktree_targets(
     ]
 
 
-@util.actions.destructive(description="delete a worktree")
+@destructive(description="delete a worktree")
 @on_new_thread
 def delete_worktree_from_graph(
     cmd: gs_log_graph_action | gs_log_graph_delete_decoration,

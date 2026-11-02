@@ -16,6 +16,7 @@ from ...common import util
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.types import FullPath, ShortPath
 from GitSavvy.core.runtime import enqueue_on_worker
+from GitSavvy.core.utils import destructive
 from ..ui__quick_panel import noop, show_actions_panel
 
 
@@ -721,7 +722,7 @@ class gs_status_discard_changes_to_file(StatusInterfaceCommand):
         # type: () -> Optional[List[str]]
         file_paths = self.get_selected_subjects('untracked')
 
-        @util.actions.destructive(description="discard one or more untracked files")
+        @destructive(description="discard one or more untracked files")
         def do_discard():
             self.discard_untracked_file(*file_paths)
             return file_paths
@@ -732,7 +733,7 @@ class gs_status_discard_changes_to_file(StatusInterfaceCommand):
 
     def discard_unstaged(self) -> list[ShortPath] | None:
 
-        @util.actions.destructive(description="discard one or more unstaged files")
+        @destructive(description="discard one or more unstaged files")
         def do_discard(file_paths: list[ShortPath]):
             try:
                 self.checkout_file(*file_paths)
@@ -826,7 +827,7 @@ class gs_status_discard_all_changes(StatusInterfaceCommand):
     Reset all unstaged files to HEAD.
     """
 
-    @util.actions.destructive(description="discard all unstaged changes, "
+    @destructive(description="discard all unstaged changes, "
                                           "and delete all untracked files")
     def run(self, edit):
         # type: (sublime.Edit) -> None

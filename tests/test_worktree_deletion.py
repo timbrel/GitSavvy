@@ -5,7 +5,7 @@ from functools import partial
 
 from unittesting import DeferrableTestCase
 
-from GitSavvy.common.util import actions
+from GitSavvy.core import utils
 from GitSavvy.core import runtime
 from GitSavvy.core.commands import worktrees
 from GitSavvy.core.git_mixins.worktrees import WorktreeTarget
@@ -44,7 +44,7 @@ class TestWorktreeDeletion(DeferrableTestCase):
         when(worktrees.interface_util).refresh_gitsavvy_interfaces(
             self.window, refresh_sidebar=True
         ).thenReturn(None)
-        when(actions.app_settings).get("prompt_before_destructive_action").thenReturn(False)
+        when(utils.app_settings).get("prompt_before_destructive_action").thenReturn(False)
         when(runtime).run_on_new_thread(...).thenAnswer(lambda fn, *a, **kw: fn(*a, **kw))
         self.panels = []
         when(self.window).show_quick_panel(...).thenAnswer(

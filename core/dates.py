@@ -1,17 +1,24 @@
-from datetime import datetime
+from __future__ import annotations
+
+from datetime import datetime, timedelta
+from typing import cast
+
 
 TEN_MINS = 600
 ONE_HOUR = 3600
 TWO_HOURS = 7200
-ONE_DAY = 86400
 
 
-def fuzzy(event, base=None, date_format=None):
+def fuzzy(
+    event: datetime | str | int,
+    base: datetime | None = None,
+    date_format: str | None = None
+) -> str:
     if not base:
         base = datetime.now()
 
     if date_format:
-        event = datetime.strptime(event, date_format)
+        event = datetime.strptime(cast(str, event), date_format)
     elif type(event) is str:
         event = datetime.fromtimestamp(int(event))
     elif type(event) is int:
@@ -50,3 +57,8 @@ def fuzzy(event, base=None, date_format=None):
         return "over {} days ago".format(delta.days)
 
     return "{date:%b} {date.day}, {date.year}".format(date=event)
+
+
+def is_younger_than(delta: timedelta, now: datetime, timestamp: int) -> bool:
+    dt = datetime.utcfromtimestamp(timestamp)
+    return (now - dt) < delta

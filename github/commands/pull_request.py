@@ -4,7 +4,7 @@ import urllib
 
 from .. import github
 from .. import git_mixins
-from ...common import util
+from ...core.dates import fuzzy
 from ...core.interfaces import util as interface_util
 from ...core.commands.push import gs_push_to_branch_name
 from ...core.fns import filter_
@@ -69,7 +69,7 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
                 "{number}: {title}".format(number=issue["number"], title=issue["title"]),
                 "Pull request created by {user}, {time_stamp}.".format(
                     user=issue["user"]["login"],
-                    time_stamp=util.dates.fuzzy(issue["created_at"],
+                    time_stamp=fuzzy(issue["created_at"],
                                                 date_format="%Y-%m-%dT%H:%M:%SZ")
                 )
             ],

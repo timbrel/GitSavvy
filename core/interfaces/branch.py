@@ -9,7 +9,6 @@ import re
 import sublime
 
 
-from ...common import util
 from . import util as interface_util
 from . import dashboard_base as ui
 from ..commands import ref_undo
@@ -24,7 +23,8 @@ from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core import app_state
 from GitSavvy.core.fns import chain, filter_, pairwise
-from GitSavvy.core.utils import flash, is_younger_than
+from GitSavvy.core.dates import is_younger_than
+from GitSavvy.core.utils import destructive, flash
 from GitSavvy.core.runtime import enqueue_on_worker, on_new_thread, on_worker
 from GitSavvy.core.types import FullHash, ShortHash
 from GitSavvy.github import ci_status
@@ -795,7 +795,7 @@ class gs_branches_delete(BranchInterfaceCommand):
             for remote, branch_names in remote_map.items():
                 self.delete_remote_branches(remote, branch_names, force)
 
-    @util.actions.destructive(description="delete a remote branch")
+    @destructive(description="delete a remote branch")
     @on_worker
     def delete_remote_branches(self, remote, branch_names, force):
         es = "es" if len(branch_names) > 1 else ""
@@ -811,7 +811,7 @@ class gs_branches_delete(BranchInterfaceCommand):
         interface_util.refresh_gitsavvy(self.view)
         self.view.run_command("gs_clear_multiselect")
 
-    @util.actions.destructive(description="delete local branches")
+    @destructive(description="delete local branches")
     @on_worker
     def delete_local_branches(self, branch_names: list[str], force: bool):
         self.window.status_message("Deleting local branches...")
@@ -830,7 +830,7 @@ class gs_branches_delete(BranchInterfaceCommand):
         interface_util.refresh_gitsavvy(self.view)
         self.view.run_command("gs_clear_multiselect")
 
-    @util.actions.destructive(description="delete a worktree")
+    @destructive(description="delete a worktree")
     @on_new_thread
     def delete_worktree(self, target: WorktreeTarget, force: bool) -> None:
         path = target.path

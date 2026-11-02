@@ -5,13 +5,12 @@ import sublime
 from . import push, ref_undo
 from ..git_command import GitSavvyError
 from ..ui_mixins.input_panel import show_single_line_input_panel
-from ...common import util
 from ..interfaces import util as interface_util
 from GitSavvy.core.base_commands import (
     ask_for_local_branch, call_with_wanted_args, std_undo_owner,
     GsWindowCommand)
 from ..ui__quick_panel import noop, show_actions_panel
-from GitSavvy.core.utils import just, uprint
+from GitSavvy.core.utils import destructive, just, uprint
 from GitSavvy.core.types import FullHash, ShortHash
 
 
@@ -162,7 +161,7 @@ class gs_delete_branch(GsWindowCommand):
         "undo_owner": std_undo_owner,
     }
 
-    @util.actions.destructive(description="delete a local branch")
+    @destructive(description="delete a local branch")
     def run(
         self,
         branch: str,

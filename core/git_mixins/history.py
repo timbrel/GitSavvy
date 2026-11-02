@@ -7,7 +7,7 @@ from typing import Generic, Iterator, List, Literal, NamedTuple, Optional, overl
 from typing_extensions import TypeAlias
 
 from ..exceptions import GitSavvyError
-from ...common import util
+from GitSavvy.core.dates import fuzzy
 from GitSavvy.core.fns import last, pairwise, take
 from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core.parse_diff import Hunk, SplittedDiff
@@ -177,7 +177,7 @@ class HistoryMixin(mixin_base):
             for entry in logs:
                 yield (["{} {}".format(entry.reflog_selector, entry.reflog_name),
                         "{} {}".format(entry.short_hash, entry.summary),
-                        "{}, {}".format(entry.author, util.dates.fuzzy(entry.datetime))],
+                        "{}, {}".format(entry.author, fuzzy(entry.datetime))],
                        entry.long_hash)
             skip = skip + limit
 

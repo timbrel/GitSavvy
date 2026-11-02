@@ -17,8 +17,8 @@ from ..runtime import enqueue_on_ui, enqueue_on_worker, on_worker, run_as_text_c
 from ..ui_mixins.quick_panel import PanelCommandMixin, show_log_panel
 from ..types import FullHash, FullPath, LineNo, Row, ShortHash
 from ..view import create_scratch_view, scroll_to_pt, y_offset, Position
-from ...common import util
 from GitSavvy.core import app_state
+from GitSavvy.core.dates import fuzzy
 from GitSavvy.core.base_commands import GsTextCommand
 from GitSavvy.core.caches import cached
 from GitSavvy.core.utils import flash, focus_view
@@ -776,7 +776,7 @@ class gs_blame_refresh(GsTextCommand):
         author_info = commit["author"] + " " + commit["author-mail"]
         if len(author_info) > 40:
             author_info = author_info[:37] + "..."
-        time_stamp = util.dates.fuzzy(commit["author-time"]) if commit["author-time"] else ""
+        time_stamp = fuzzy(commit["author-time"]) if commit["author-time"] else ""
 
         commit_hash = commit["short_hash"]
         if current_commit_hash and commit["long_hash"].startswith(current_commit_hash):
@@ -800,7 +800,7 @@ class gs_blame_refresh(GsTextCommand):
         if blame_format == "message":
             return truncate_commit_info(commit["summary"])
         if blame_format == "date":
-            return util.dates.fuzzy(commit["author-time"]) if commit["author-time"] else ""
+            return fuzzy(commit["author-time"]) if commit["author-time"] else ""
         return truncate_commit_info(commit["author"])
 
     def format_blame_chunk(

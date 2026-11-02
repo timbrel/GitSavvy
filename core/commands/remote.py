@@ -2,11 +2,11 @@ from __future__ import annotations
 import sublime
 
 from . import init
-from ...common import util
 from ..interfaces import util as interface_util
 from ..ui_mixins.quick_panel import show_remote_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.runtime import run_on_new_thread
+from GitSavvy.core.utils import destructive
 from GitSavvy.core.base_commands import GsWindowCommand
 
 
@@ -87,7 +87,7 @@ class gs_remote_remove(GsWindowCommand):
         else:
             show_remote_panel(self.on_remote_selection, show_url=True)
 
-    @util.actions.destructive(description="remove a remote")
+    @destructive(description="remove a remote")
     def on_remote_selection(self, remote: str) -> None:
         self.git("remote", "remove", remote)
         self.remove_remote_tracking_refs(remote)

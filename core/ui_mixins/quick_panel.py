@@ -1,7 +1,7 @@
 from __future__ import annotations
 import itertools
 import sublime
-from ...common import util
+from ..dates import fuzzy
 from ..git_command import GitCommand
 from GitSavvy.core.fns import filter_, maybe
 from ..ui__quick_panel import show_quick_panel, show_noop_panel
@@ -586,7 +586,7 @@ class LogPanel(PaginatedPanel):
                 "  ".join(filter_((entry.short_hash, short_ref(entry.ref), entry.summary))),
                 ", ".join(filter_((
                     entry.author,
-                    util.dates.fuzzy(entry.datetime) if entry.datetime else ""
+                    fuzzy(entry.datetime) if entry.datetime else ""
                 ))),
             ],
             entry.long_hash

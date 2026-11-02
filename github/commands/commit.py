@@ -9,7 +9,7 @@ import sublime
 from ...core.ui_mixins.quick_panel import show_paginated_panel
 from .. import github
 from .. import git_mixins
-from ...common import util
+from ...core.dates import fuzzy
 from GitSavvy.core.base_commands import GsTextCommand
 from GitSavvy.core.runtime import enqueue_on_worker, on_worker
 
@@ -81,7 +81,7 @@ class gs_github_show_issues(git_mixins.GithubRemotesMixin, GsTextCommand):
                 "{issue_type} created by {user}, {time_stamp}.".format(
                     issue_type="Pull request" if "pull_request" in issue else "Issue",
                     user=issue["user"]["login"],
-                    time_stamp=util.dates.fuzzy(issue["created_at"],
+                    time_stamp=fuzzy(issue["created_at"],
                                                 date_format="%Y-%m-%dT%H:%M:%SZ")
                 )
             ],

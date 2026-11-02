@@ -12,9 +12,8 @@ from .log import LogMixin
 from ..git_command import GitSavvyError
 from ..runtime import on_worker
 from ..git_mixins.branches import Branch
-from ..utils import uprint
+from ..utils import destructive, uprint
 from ..view import replace_view_content
-from ...common import util
 from ..interfaces import util as interface_util
 from GitSavvy.core.base_commands import ask_for_branch, GsWindowCommand
 from ..ui__quick_panel import noop, show_actions_panel
@@ -220,7 +219,7 @@ class gs_checkout_current_file_at_commit(LogMixin, GsWindowCommand):
                 'file_path': file_path
             })
 
-    @util.actions.destructive(description="discard uncommitted changes to file")
+    @destructive(description="discard uncommitted changes to file")
     def do_action(self, commit_hash, **kwargs):
         if commit_hash:
             self.checkout_ref(commit_hash, self.file_path)
