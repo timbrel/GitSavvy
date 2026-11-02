@@ -8,8 +8,6 @@ import webbrowser
 import sublime
 from sublime_plugin import WindowCommand, TextCommand
 
-from ...common import util
-
 
 __all__ = (
     "gs_help",
@@ -25,36 +23,43 @@ re_link_scope = re.compile(r"\bmeta\.link\.inline\.markdown\b")
 
 
 def get_page_and_anchor(view):
-    if util.view.get_is_view_of_type(view, "status"):
+    if get_is_view_of_type(view, "status"):
         return "status.md", None
-    if util.view.get_is_view_of_type(view, "tags"):
+    if get_is_view_of_type(view, "tags"):
         return "tag_mgmt.md", "git-tags"
-    if util.view.get_is_view_of_type(view, "log_graph"):
+    if get_is_view_of_type(view, "log_graph"):
         return "history.md", "git-graph"
-    if util.view.get_is_view_of_type(view, "branch"):
+    if get_is_view_of_type(view, "branch"):
         return "branch_mgmt.md", "git-branch"
-    if util.view.get_is_view_of_type(view, "remotes"):
+    if get_is_view_of_type(view, "remotes"):
         return "remotes.md", None
-    if util.view.get_is_view_of_type(view, "rebase"):
+    if get_is_view_of_type(view, "rebase"):
         return "rebase.md", None
-    if util.view.get_is_view_of_type(view, "commit"):
+    if get_is_view_of_type(view, "commit"):
         anchor = ("git-amend-previous-commit"
                   if view.settings().get("git_savvy.commit_view.amend")
                   else None)
         return "commit.md", anchor
-    if util.view.get_is_view_of_type(view, "diff"):
+    if get_is_view_of_type(view, "diff"):
         anchor = ("git-diff-cached"
                   if view.settings().get("git_savvy.diff_view.in_cached_mode")
                   else "git-diff")
         return "staging.md", anchor
 
-    if util.view.get_is_view_of_type(view, "inline_diff"):
+    if get_is_view_of_type(view, "inline_diff"):
         anchor = ("git-diff-current-file-inline"
                   if view.settings().get("git_savvy.inline_diff.cached")
                   else "git-diff-current-file-inline-cached")
         return "staging.md", anchor
 
     return "help.md", None
+
+
+def get_is_view_of_type(view, typ):
+    """
+    Determine if view is of specified type.
+    """
+    return not not view.settings().get("git_savvy.{}_view".format(typ))
 
 
 class gs_help(WindowCommand):
