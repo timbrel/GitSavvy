@@ -13,7 +13,7 @@ import os
 import re
 
 import sublime
-from sublime_plugin import WindowCommand, TextCommand, EventListener
+from sublime_plugin import TextCommand, EventListener
 
 from . import inline_diff
 from . import intra_line_colorizer
@@ -22,7 +22,8 @@ from . import stage_hunk
 from .navigate import GsNavigateBase
 from ..fns import head, filter_, flatten, pairwise, unique
 from ..parse_diff import SplittedDiff
-from ..git_command import GitCommand, GitSavvyError
+from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand
+from ..git_command import GitSavvyError
 from ..runtime import ensure_on_ui, enqueue_on_worker, throttled
 from ..ui_mixins.quick_panel import LogHelperMixin
 from ..ui__quick_panel import show_quick_panel
@@ -154,7 +155,7 @@ def disabled_on_activated():
         active_on_activated = True
 
 
-class gs_diff(WindowCommand, GitCommand):
+class gs_diff(GsWindowCommand):
 
     """
     Create a new view to display the difference of `target_commit`
@@ -284,7 +285,7 @@ class gs_diff(WindowCommand, GitCommand):
         })
 
 
-class gs_diff_refresh(TextCommand, GitCommand):
+class gs_diff_refresh(GsTextCommand):
     """Refresh the diff view with the latest repo state."""
 
     def run(
@@ -736,7 +737,7 @@ class gs_diff_toggle_cached_mode(TextCommand):
                 set_and_show_cursor(self.view, unpickle_sel(last_cursors))
 
 
-class gs_diff_toggle_all(TextCommand, GitCommand):
+class gs_diff_toggle_all(GsTextCommand):
 
     """Toggle between all-files and single-file diff mode."""
 
@@ -785,7 +786,7 @@ class gs_diff_toggle_all(TextCommand, GitCommand):
         return "from_diff", position, filename
 
 
-class gs_diff_switch_files(TextCommand, GitCommand):
+class gs_diff_switch_files(GsTextCommand):
     def run(self, edit, recursed=False, auto_close=False, forward=None):
         # type: (sublime.Edit, bool, bool | Literal["slow"], Optional[bool]) -> None
         view = self.view
@@ -1162,7 +1163,7 @@ class GsDiffFocusEventListener(EventListener):
         DIFF_HISTORY.pop(view.id(), None)
 
 
-class gs_diff_stage_or_reset_hunk(TextCommand, GitCommand):
+class gs_diff_stage_or_reset_hunk(GsTextCommand):
 
     """
     Depending on whether the user is in cached mode and what action
@@ -1576,7 +1577,7 @@ class JumpTo(NamedTuple):
     col: ColNo
 
 
-class _GsDiffOpenFileAtHunk(TextCommand, GitCommand, ABC):
+class _GsDiffOpenFileAtHunk(GsTextCommand, ABC):
 
     """
     For each cursor in the view, identify the hunk in which the cursor lies,
@@ -1894,7 +1895,7 @@ class gs_commit_view_navigate(gs_diff_navigate):
         return [sublime.Region(0)] + regions
 
 
-class gs_diff_undo(TextCommand, GitCommand):
+class gs_diff_undo(GsTextCommand):
 
     """
     Undo the last action taken in the diff view, if possible.
