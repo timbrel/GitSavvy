@@ -13,7 +13,7 @@ from GitSavvy.core.interfaces.log_graph import (
     GitCommand
 )
 from GitSavvy.core.interfaces.log_graph_renderer import gs_log_graph_refresh
-from GitSavvy.core.commands.show_commit_info import gs_show_commit_info
+from GitSavvy.core.interfaces.show_commit_info import gs_show_commit_info
 from GitSavvy.core.git_mixins.status import WorkingDirState
 from GitSavvy.core.settings import app_settings
 

@@ -10,7 +10,7 @@ from sublime_plugin import TextCommand, EventListener
 
 from . import log_graph_colorizer as colorizer
 from ..commands import multi_selector
-from ..commands import show_commit_info
+from . import show_commit_info
 from .log_graph_helper import (
     COMMIT_LINE,
     FIND_COMMIT_HASH,
