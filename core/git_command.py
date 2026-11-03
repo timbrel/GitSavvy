@@ -20,7 +20,7 @@ import traceback
 
 import sublime
 
-from . import debug, output_panel
+from . import debug, output_panel, worker_occupancy as _worker_occupancy
 from .settings import SettingsMixin
 from .utils import (
     try_kill_proc, paths_upwards, proc_has_been_aborted_by_user,
@@ -349,6 +349,8 @@ class _GitCommand(SettingsMixin):
         popen_kwargs: Dict[str, Any] = {"startupinfo": STARTUPINFO}
         if os.name != "nt":
             popen_kwargs["start_new_session"] = True
+        if not just_the_proc:
+            _worker_occupancy.git_enter(working_dir or "", git_cmd or "")
         start = time.time()
         try:
             p = subprocess.Popen(
@@ -423,6 +425,7 @@ class _GitCommand(SettingsMixin):
         finally:
             if not just_the_proc:
                 end = time.time()
+                _worker_occupancy.git_exit()
                 debug.log_git(final_args, working_dir, stdin, stdout, stderr, end - start)
                 if log:
                     aborted = proc_has_been_aborted_by_user(p) if p else False

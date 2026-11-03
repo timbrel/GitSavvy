@@ -183,6 +183,8 @@ def _run_when_worker_is_idle(
 
 
 def _enqueue_on_worker(fn: Callable[[], T], after: int = 0) -> None:
+    from . import worker_occupancy
+    fn = worker_occupancy.wrap_if_enabled(fn, after_ms=after)
     fn_ = user_friendly_traceback((RuntimeError, GitSavvyError))(fn)
     sublime.set_timeout_async(fn_, after)
 

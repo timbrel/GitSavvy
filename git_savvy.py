@@ -95,9 +95,11 @@ UNUSED_APP_SETTINGS = (
 
 
 def plugin_loaded() -> None:
+    from .core import worker_occupancy
     from .core.theme_generator import start_watchers
     from .core.commands.context_menu import start_context_menu_watcher
     from .github import ci_status
+    worker_occupancy.on_plugin_load()
     prepare_gitsavvy()
     start_watchers()
     start_context_menu_watcher()
@@ -106,9 +108,10 @@ def plugin_loaded() -> None:
 
 def plugin_unloaded() -> None:
     from .core.theme_generator import shutdown_executor, stop_watchers
-    from .core import app_state
+    from .core import app_state, worker_occupancy
     from .core.commands.context_menu import stop_context_menu_watcher
     from .github import ci_status
+    worker_occupancy.on_plugin_unload()
     ci_status.stop()
     stop_context_menu_watcher()
     stop_watchers()
