@@ -4,8 +4,8 @@ from textwrap import dedent
 import sublime
 import sublime_plugin
 
-from ...common import util
 from GitSavvy.core.base_commands import GsTextCommand
+from GitSavvy.core.utils import super_key
 from GitSavvy.core.view import replace_view_content
 
 
@@ -105,7 +105,7 @@ class GsAbstractOpenHelpPanel(GsTextCommand):
 
         panel = ensure_panel(window)
         content = panel.substr(sublime.Region(0, panel.size()))
-        next_content = self.key_bindings.format(cr=util.super_key)
+        next_content = self.key_bindings.format(cr=super_key)
         if panel_is_visible(window) and content == next_content:
             hide_panel(window)
         else:

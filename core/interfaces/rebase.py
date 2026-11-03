@@ -5,7 +5,6 @@ import re
 import sublime
 
 
-from ...common import util
 from . import util as interface_util
 from . import dashboard_base as ui
 from .. import debug
@@ -17,6 +16,7 @@ from ..git_mixins.rebase import NearestBranchMixin
 from ..ui_mixins.quick_panel import PanelActionMixin, show_log_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.runtime import enqueue_on_worker, on_worker
+from GitSavvy.core.utils import super_key
 
 
 __all__ = (
@@ -229,7 +229,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
 
     @ui.section("super_key")
     def render_super_key(self):
-        return util.super_key
+        return super_key
 
     @ui.section("preserve_merges")
     def render_preserve_merge(self):
@@ -246,7 +246,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
             return ""
         else:
             return self.template_help.format(
-                super_key=util.super_key,
+                super_key=super_key,
                 conflicts_bindings=self.render_conflicts_bindings(),
                 skip_commit_key='k' if not vintageous_friendly else 'K')
 
@@ -1061,7 +1061,7 @@ class EditView:
         starting_content += "\n\n"
 
         regions["content"] = (0, len(starting_content))
-        content = starting_content + (help_text or EDIT_DEFAULT_HELP_TEXT).format(super_key=util.super_key)
+        content = starting_content + (help_text or EDIT_DEFAULT_HELP_TEXT).format(super_key=super_key)
         regions["help"] = (len(starting_content), len(content))
 
         self.view.run_command("gs_new_content_and_regions", {

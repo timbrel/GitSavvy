@@ -16,9 +16,8 @@ from ..parse_diff import Hunk, SplittedDiff, UnsupportedCombinedDiff
 from ..runtime import enqueue_on_ui, enqueue_on_worker, on_worker
 from ..utils import flash, focus_view
 from ..view import (
-    apply_position, capture_cur_position, create_scratch_view, other_visible_views, place_view,
-    replace_view_content, y_offset, Position)
-from ...common import util
+    apply_position, capture_cur_position, create_scratch_view, guess_syntax_for_file,
+    other_visible_views, place_view, replace_view_content, y_offset, Position)
 
 
 __all__ = (
@@ -178,7 +177,7 @@ class gs_inline_diff(GsWindowCommand):
                     new_row = self.find_matching_lineno(None, None, row + 1, file_path) - 1
                     cur_pos = Position(new_row, col, offset)
             else:
-                syntax_file = util.file.guess_syntax_for_file(self.window, file_path)
+                syntax_file = guess_syntax_for_file(self.window, file_path)
                 cur_pos = None
 
             self.window.run_command("gs_inline_diff_open", {
@@ -211,7 +210,7 @@ class gs_inline_diff(GsWindowCommand):
             self.window.run_command("gs_inline_diff_open", {
                 "repo_path": repo_path,
                 "file_path": file_path,
-                "syntax": util.file.guess_syntax_for_file(self.window, file_path),
+                "syntax": guess_syntax_for_file(self.window, file_path),
                 "cached": bool(cached),
                 "match_position": None
             })
@@ -223,7 +222,7 @@ class gs_inline_diff(GsWindowCommand):
                 "Historical diffs shouldn't have `jump_position.commit_hash`.")
 
         file_path = self.to_full_path(jump_position.filename, repo_path)
-        syntax_file = util.file.guess_syntax_for_file(self.window, file_path)
+        syntax_file = guess_syntax_for_file(self.window, file_path)
         base_commit = settings.get("git_savvy.diff_view.base_commit")
         target_commit = settings.get("git_savvy.diff_view.target_commit")
 
@@ -283,7 +282,7 @@ class gs_inline_diff(GsWindowCommand):
             return
 
         file_path = self.to_full_path(jump_position.filename, repo_path)
-        syntax_file = util.file.guess_syntax_for_file(self.window, file_path)
+        syntax_file = guess_syntax_for_file(self.window, file_path)
         target_commit = self.to_short_hash(jump_position.commit_hash)
         base_commit = self.previous_commit(target_commit, file_path)
         cur_pos = Position(

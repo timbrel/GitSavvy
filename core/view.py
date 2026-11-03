@@ -1,5 +1,6 @@
 from contextlib import contextmanager, ExitStack
 from functools import lru_cache
+import os
 
 import sublime
 
@@ -14,6 +15,7 @@ T_float = TypeVar("T_float", int, float)
 
 # https://github.com/sublimehq/sublime_text/issues/5772
 SUBLIME_HAS_NEW_VIEW_PLACEMENT_BUG = int(sublime.version()) < 4144
+syntax_file_map: Dict[str, str] = {}
 
 
 class Position(NamedTuple):
@@ -61,6 +63,36 @@ def create_scratch_view(
     # directly after its creation.
     window.focus_view(view)
     return view
+
+
+def guess_syntax_for_file(window: sublime.Window, filename: str) -> str:
+    view = window.find_open_file(filename)
+    if view:
+        syntax = view.settings().get("syntax")
+        remember_syntax_choice(filename, syntax)
+        return syntax
+    return get_syntax_for_file(filename)
+
+
+def get_syntax_for_file(
+    filename: str,
+    default: str = "Packages/Text/Plain text.tmLanguage"
+) -> str:
+    syntax = sublime.find_syntax_for_file(filename)
+    return (
+        syntax_file_map.get(filename)
+        or syntax_file_map.get(get_file_extension(filename))
+        or (syntax.path if syntax else None)
+        or default
+    )
+
+
+def remember_syntax_choice(filename: str, syntax: str) -> None:
+    syntax_file_map[get_file_extension(filename) or filename] = syntax
+
+
+def get_file_extension(filename: str) -> str:
+    return os.path.splitext(filename)[1][1:]
 
 
 def _update_view(view: sublime.View, options: Mapping[str, object]) -> None:

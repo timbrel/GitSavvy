@@ -22,6 +22,8 @@ from .types import FullPath
 from typing import Callable, Iterator, Optional, Sequence, Type, TypeVar, TYPE_CHECKING
 T = TypeVar("T")
 
+super_key = "super" if sys.platform == "darwin" else "ctrl"
+
 if TYPE_CHECKING:
     from typing_extensions import ParamSpec
     P = ParamSpec("P")
@@ -100,6 +102,19 @@ def uprint(msg):
     # We later might find better ways to show these help
     # messages to the user.
     print(msg)
+
+
+@contextmanager
+def safe_open(filename, mode, *args, **kwargs):
+    try:
+        with open(filename, mode, *args, **kwargs) as file:
+            yield file
+    except PermissionError as e:
+        sublime.ok_cancel_dialog("GitSavvy could not access file: \n{}".format(e))
+        raise e
+    except OSError as e:
+        sublime.ok_cancel_dialog("GitSavvy encountered an OS error: \n{}".format(e))
+        raise e
 
 
 def destructive(description: str) -> "Callable[[Callable[P, T]], Callable[P, Optional[T]]]":

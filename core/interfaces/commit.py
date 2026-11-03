@@ -17,9 +17,8 @@ from ..fns import flatten, head
 from ..runtime import enqueue_on_worker, text_command
 from ..settings import SettingsMixin
 from ..ui_mixins.quick_panel import LogHelperMixin
-from ..utils import focus_view
+from ..utils import focus_view, safe_open, super_key
 from ..view import replace_view_content
-from ...common import util
 from . import util as interface_util
 from ..theme_generator import ColorRef, ScopedStyle, provide
 
@@ -60,20 +59,20 @@ HELP_WHEN_DISCARDING_IS_POSSIBLE = """\
 """
 HELP_WHEN_UNDOING_IS_POSSIBLE = """\
 ## [{key}+z]{space}     to undo
-""".format(key=util.super_key, space=" " * (5 - len(util.super_key)))
+""".format(key=super_key, space=" " * (5 - len(super_key)))
 
 COMMIT_HELP_TEXT_ALT = """\
 ## To make a commit, type your commit message and close the window.
 ## To cancel the commit, delete the commit message and close the window.
 ## To sign off on the commit, press {key}-S.
-""".format(key=util.super_key) + COMMIT_HELP_TEXT_EXTRA
+""".format(key=super_key) + COMMIT_HELP_TEXT_EXTRA
 
 
 COMMIT_HELP_TEXT = """\
 ## To make a commit, type your commit message and press {key}-ENTER.
 ## To cancel the commit, close the window. To sign off on the commit,
 ## press {key}-S.
-""".format(key=util.super_key) + COMMIT_HELP_TEXT_EXTRA
+""".format(key=super_key) + COMMIT_HELP_TEXT_EXTRA
 
 COMMIT_SIGN_TEXT = """
 
@@ -179,7 +178,7 @@ class gs_commit(GsWindowCommand):
             last_commit_message = self.git("log", "-1", "--pretty=%B").strip()
             initial_text += last_commit_message
         elif os.path.exists(merge_msg_path):
-            with util.file.safe_open(merge_msg_path, "r") as f:
+            with safe_open(merge_msg_path, "r") as f:
                 initial_text += f.read()
 
         initial_text += "\n\n" + generate_help_text(view)
@@ -187,7 +186,7 @@ class gs_commit(GsWindowCommand):
         commit_help_extra_file = self.project_settings.get("commit_help_extra_file") or ".commit_help"
         commit_help_extra_path = self.to_full_path(commit_help_extra_file)
         if os.path.exists(commit_help_extra_path):
-            with util.file.safe_open(commit_help_extra_path, "r", encoding="utf-8") as f:
+            with safe_open(commit_help_extra_path, "r", encoding="utf-8") as f:
                 initial_text += f.read()
 
         replace_view_content(view, initial_text)

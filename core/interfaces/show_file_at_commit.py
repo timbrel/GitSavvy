@@ -15,8 +15,9 @@ from ..runtime import (
 from ..types import FullHash, FullPath, ShortHash
 from ..ui_mixins.quick_panel import show_log_panel
 from ..utils import flash, focus_view
-from ..view import apply_position, capture_cur_position, create_scratch_view, replace_view_content, Position
-from ...common import util
+from ..view import (
+    apply_position, capture_cur_position, create_scratch_view, guess_syntax_for_file,
+    replace_view_content, Position)
 from GitSavvy.core.git_command import GitCommand, GitSavvyError
 from GitSavvy.core.git_mixins.history import CommitInfo
 
@@ -148,7 +149,7 @@ class gs_show_file_at_commit(GsWindowCommand):
         )
         view = create_scratch_view(self.window, "show_file_at_commit", {
             "title": title,
-            "syntax": syntax or util.file.guess_syntax_for_file(self.window, file_path),
+            "syntax": syntax or guess_syntax_for_file(self.window, file_path),
             "git_savvy.repo_path": self.repo_path,
             "git_savvy.file_path": file_path,
             "git_savvy.show_file_at_commit_view.commit": commit_hash,

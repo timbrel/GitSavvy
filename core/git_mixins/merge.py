@@ -10,7 +10,7 @@ import sublime
 
 from GitSavvy.core.git_command import mixin_base
 from .. import debug
-from ...common import util
+from ..utils import safe_open
 from ..interfaces import util as interface_util
 
 
@@ -53,11 +53,11 @@ class MergeMixin(mixin_base):
         merge_cmd_args = shlex.split(merge_cmd)
 
         try:
-            with util.file.safe_open(base_path, "wb") as base:
+            with safe_open(base_path, "wb") as base:
                 base.write(base_content)
-            with util.file.safe_open(ours_path, "wb") as ours:
+            with safe_open(ours_path, "wb") as ours:
                 ours.write(ours_content)
-            with util.file.safe_open(theirs_path, "wb") as theirs:
+            with safe_open(theirs_path, "wb") as theirs:
                 theirs.write(theirs_content)
             copyfile(merge_path, backup_path)
 

@@ -12,11 +12,11 @@ from ..commands.navigate import GsNavigateBase
 from . import dashboard_base as ui
 from GitSavvy.core.base_commands import GsWindowCommand
 from ..git_command import GitCommand, GitSavvyError
-from ...common import util
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.types import FullPath, ShortPath
 from GitSavvy.core.runtime import enqueue_on_worker
 from GitSavvy.core.utils import destructive
+from GitSavvy.core.view import guess_syntax_for_file
 from ..ui__quick_panel import noop, show_actions_panel
 
 
@@ -552,7 +552,7 @@ class gs_status_diff_inline(StatusInterfaceCommand):
         cached_files: list[FullPath]
     ) -> None:
         for fpath in non_cached_files:
-            syntax = util.file.guess_syntax_for_file(window, fpath)
+            syntax = guess_syntax_for_file(window, fpath)
             window.run_command("gs_inline_diff_open", {
                 "repo_path": self.repo_path,
                 "file_path": fpath,
@@ -561,7 +561,7 @@ class gs_status_diff_inline(StatusInterfaceCommand):
             })
 
         for fpath in cached_files:
-            syntax = util.file.guess_syntax_for_file(window, fpath)
+            syntax = guess_syntax_for_file(window, fpath)
             window.run_command("gs_inline_diff_open", {
                 "repo_path": self.repo_path,
                 "file_path": fpath,

@@ -8,8 +8,8 @@ import sublime
 
 
 from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand
+from ..utils import super_key
 from ..view import create_scratch_view, replace_view_content
-from ...common import util
 
 
 __all__ = (
@@ -19,7 +19,7 @@ __all__ = (
 
 
 TITLE = "STAGE-DIFF: {}"
-MESSAGE = "Press {}-Enter to apply the diff.  Close the window to cancel.".format(util.super_key)
+MESSAGE = "Press {}-Enter to apply the diff.  Close the window to cancel.".format(super_key)
 
 
 class gs_stage_diff(GsWindowCommand):
