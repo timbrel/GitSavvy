@@ -177,7 +177,7 @@ def _run_when_worker_is_idle(
         if _enqueued_tasks.count() == 0:
             action()
         else:
-            sublime.set_timeout_async(task)
+            _enqueue_on_worker(task)
 
     _enqueue_on_worker(task, after)
 
