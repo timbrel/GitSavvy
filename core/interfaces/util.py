@@ -6,6 +6,10 @@ from ..view import visible_views
 from typing import Optional
 
 
+# These dashboards request status in refresh_view_state themselves.
+STATUS_REFRESHING_INTERFACES = {"status", "branch", "tags", "remotes"}
+
+
 def handle_vintageous(view: sublime.View) -> None:
     """Configure a view for Vintageous or NeoVintageous when requested."""
     if app_settings.get("vintageous_friendly"):
@@ -46,7 +50,7 @@ def refresh_gitsavvy_interfaces(
         window.run_command("refresh_folder_list")
     if refresh_status_bar:
         av = window.active_view()
-        if av:
+        if av and av.settings().get("git_savvy.interface") not in STATUS_REFRESHING_INTERFACES:
             av.run_command("gs_update_status")
 
     for view in visible_views(window):
@@ -75,7 +79,12 @@ def refresh_gitsavvy(
     if view.settings().get("git_savvy.log_graph_view", False):
         view.run_command("gs_log_graph_refresh")
 
-    if view.window() and refresh_status_bar:
+    # Reactive dashboards request status as part of their own refresh.
+    if (
+        view.window()
+        and refresh_status_bar
+        and view.settings().get("git_savvy.interface") not in STATUS_REFRESHING_INTERFACES
+    ):
         view.run_command("gs_update_status")
 
     window = view.window()
