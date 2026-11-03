@@ -22,12 +22,24 @@ last_working_dir = ""
 
 def start_logging() -> None:
     global _log
+    from . import worker_occupancy
+
     _log = []
     set_logging_enabled(True)
+    worker_occupancy.enable()
 
 
 def stop_logging() -> None:
+    from . import worker_occupancy
+
+    was_recording = worker_occupancy.enabled
     set_logging_enabled(False)
+    worker_occupancy.disable()
+    if was_recording:
+        try:
+            worker_occupancy.export_to_user()
+        except OSError as error:
+            print("GitSavvy: could not export worker occupancy: {}".format(error))
 
 
 def set_logging_enabled(value: bool) -> None:
