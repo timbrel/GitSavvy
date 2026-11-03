@@ -381,7 +381,7 @@ THROTTLED_LOCK = threading.Lock()
 
 def throttled(fn, *args, **kwargs):
     # type: (Callable[P, T], P.args, P.kwargs) -> Callable[[], None]
-    token = (fn,)
+    token = (fn.__module__, fn.__qualname__)
     action = partial(fn, *args, **kwargs)
     with THROTTLED_LOCK:
         THROTTLED_CACHE[token] = action

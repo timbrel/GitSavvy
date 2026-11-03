@@ -14,6 +14,79 @@ OID = FullHash("a" * 40)
 OTHER_OID = FullHash("b" * 40)
 
 
+class TestUpdateStatus(DeferrableTestCase):
+    def tearDown(self) -> None:
+        unstub()
+
+    @p.expand([(False,), (True,)])
+    def test_pending_requests_for_one_repo_are_coalesced(self, different_views):
+        pending = []
+        when(status_bar).run_when_worker_is_idle(...).thenAnswer(pending.append)
+        view = mock()
+        commands = [
+            status_bar.gs_update_status(view),
+            status_bar.gs_update_status(mock() if different_views else view),
+        ]
+        calls = []
+        for command in commands:
+            when(command).find_repo_path().thenReturn('/repo')
+            when(command).update_working_dir_status().thenAnswer(lambda: calls.append('status'))
+            command.run(None)
+
+        for task in pending:
+            task()
+
+        self.assertEqual(['status'], calls)
+
+    def test_only_latest_request_resolves_its_repository_on_worker(self):
+        pending = []
+        when(status_bar).run_when_worker_is_idle(...).thenAnswer(pending.append)
+        commands = [status_bar.gs_update_status(mock()) for _ in range(2)]
+        for command, repo in zip(commands, ['/repo', '/other']):
+            when(command).find_repo_path().thenReturn(repo)
+            when(command).update_working_dir_status().thenReturn(None)
+            command.run(None)
+
+        for command in commands:
+            verify(command, times=0).find_repo_path()
+
+        for task in pending:
+            task()
+
+        verify(commands[0], times=0).find_repo_path()
+        verify(commands[0], times=0).update_working_dir_status()
+        verify(commands[1], times=1).find_repo_path()
+        verify(commands[1]).update_working_dir_status()
+
+    def test_request_during_refresh_is_not_lost(self):
+        pending = []
+        when(status_bar).run_when_worker_is_idle(...).thenAnswer(pending.append)
+        first = status_bar.gs_update_status(mock())
+        second = status_bar.gs_update_status(mock())
+        for command in (first, second):
+            when(command).find_repo_path().thenReturn('/repo')
+        when(first).update_working_dir_status().thenAnswer(lambda: second.run(None))
+        when(second).update_working_dir_status().thenReturn(None)
+
+        first.run(None)
+        pending.pop(0)()
+        self.assertEqual(1, len(pending))
+        pending.pop(0)()
+
+        verify(second).update_working_dir_status()
+
+    def test_view_without_repository_does_not_query_status(self):
+        pending = []
+        command = status_bar.gs_update_status(mock())
+        when(command).find_repo_path().thenReturn(None)
+        when(status_bar).run_when_worker_is_idle(...).thenAnswer(pending.append)
+
+        command.run(None)
+        pending.pop()()
+
+        verify(command, times=0).update_working_dir_status()
+
+
 class TestComposeStatus(DeferrableTestCase):
     def setUp(self):
         self.settings = {"git_status_in_status_bar": True, "github_ci_status_in_status_bar": True}
