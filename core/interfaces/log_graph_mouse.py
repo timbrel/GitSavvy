@@ -25,26 +25,34 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
             return
 
         pt = view.window_to_text((event["x"], event["y"]))
+        target = self.target_at(pt)
         view.sel().clear()
-        view.sel().add(sublime.Region(pt))
+        view.sel().add(target if target is not None else sublime.Region(pt))
+        settings.set("git_savvy.mouse_selected_target", [target.a, target.b] if target else None)
         colorize_dots(view)
         match = COMMIT_LINE.search(view.substr(view.line(pt)))
-        if match:
+        if match and target is not None:
             token = monotonic()
-            settings.set(PRESS_KEY, [token, pt])
+            settings.set(PRESS_KEY, [token, pt, target.a, target.b])
             commit_hash = match.group("commit_hash")
             change_count = view.change_count()
             sublime.set_timeout(
                 lambda: self.show_menu(token, pt, commit_hash, change_count), HOLD_MS
             )
-        view.run_command("drag_select", {"event": event})
+        args: dict = {"event": event}
+        if target is not None:
+            args["by"] = "words"
+        view.run_command("drag_select", args)
 
     def want_event(self) -> bool:
         return True
 
     def show_menu(self, token: float, pt: int, commit_hash: str, change_count: int) -> None:
         view = self.view
-        if not view.is_valid() or view.settings().get(PRESS_KEY) != [token, pt]:
+        if not view.is_valid():
+            return
+        press = view.settings().get(PRESS_KEY)
+        if press is None or press[:2] != [token, pt]:
             return
         view.settings().erase(PRESS_KEY)
         window = view.window()
@@ -54,8 +62,12 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
             or not view.settings().get("git_savvy.log_graph_view")
             or view.change_count() != change_count
             or len(view.sel()) != 1
-            or view.sel()[0] != sublime.Region(pt)
+            or view.sel()[0] != sublime.Region(press[2], press[3])
         ):
+            return
+
+        target = self.target_at(pt)
+        if target is None:
             return
 
         actions = [
@@ -80,6 +92,11 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
                     "gs_delete_branch", {"branch": branch, "undo_owner": view.id()}
                 )
             ]
+        elif not view.match_selector(pt, "constant.numeric.graph.commit-hash.git-savvy"):
+            return
+
+        view.sel().clear()
+        view.sel().add(target)
 
         def on_done(index: int) -> None:
             if 0 <= index < len(actions):
@@ -87,6 +104,15 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
                 window.run_command(command, args)
 
         view.show_popup_menu([label for label, _, _ in actions], on_done, pt)
+
+    def target_at(self, pt: int) -> sublime.Region | None:
+        return next((
+            region for region in self.view.find_by_selector(
+                "constant.numeric.graph.commit-hash.git-savvy, "
+                "meta.graph.branch.git-savvy constant.other.git.branch"
+            )
+            if region.begin() <= pt < region.end()
+        ), None)
 
     def branch_at(self, pt: int) -> str | None:
         for region in self.view.find_by_selector(
@@ -106,6 +132,10 @@ class GsLogGraphMouseListener(EventListener):
         press = view.settings().get(PRESS_KEY)
         if press is None:
             return
-        _, pt = press
-        if len(view.sel()) != 1 or view.sel()[0] != sublime.Region(pt):
+        _, pt, a, b = press
+        target = sublime.Region(a, b)
+        if len(view.sel()) != 1 or not target.contains(view.sel()[0]):
             view.settings().erase(PRESS_KEY)
+        elif view.sel()[0] != target:
+            view.sel().clear()
+            view.sel().add(target)

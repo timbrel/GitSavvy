@@ -46,10 +46,7 @@ class gs_log_graph_multiselect(TextCommand):
         from .log_graph import COMMIT_LINE
 
         view = self.view
-        if event is not None and not any(not s.empty() for s in view.sel()):
-            pt = view.window_to_text((event["x"], event["y"]))
-            view.sel().clear()
-            view.sel().add(sublime.Region(pt))
+        prepare_mouse_selection(view, event)
         frozen_sel = list(view.sel())
 
         multi_selection: list[Region] = view.settings().get("git_savvy.multi_selection", [])
@@ -237,6 +234,21 @@ class MultiSelectionContext(EventListener):
         if operator == sublime.OP_NOT_EQUAL:
             return has_selection != operand
         return None
+
+
+def prepare_mouse_selection(view: sublime.View, event: dict | None) -> None:
+    if event is None:
+        return
+    mouse_target = view.settings().get("git_savvy.mouse_selected_target")
+    automatic_selection = (
+        mouse_target is not None
+        and list(view.sel()) == [sublime.Region(*mouse_target)]
+    )
+    if automatic_selection or not any(not s.empty() for s in view.sel()):
+        pt = view.window_to_text((event["x"], event["y"]))
+        view.sel().clear()
+        view.sel().add(sublime.Region(pt))
+    view.settings().erase("git_savvy.mouse_selected_target")
 
 
 def is_exactly_selected_chunk(diff: SplittedDiff, s: sublime.Region) -> bool:
