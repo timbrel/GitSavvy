@@ -51,8 +51,13 @@ class GsDashboardMouseListener(EventListener):
         if coordinates is None:
             return
         target = sublime.Region(*coordinates)
-        if len(view.sel()) != 1 or not target.contains(view.sel()[0]):
+        if len(view.sel()) != 1:
             view.settings().erase(TARGET_KEY)
-        elif view.sel()[0] != target:
+            return
+        selection = view.sel()[0]
+        expanded = target.cover(selection)
+        if selection.a > selection.b:
+            expanded = sublime.Region(expanded.end(), expanded.begin())
+        if selection != expanded:
             view.sel().clear()
-            view.sel().add(target)
+            view.sel().add(expanded)
