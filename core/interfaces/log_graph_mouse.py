@@ -11,7 +11,7 @@ from ..git_command import GitCommand
 __all__ = ("gs_log_graph_mouse", "GsLogGraphMouseListener")
 
 PRESS_KEY = "git_savvy.log_graph_mouse_press"
-HOLD_MS = 500
+HOLD_MS = 400
 
 
 class gs_log_graph_mouse(TextCommand, GitCommand):
