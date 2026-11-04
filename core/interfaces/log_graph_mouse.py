@@ -59,14 +59,23 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
             return
 
         actions = [
-            ("Create branch at {}...".format(commit_hash),
-             "gs_create_branch", {"start_point": commit_hash}),
-            ("Create tag at {}...".format(commit_hash),
-             "gs_create_tag", {"target_commit": commit_hash})
+            (
+                "Create branch at '{}'".format(commit_hash),
+                "gs_create_branch", {"start_point": commit_hash}
+            ),
+            (
+                "Create tag at '{}'".format(commit_hash),
+                "gs_create_tag", {"target_commit": commit_hash}
+            )
         ]
         branch = self.branch_at(pt)
         if branch is not None:
-            actions = [("Rename {}".format(branch), "gs_rename_branch", {"branch": branch})]
+            actions = [
+                (
+                    "Rename '{}'".format(branch),
+                    "gs_rename_branch", {"branch": branch}
+                )
+            ]
 
         def on_done(index: int) -> None:
             if 0 <= index < len(actions):
