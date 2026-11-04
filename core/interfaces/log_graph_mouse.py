@@ -5,6 +5,8 @@ from time import monotonic
 import sublime
 from sublime_plugin import EventListener, TextCommand
 
+from ..git_command import GitCommand
+
 
 __all__ = ("gs_log_graph_mouse", "GsLogGraphMouseListener")
 
@@ -12,7 +14,7 @@ PRESS_KEY = "git_savvy.log_graph_mouse_press"
 HOLD_MS = 500
 
 
-class gs_log_graph_mouse(TextCommand):
+class gs_log_graph_mouse(TextCommand, GitCommand):
     def run(self, edit: sublime.Edit, event: dict, release: bool = False) -> None:
         from .log_graph import COMMIT_LINE, colorize_dots
 
@@ -56,16 +58,34 @@ class gs_log_graph_mouse(TextCommand):
         ):
             return
 
-        def on_done(index: int) -> None:
-            if index == 0:
-                window.run_command("gs_create_branch", {"start_point": commit_hash})
-            elif index == 1:
-                window.run_command("gs_create_tag", {"target_commit": commit_hash})
+        actions = [
+            ("Create branch at {}...".format(commit_hash),
+             "gs_create_branch", {"start_point": commit_hash}),
+            ("Create tag at {}...".format(commit_hash),
+             "gs_create_tag", {"target_commit": commit_hash})
+        ]
+        branch = self.branch_at(pt)
+        if branch is not None:
+            actions = [("Rename {}".format(branch), "gs_rename_branch", {"branch": branch})]
 
-        view.show_popup_menu([
-            "Create branch at {}...".format(commit_hash),
-            "Create tag at {}...".format(commit_hash)
-        ], on_done, pt)
+        def on_done(index: int) -> None:
+            if 0 <= index < len(actions):
+                _, command, args = actions[index]
+                window.run_command(command, args)
+
+        view.show_popup_menu([label for label, _, _ in actions], on_done, pt)
+
+    def branch_at(self, pt: int) -> str | None:
+        for region in self.view.find_by_selector(
+            "meta.graph.branch.git-savvy constant.other.git.branch"
+        ):
+            if region.begin() <= pt < region.end():
+                name = self.view.substr(region)
+                return next((
+                    branch.name for branch in self.get_branches()
+                    if not branch.is_remote and branch.name == name
+                ), None)
+        return None
 
 
 class GsLogGraphMouseListener(EventListener):
