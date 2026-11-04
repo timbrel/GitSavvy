@@ -214,9 +214,25 @@ class gs_dashboard_multiselect(TextCommand):
 
 class gs_clear_multiselect(TextCommand):
     def run(self, edit) -> None:
-        view = self.view
-        view.settings().set("git_savvy.multi_selection", [])
-        set_multiselect_markers(view, [])
+        clear_multiselect(self.view)
+
+
+def reset_multiselections() -> None:
+    for window in sublime.windows():
+        views = list(window.views())
+        for panel in window.panels():
+            if panel.startswith("output."):
+                view = window.find_output_panel(panel[len("output."):])
+                if view is not None:
+                    views.append(view)
+        for view in views:
+            clear_multiselect(view)
+
+
+def clear_multiselect(view: sublime.View) -> None:
+    view.settings().erase("git_savvy.mouse_selected_target")
+    view.settings().set("git_savvy.multi_selection", [])
+    set_multiselect_markers(view, [])
 
 
 class MultiSelectionContext(EventListener):

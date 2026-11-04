@@ -6,6 +6,26 @@ from GitSavvy.core.interfaces import multi_selector
 
 
 class TestMultiselectMarkers(DeferrableTestCase):
+    def test_reload_reset_clears_saved_and_orphaned_markers(self) -> None:
+        window = sublime.active_window()
+        views = [window.new_file(), window.new_file()]
+        try:
+            for view in views:
+                view.run_command("append", {"characters": "abc def"})
+                multi_selector.set_multiselect_markers(view, [sublime.Region(0, 3)])
+            views[0].settings().set("git_savvy.multi_selection", [[0, 3]])
+
+            multi_selector.reset_multiselections()
+
+            for view in views:
+                self.assertEqual(view.settings().get("git_savvy.multi_selection"), [])
+                self.assertEqual(view.get_regions(multi_selector.REGION_KEY), [])
+                self.assertFalse(view.get_status("gs_multiselect_info"))
+        finally:
+            for view in views:
+                view.set_scratch(True)
+                view.close()
+
     def test_uses_the_explicit_scope_for_each_view_type(self) -> None:
         cases = (
             ({"git_savvy.log_graph_view": True}, "graph"),
