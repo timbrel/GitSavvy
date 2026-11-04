@@ -9,6 +9,7 @@ from .inline_diff import *  # noqa: F401, F403
 from .line_history import *  # noqa: F401, F403
 from .log_graph import *  # noqa: F401, F403
 from .log_graph_main_actions import *  # noqa: F401, F403
+from .log_graph_mouse import *  # noqa: F401, F403
 from .log_graph_rebase_actions import *  # noqa: F401, F403
 from .log_graph_renderer import *  # noqa: F401, F403
 from .log_graph_smart_copy import *  # noqa: F401, F403

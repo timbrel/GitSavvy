@@ -73,5 +73,16 @@
             { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true },
             { "key": "git_savvy.has_multi_selection", "operator": "equal", "operand": false }
         ]
+    },
+    {
+        "button": "button1",
+        "modifiers": [],
+        "count": 1,
+        "press_command": "gs_log_graph_mouse",
+        "command": "gs_log_graph_mouse",
+        "args": { "release": true },
+        "context": [
+            { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
+        ]
     }
 ]
