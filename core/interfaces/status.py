@@ -29,6 +29,7 @@ __all__ = (
     "gs_status_diff",
     "gs_status_diff_all_files",
     "gs_status_stage_file",
+    "gs_status_toggle_stage_at_mouse",
     "gs_status_unstage_file",
     "gs_status_discard_changes_to_file",
     "gs_status_stage_all_files",
@@ -632,6 +633,36 @@ class gs_status_diff_all_files(StatusInterfaceCommand):
             and not status.untracked_files
             and not status.merge_conflicts
         )
+
+
+class gs_status_toggle_stage_at_mouse(StatusInterfaceCommand):
+    def run(self, edit: sublime.Edit, event: dict) -> None:
+        view = self.view
+        pt = view.window_to_text((event["x"], event["y"]))
+        line = view.line(pt)
+        subject = next((
+            region for region in view.find_by_selector("meta.git-savvy.status.subject")
+            if line.contains(region)
+        ), None)
+        if subject is None:
+            return
+
+        if view.match_selector(subject.a, "meta.git-savvy.status.section.staged"):
+            command = "gs_status_unstage_file"
+        elif view.match_selector(subject.a, ", ".join(
+            "meta.git-savvy.status.section." + section
+            for section in ("unstaged", "untracked", "added", "merge-conflicts")
+        )):
+            command = "gs_status_stage_file"
+        else:
+            return
+
+        view.sel().clear()
+        view.sel().add(sublime.Region(pt))
+        view.run_command(command)
+
+    def want_event(self) -> bool:
+        return True
 
 
 class gs_status_stage_file(StatusInterfaceCommand):

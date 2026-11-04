@@ -63,5 +63,15 @@
         "context": [
             { "key": "git_savvy.has_multi_selection", "operator": "equal", "operand": true }
         ]
+    },
+    {
+        "button": "button1",
+        "modifiers": ["shift"],
+        "count": 1,
+        "press_command": "gs_status_toggle_stage_at_mouse",
+        "context": [
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true },
+            { "key": "git_savvy.has_multi_selection", "operator": "equal", "operand": false }
+        ]
     }
 ]
