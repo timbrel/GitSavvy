@@ -41,10 +41,14 @@ def get_multi_selection_if_multi(view: sublime.View) -> Iterable[sublime.Region]
 
 
 class gs_log_graph_multiselect(TextCommand):
-    def run(self, edit) -> None:
+    def run(self, edit, event: dict | None = None) -> None:
         from .log_graph import COMMIT_LINE
 
         view = self.view
+        if event is not None:
+            pt = view.window_to_text((event["x"], event["y"]))
+            view.sel().clear()
+            view.sel().add(sublime.Region(pt))
         frozen_sel = list(view.sel())
 
         multi_selection: list[Region] = view.settings().get("git_savvy.multi_selection", [])
@@ -71,16 +75,24 @@ class gs_log_graph_multiselect(TextCommand):
         view.sel().clear()
         view.sel().add_all([sublime.Region(frozen_sel[-1].b)])
         if (
-            len(frozen_sel) == 1
+            event is None
+            and len(frozen_sel) == 1
             and frozen_sel[0].empty()
             and any(r not in multi_selection for r in regions)
         ):
             view.run_command("gs_log_graph_navigate", {"natural_movement": True})
 
+    def want_event(self) -> bool:
+        return True
+
 
 class gs_diff_multiselect(TextCommand):
-    def run(self, edit) -> None:
+    def run(self, edit, event: dict | None = None) -> None:
         view = self.view
+        if event is not None:
+            pt = view.window_to_text((event["x"], event["y"]))
+            view.sel().clear()
+            view.sel().add(sublime.Region(pt))
         frozen_sel = list(view.sel())
 
         multi_selection: list[Region] = view.settings().get("git_savvy.multi_selection", [])
@@ -119,7 +131,10 @@ class gs_diff_multiselect(TextCommand):
         set_multiselect_markers(view, list(starmap(sublime.Region, regions)))
 
         view.sel().clear()
-        view.sel().add_all([sublime.Region(s.b)])
+        view.sel().add_all([sublime.Region(frozen_sel[-1].b if event is not None else s.b)])
+        if event is not None:
+            return
+
         if hunk_selected:
             # if a hunk is toggled out, don't move but stay on the starting pos
             if all(r in multi_selection for r in regions):
@@ -145,10 +160,17 @@ class gs_diff_multiselect(TextCommand):
         ):
             view.run_command("move", {"by": "lines", "forward": True})
 
+    def want_event(self) -> bool:
+        return True
+
 
 class gs_dashboard_multiselect(TextCommand):
-    def run(self, edit) -> None:
+    def run(self, edit, event: dict | None = None) -> None:
         view = self.view
+        if event is not None:
+            pt = view.window_to_text((event["x"], event["y"]))
+            view.sel().clear()
+            view.sel().add(sublime.Region(pt))
         frozen_sel = list(view.sel())
 
         multi_selection: list[Region] = view.settings().get("git_savvy.multi_selection", [])
@@ -178,7 +200,8 @@ class gs_dashboard_multiselect(TextCommand):
         view.sel().clear()
         view.sel().add_all([sublime.Region(frozen_sel[-1].b)])
         if (
-            len(frozen_sel) == 1
+            event is None
+            and len(frozen_sel) == 1
             and frozen_sel[0].empty()
             and any(r not in multi_selection for r in regions)
         ):
@@ -189,6 +212,9 @@ class gs_dashboard_multiselect(TextCommand):
             }.get(view.settings().get("git_savvy.interface"))
             if navigation_command:
                 view.run_command(navigation_command)
+
+    def want_event(self) -> bool:
+        return True
 
 
 class gs_clear_multiselect(TextCommand):
