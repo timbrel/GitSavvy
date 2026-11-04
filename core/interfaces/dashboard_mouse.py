@@ -37,7 +37,9 @@ class gs_dashboard_mouse(TextCommand):
         if target is not None:
             view.settings().set(TARGET_KEY, [target.a, target.b])
             args["by"] = "words"
-        view.run_command("drag_select", args)
+        # Let this TextCommand finish so Sublime draws the selection before
+        # native drag tracking takes over until mouse release.
+        sublime.set_timeout(lambda: view.run_command("drag_select", args), 0)
 
     def want_event(self) -> bool:
         return True
