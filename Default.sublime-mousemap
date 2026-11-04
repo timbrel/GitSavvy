@@ -84,5 +84,38 @@
         "context": [
             { "key": "setting.git_savvy.log_graph_view", "operator": "equal", "operand": true }
         ]
+    },
+    {
+        "button": "button1",
+        "modifiers": [],
+        "count": 1,
+        "press_command": "gs_dashboard_mouse",
+        "command": "gs_dashboard_mouse",
+        "args": { "release": true },
+        "context": [
+            { "key": "setting.git_savvy.status_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "button": "button1",
+        "modifiers": [],
+        "count": 1,
+        "press_command": "gs_dashboard_mouse",
+        "command": "gs_dashboard_mouse",
+        "args": { "release": true },
+        "context": [
+            { "key": "setting.git_savvy.branch_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
+        "button": "button1",
+        "modifiers": [],
+        "count": 1,
+        "press_command": "gs_dashboard_mouse",
+        "command": "gs_dashboard_mouse",
+        "args": { "release": true },
+        "context": [
+            { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
+        ]
     }
 ]

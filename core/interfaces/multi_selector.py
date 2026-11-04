@@ -165,10 +165,7 @@ class gs_diff_multiselect(TextCommand):
 class gs_dashboard_multiselect(TextCommand):
     def run(self, edit, event: dict | None = None) -> None:
         view = self.view
-        if event is not None and not any(not s.empty() for s in view.sel()):
-            pt = view.window_to_text((event["x"], event["y"]))
-            view.sel().clear()
-            view.sel().add(sublime.Region(pt))
+        prepare_mouse_selection(view, event)
         frozen_sel = list(view.sel())
 
         multi_selection: list[Region] = view.settings().get("git_savvy.multi_selection", [])
