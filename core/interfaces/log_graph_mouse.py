@@ -24,6 +24,10 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
         if release:
             return
 
+        window = view.window()
+        if window is not None:
+            window.focus_view(view)
+
         pt = view.window_to_text((event["x"], event["y"]))
         target = self.target_at(pt)
         view.sel().clear()
@@ -36,19 +40,22 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
             token = monotonic()
             settings.set(PRESS_KEY, [token, pt, target.a, target.b])
             commit_hash = match.group("commit_hash")
-            change_count = view.change_count()
             sublime.set_timeout(
-                lambda: self.show_menu(token, pt, commit_hash, change_count), HOLD_MS
+                lambda: self.show_menu(token, pt, commit_hash), HOLD_MS
             )
         args: dict = {"event": event}
         if target is not None:
             args["by"] = "words"
-        view.run_command("drag_select", args)
+        # Let this TextCommand finish so Sublime draws the selection before
+        # native drag tracking takes over until mouse release.
+        sublime.set_timeout(lambda: view.run_command("drag_select", args), 0)
 
     def want_event(self) -> bool:
         return True
 
-    def show_menu(self, token: float, pt: int, commit_hash: str, change_count: int) -> None:
+    def show_menu(self, token: float, pt: int, commit_hash: str) -> None:
+        from .log_graph import extract_commit_hash
+
         view = self.view
         if not view.is_valid():
             return
@@ -57,18 +64,20 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
             return
         view.settings().erase(PRESS_KEY)
         window = view.window()
+        # Activation may redraw the graph. Validate the target rather than
+        # rejecting a buffer change that leaves the pressed commit intact.
         if (
             window is None
             or window.active_view() != view
             or not view.settings().get("git_savvy.log_graph_view")
-            or view.change_count() != change_count
+            or extract_commit_hash(view.substr(view.line(pt))) != commit_hash
             or len(view.sel()) != 1
             or view.sel()[0] != sublime.Region(press[2], press[3])
         ):
             return
 
         target = self.target_at(pt)
-        if target is None:
+        if target is None or target != sublime.Region(press[2], press[3]):
             return
 
         actions: list[tuple[str, str, dict]] = [

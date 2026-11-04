@@ -16,6 +16,10 @@ class gs_dashboard_mouse(TextCommand):
         if release:
             return
 
+        window = view.window()
+        if window is not None:
+            window.focus_view(view)
+
         pt = view.window_to_text((event["x"], event["y"]))
         if view.settings().get("git_savvy.branch_view"):
             selector = (
