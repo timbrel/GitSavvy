@@ -42,6 +42,7 @@ from ..runtime import (
     run_on_new_thread,
     run_or_timeout,
     text_command,
+    throttled_by_key,
     time_budget,
 )
 from ..types import FullHash
@@ -920,7 +921,11 @@ class gs_log_graph_refresh(GsTextCommand):
                         view.show(view.sel(), True)
             reset_block_caret(view)
             reset_caret_style(view)
-            enqueue_on_worker(view.clear_undo_stack)
+            # Clearing from the worker can trigger Sublime's "Can't clear undo
+            # stack from text command" warning even though this isn't a TextCommand.
+            # Defer to the UI thread and coalesce per view; shorter delays still
+            # triggered the warning in testing.
+            sublime.set_timeout(throttled_by_key(view.id(), view.clear_undo_stack), 1000)
 
         def apply_token(view, token, offset):
             # type: (sublime.View, Replace, int) -> sublime.Region
