@@ -71,7 +71,7 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
         if target is None:
             return
 
-        actions = [
+        actions: list[tuple[str, str, dict]] = [
             (
                 "Create branch at '{}'".format(commit_hash),
                 "gs_create_branch", {"start_point": commit_hash}
@@ -95,6 +95,22 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
             ]
         elif not view.match_selector(pt, "constant.numeric.graph.commit-hash.git-savvy"):
             return
+        else:
+            from .log_graph_helper import format_revision_list
+
+            selected_commits = list(dict.fromkeys(
+                view.substr(sublime.Region(a, b))
+                for a, b in sorted(view.settings().get("git_savvy.multi_selection", []), reverse=True)
+            ))
+            if len(selected_commits) >= 2 and commit_hash in selected_commits:
+                actions = [
+                    (
+                        "Squash {}".format(format_revision_list(selected_commits)),
+                        "gs_rebase_squash_commits",
+                        {"base_commit": selected_commits[0], "commits": selected_commits[1:]}
+                    ),
+                    ("-", "", {})
+                ] + actions
 
         view.sel().clear()
         view.sel().add(target)
@@ -102,7 +118,12 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
         def on_done(index: int) -> None:
             if 0 <= index < len(actions):
                 _, command, args = actions[index]
-                window.run_command(command, args)
+                if not command:
+                    return
+                if command == "gs_rebase_squash_commits":
+                    view.run_command(command, args)
+                else:
+                    window.run_command(command, args)
 
         view.show_popup_menu([label for label, _, _ in actions], on_done, pt)
 
