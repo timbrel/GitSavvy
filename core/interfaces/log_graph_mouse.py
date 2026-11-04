@@ -82,24 +82,24 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
 
         actions: list[tuple[str, str, dict]] = [
             (
-                "Create branch at '{}'".format(commit_hash),
+                "Create branch at {}".format(commit_hash),
                 "gs_create_branch", {"start_point": commit_hash}
             ),
             (
-                "Create tag at '{}'".format(commit_hash),
+                "Create tag...",
                 "gs_create_tag", {"target_commit": commit_hash}
             ),
             ("-", "", {}),
             (
-                "Reword '{}'".format(commit_hash),
+                "Reword",
                 "gs_rebase_reword_commit", {"commit_hash": commit_hash}
             ),
             (
-                "Edit '{}'".format(commit_hash),
+                "Edit",
                 "gs_rebase_edit_commit", {"commit_hash": commit_hash}
             ),
             (
-                "Drop '{}'".format(commit_hash),
+                "Drop",
                 "gs_rebase_drop_commits", {"base_commit": commit_hash, "commits": [commit_hash]}
             )
         ]
@@ -159,10 +159,12 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
         actions: list[tuple[str, str, dict]] = []
         if pickable:
             actions.append((
+                "Cherry-pick" if len(commits) == 1 else
                 "Cherry-pick {}".format(format_revision_list(pickable)),
                 "gs_cherry_pick", {"commit_hash": pickable}
             ))
         actions.append((
+            "Revert this commit" if len(commits) == 1 else
             "Revert {}".format(format_revision_list(commits)),
             "gs_revert_commit", {"commit_hash": commits}
         ))
