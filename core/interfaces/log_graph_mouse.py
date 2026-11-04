@@ -74,6 +74,10 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
                 (
                     "Rename '{}'".format(branch),
                     "gs_rename_branch", {"branch": branch}
+                ),
+                (
+                    "Delete '{}'".format(branch),
+                    "gs_delete_branch", {"branch": branch, "undo_owner": view.id()}
                 )
             ]
 
