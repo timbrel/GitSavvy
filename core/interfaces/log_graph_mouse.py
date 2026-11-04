@@ -79,6 +79,19 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
             (
                 "Create tag at '{}'".format(commit_hash),
                 "gs_create_tag", {"target_commit": commit_hash}
+            ),
+            ("-", "", {}),
+            (
+                "Reword '{}'".format(commit_hash),
+                "gs_rebase_reword_commit", {"commit_hash": commit_hash}
+            ),
+            (
+                "Edit '{}'".format(commit_hash),
+                "gs_rebase_edit_commit", {"commit_hash": commit_hash}
+            ),
+            (
+                "Drop '{}'".format(commit_hash),
+                "gs_rebase_drop_commits", {"base_commit": commit_hash, "commits": [commit_hash]}
             )
         ]
         branch = self.branch_at(pt)
@@ -108,9 +121,11 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
                         "Squash {}".format(format_revision_list(selected_commits)),
                         "gs_rebase_squash_commits",
                         {"base_commit": selected_commits[0], "commits": selected_commits[1:]}
-                    ),
-                    ("-", "", {})
-                ] + actions
+                    )
+                ]
+                actions += self.cherry_pick_and_revert_actions(selected_commits)
+            else:
+                actions += self.cherry_pick_and_revert_actions([commit_hash])
 
         view.sel().clear()
         view.sel().add(target)
@@ -120,12 +135,29 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
                 _, command, args = actions[index]
                 if not command:
                     return
-                if command == "gs_rebase_squash_commits":
+                if command.startswith("gs_rebase_"):
                     view.run_command(command, args)
                 else:
                     window.run_command(command, args)
 
         view.show_popup_menu([label for label, _, _ in actions], on_done, pt)
+
+    def cherry_pick_and_revert_actions(self, commits: list[str]) -> list[tuple[str, str, dict]]:
+        from .log_graph_helper import describe_head, format_revision_list
+
+        head = describe_head(self.view, {})
+        pickable = [commit for commit in commits if head is None or commit != head["commit"]]
+        actions: list[tuple[str, str, dict]] = []
+        if pickable:
+            actions.append((
+                "Cherry-pick {}".format(format_revision_list(pickable)),
+                "gs_cherry_pick", {"commit_hash": pickable}
+            ))
+        actions.append((
+            "Revert {}".format(format_revision_list(commits)),
+            "gs_revert_commit", {"commit_hash": commits}
+        ))
+        return actions
 
     def target_at(self, pt: int) -> sublime.Region | None:
         return next((
