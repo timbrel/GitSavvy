@@ -53,5 +53,15 @@
             { "key": "setting.git_savvy.commit_view", "operator": "equal", "operand": true },
             { "key": "selector", "operand": "git-savvy.make-commit meta.dropped.git.commit" }
         ]
+    },
+    {
+        "button": "button2",
+        "modifiers": [],
+        "count": 1,
+        "press_command": "noop",
+        "command": "gs_clear_multiselect",
+        "context": [
+            { "key": "git_savvy.has_multi_selection", "operator": "equal", "operand": true }
+        ]
     }
 ]

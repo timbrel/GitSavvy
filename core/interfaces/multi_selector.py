@@ -7,7 +7,7 @@ from typing import Iterable
 from typing_extensions import TypeAlias
 
 import sublime
-from sublime_plugin import TextCommand
+from sublime_plugin import EventListener, TextCommand
 
 
 __all__ = (
@@ -15,6 +15,7 @@ __all__ = (
     "gs_diff_multiselect",
     "gs_dashboard_multiselect",
     "gs_clear_multiselect",
+    "MultiSelectionContext",
 )
 
 
@@ -222,6 +223,20 @@ class gs_clear_multiselect(TextCommand):
         view = self.view
         view.settings().set("git_savvy.multi_selection", [])
         set_multiselect_markers(view, [])
+
+
+class MultiSelectionContext(EventListener):
+    def on_query_context(
+        self, view: sublime.View, key: str, operator: int, operand: object, match_all: bool
+    ) -> bool | None:
+        if key != "git_savvy.has_multi_selection":
+            return None
+        has_selection = bool(view.settings().get("git_savvy.multi_selection", []))
+        if operator == sublime.OP_EQUAL:
+            return has_selection == operand
+        if operator == sublime.OP_NOT_EQUAL:
+            return has_selection != operand
+        return None
 
 
 def is_exactly_selected_chunk(diff: SplittedDiff, s: sublime.Region) -> bool:
