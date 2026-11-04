@@ -16,7 +16,7 @@ HOLD_MS = 400
 
 class gs_log_graph_mouse(TextCommand, GitCommand):
     def run(self, edit: sublime.Edit, event: dict, release: bool = False) -> None:
-        from .log_graph import COMMIT_LINE, colorize_dots
+        from .log_graph import COMMIT_LINE, colorize_dots, colorize_fixups
 
         view = self.view
         settings = view.settings()
@@ -30,6 +30,7 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
         view.sel().add(target if target is not None else sublime.Region(pt))
         settings.set("git_savvy.mouse_selected_target", [target.a, target.b] if target else None)
         colorize_dots(view)
+        colorize_fixups(view)
         match = COMMIT_LINE.search(view.substr(view.line(pt)))
         if match and target is not None:
             token = monotonic()
