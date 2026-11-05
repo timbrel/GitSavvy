@@ -17,6 +17,7 @@ from GitSavvy.core.types import FullHash, ShortHash
 __all__ = (
     "gs_create_branch",
     "gs_rename_branch",
+    "gs_move_branch",
     "gs_unset_tracking_information",
     "gs_delete_branch",
 )
@@ -123,6 +124,29 @@ class gs_create_branch(GsWindowCommand):
             branch_name,
             " at {}".format(start_point) if start_point else "")
         )
+        interface_util.refresh_gitsavvy_interfaces(self.window)
+
+
+class gs_move_branch(GsWindowCommand):
+    """Move a branch without checking it out, and record its old tip for undo."""
+
+    defaults = {
+        "undo_owner": std_undo_owner,
+    }
+
+    def run(
+        self,
+        branch: str,
+        target: str,
+        undo_owner: sublime.ViewId,
+        previous_tip: FullHash | ShortHash | None = None
+    ) -> None:
+        if previous_tip is None:
+            previous_tip = self.resolve(f"refs/heads/{branch}")
+
+        self.git("branch", "--force", "--", branch, target)
+        ref_undo.add_branch_move_undo(self, branch, previous_tip, undo_owner)
+        self.window.status_message("Moved {} to {}".format(branch, target))
         interface_util.refresh_gitsavvy_interfaces(self.window)
 
 

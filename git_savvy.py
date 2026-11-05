@@ -99,7 +99,9 @@ def plugin_loaded() -> None:
     from .core.theme_generator import start_watchers
     from .core.commands.context_menu import start_context_menu_watcher
     from .core.interfaces.multi_selector import reset_multiselections
+    from .core.interfaces.log_graph_branch_drag import reset_branch_drags
     from .github import ci_status
+    reset_branch_drags()
     reset_multiselections()
     git_activity.initialize()
     worker_occupancy.on_plugin_load()
@@ -113,7 +115,9 @@ def plugin_unloaded() -> None:
     from .core.theme_generator import shutdown_executor, stop_watchers
     from .core import app_state, git_activity, worker_occupancy
     from .core.commands.context_menu import stop_context_menu_watcher
+    from .core.interfaces.log_graph_branch_drag import reset_branch_drags
     from .github import ci_status
+    reset_branch_drags()
     worker_occupancy.on_plugin_unload()
     git_activity.shutdown()
     ci_status.stop()

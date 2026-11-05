@@ -22,6 +22,10 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
         settings = view.settings()
         settings.erase(PRESS_KEY)
         if release:
+            if settings.get("git_savvy.graph_branch_drag"):
+                view.run_command("gs_log_graph_branch_drag", {
+                    "action": "finish", "event": event
+                })
             return
 
         window = view.window()
@@ -124,9 +128,10 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
         else:
             from .log_graph_helper import format_revision_list
 
+            selected_regions: list[list[int]] = view.settings().get("git_savvy.multi_selection", [])
             selected_commits = list(dict.fromkeys(
                 view.substr(sublime.Region(a, b))
-                for a, b in sorted(view.settings().get("git_savvy.multi_selection", []), reverse=True)
+                for a, b in sorted(selected_regions, reverse=True)
             ))
             if len(selected_commits) >= 2 and commit_hash in selected_commits:
                 actions = [

@@ -17,7 +17,7 @@ from ..git_mixins.branches import Branch
 from ..git_mixins.worktrees import WorktreeLocation, WorktreeTarget
 from ..runtime import on_new_thread
 from ..text_helper import line_from_pt
-from ..types import FullPath
+from ..types import FullHash, FullPath
 from ..commands.worktrees import remove_worktree
 from ..ui__quick_panel import ActionType, SEPARATOR, show_actions_panel, show_quick_panel
 from . import multi_selector
@@ -345,7 +345,10 @@ class gs_log_graph_action(GsWindowCommand):
                         actions += [
                             (
                                 "Fast-forward '{}' to '{}'".format(branch_name, b.upstream.canonical_name),
-                                partial(self.move_branch, branch_name, b.upstream.canonical_name)
+                                partial(
+                                    self.move_branch, branch_name, b.upstream.canonical_name,
+                                    previous_tip=b.commit_hash
+                                )
                             ),
                         ]
                     else:
@@ -650,9 +653,14 @@ class gs_log_graph_action(GsWindowCommand):
             "force": True,
         })
 
-    def move_branch(self, branch_name, target):
-        self.git("branch", "-f", branch_name, target)
-        interface_util.refresh_gitsavvy_interfaces(self.window)
+    def move_branch(
+        self, branch_name: str, target: str, previous_tip: FullHash | None = None
+    ) -> None:
+        self.window.run_command("gs_move_branch", {
+            "branch": branch_name,
+            "target": target,
+            "previous_tip": previous_tip
+        })
 
     def delete_branch(self, branch_name: str, undo_owner: sublime.ViewId):
         self.window.run_command("gs_delete_branch", {
