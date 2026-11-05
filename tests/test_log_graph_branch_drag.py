@@ -3,6 +3,7 @@ from typing import Callable
 import sublime
 from unittesting import DeferrableTestCase
 
+from GitSavvy.core.commands import branch, checkout
 from GitSavvy.core.interfaces import log_graph_branch_drag as drag
 from GitSavvy.core.interfaces.log_graph import GsLogGraphCursorListener
 from GitSavvy.core.types import FullHash
@@ -231,22 +232,53 @@ class TestBranchDrag(DeferrableTestCase):
         self.assertEqual(self.scheduled, [])
         verify(drag.gs_log_graph_branch_drag, times=0).get_branches()
 
-    def test_confirmation_restores_preview_before_dispatching_move(self) -> None:
+    def test_confirmation_keeps_preview_until_successful_refresh(self) -> None:
         self.start()
         self.update("40e3d394")
         self.view.run_command("gs_log_graph_branch_drag", {"action": "finish"})
         moves = []
-        when(sublime.Window).run_command("gs_move_branch", ...).thenAnswer(
-            lambda command, args: moves.append((args, self.text(), self.state()))
+        when(branch.gs_move_branch).move(...).thenAnswer(
+            lambda **args: moves.append(args)
         )
+        preview = self.text()
         self.menus[-1][1](0)
-        self.assert_restored()
-        self.assertEqual(moves, [({
+        self.assertEqual(self.text(), preview)
+        self.assertEqual(self.state()["phase"], "pending")
+        done = moves[0].pop("on_done")
+        self.assertEqual(moves, [{
             "branch": "throttling", "target": "40e3d394", "previous_tip": "718ab2b9" + "0" * 32,
             "undo_owner": self.view.id()
-        }, CONTENT, None)])
+        }])
         self.menus[-1][1](0)
         self.assertEqual(len(moves), 1)
+        done(True)
+        self.assertIsNone(self.state())
+        self.assertEqual(self.text(), preview)
+        for key in (drag.SOURCE_KEY, drag.PREVIEW_KEY, drag.DESTINATION_KEY):
+            self.assertEqual(self.view.get_regions(key), [])
+        # Stand in for the eventual redraw with the real branch position.
+        rendered = CONTENT.replace("40e3d394 ", "40e3d394 (throttling) ").replace(
+            "(throttling, origin/throttling)", "(origin/throttling)"
+        )
+        replace_view_content(self.view, rendered)
+        self.assertEqual(self.text(), rendered)
+        self.assertIsNone(self.state())
+
+    def test_ref_move_keeps_preview_through_git_and_refresh_dispatch(self) -> None:
+        self.start()
+        self.update("40e3d394")
+        self.view.run_command("gs_log_graph_branch_drag", {"action": "finish"})
+        preview = self.text()
+        events = []
+        when(branch.gs_move_branch).git(...).thenAnswer(
+            lambda *args: events.append(("git", self.text(), self.state()["phase"]))
+        )
+        when(branch.ref_undo).add_branch_move_undo(...).thenReturn(None)
+        when(branch.interface_util).refresh_gitsavvy_interfaces(...).thenAnswer(
+            lambda window: events.append(("refresh", self.text(), self.state()))
+        )
+        self.menus[-1][1](0)
+        self.assertEqual(events, [("git", preview, "pending"), ("refresh", preview, None)])
 
     def test_current_branch_uses_checkout_with_existing_merge_recovery(self) -> None:
         self.branches[0].active = True
@@ -255,14 +287,53 @@ class TestBranchDrag(DeferrableTestCase):
         self.update("40e3d394")
         self.view.run_command("gs_log_graph_branch_drag", {"action": "finish"})
         checkouts = []
-        when(sublime.Window).run_command("gs_checkout_new_branch", ...).thenAnswer(
-            lambda command, args: checkouts.append((args, self.text()))
+        when(checkout.gs_checkout_new_branch).checkout(...).thenAnswer(
+            lambda **args: checkouts.append(args)
         )
+        preview = self.text()
         self.menus[-1][1](0)
-        self.assert_restored()
-        self.assertEqual(checkouts, [({
+        self.assertEqual(self.text(), preview)
+        self.assertEqual(self.state()["phase"], "pending")
+        done = checkouts[0].pop("on_done")
+        self.assertEqual(checkouts, [{
             "branch_name": "throttling", "start_point": "40e3d394", "force": True
-        }, CONTENT)])
+        }])
+        drag.GsLogGraphBranchDragListener().on_deactivated(self.view)
+        self.assertEqual(self.text(), preview)
+        self.assertEqual(self.state()["phase"], "pending")
+        done(False)
+        self.assert_restored()
+
+    def test_failed_move_restores_preview(self) -> None:
+        done = self.confirm_pending_move()
+        done(False)
+        self.assert_restored()
+
+    def test_pending_move_blocks_focus_refresh_until_completion(self) -> None:
+        done = self.confirm_pending_move()
+        listener = drag.GsLogGraphBranchDragListener()
+        self.assertEqual(
+            listener.on_text_command(self.view, "gs_log_graph_refresh", {}), ("noop", {})
+        )
+        done(True)
+        self.assertIsNone(listener.on_text_command(self.view, "gs_log_graph_refresh", {}))
+
+    def test_stale_move_completion_cannot_touch_new_drag(self) -> None:
+        done = self.confirm_pending_move()
+        drag.BranchDrag(self.view, self.state()).close()
+        self.start()
+        self.update("c0d0646f")
+        token, preview = self.state()["token"], self.text()
+        done(False)
+        done(True)
+        self.assertEqual(self.state()["token"], token)
+        self.assertEqual(self.text(), preview)
+
+    def test_move_completion_after_view_close_is_harmless(self) -> None:
+        done = self.confirm_pending_move()
+        self.view.close()
+        done(False)
+        done(True)
 
     def test_confirmation_requires_menu_phase_and_session_token(self) -> None:
         self.start()
@@ -329,6 +400,18 @@ class TestBranchDrag(DeferrableTestCase):
         when(self.view).run_command("drag_select", ...).thenReturn(None)
         callback()
         verify(self.view, times=0).run_command("drag_select", ...)
+
+    def confirm_pending_move(self) -> Callable[[bool], None]:
+        self.start()
+        self.update("40e3d394")
+        self.view.run_command("gs_log_graph_branch_drag", {"action": "finish"})
+        callbacks = []
+        when(branch.gs_move_branch).move(...).thenAnswer(
+            lambda **args: callbacks.append(args["on_done"])
+        )
+        self.menus[-1][1](0)
+        self.assertEqual(self.state()["phase"], "pending")
+        return callbacks[0]
 
     def schedule_native_release(self) -> Callable[[], None]:
         self.start()

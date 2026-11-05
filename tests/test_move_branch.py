@@ -30,6 +30,24 @@ class TestMoveBranch(DeferrableTestCase):
         verify(branch.ref_undo).add_branch_move_undo(self.command, "topic", OLD, 42)
         verify(branch.interface_util).refresh_gitsavvy_interfaces(self.window)
 
+    def test_completion_runs_after_git_and_before_refresh(self) -> None:
+        events = []
+        when(self.command).git(...).thenAnswer(lambda *args: events.append("git"))
+        when(branch.interface_util).refresh_gitsavvy_interfaces(self.window).thenAnswer(
+            lambda window: events.append("refresh")
+        )
+        self.command.move("topic", "40e3d394", 42, OLD, on_done=events.append)
+        self.assertEqual(events, ["git", True, "refresh"])
+
+    def test_failure_reports_completion_without_refresh(self) -> None:
+        events = []
+        error = GitSavvyError("refused", show_panel=False)
+        when(self.command).git(...).thenRaise(error)
+        with self.assertRaises(GitSavvyError):
+            self.command.move("topic", "40e3d394", 42, OLD, on_done=events.append)
+        self.assertEqual(events, [False])
+        verify(branch.interface_util, times=0).refresh_gitsavvy_interfaces(...)
+
     def test_graph_fast_forward_delegates_with_its_known_tip(self) -> None:
         when(self.window).run_command(...).thenReturn(None)
         gs_log_graph_action(self.window).move_branch("topic", "origin/topic", previous_tip=OLD)

@@ -1,7 +1,7 @@
-"""Local branch moves: idle -> armed -> dragging -> confirming -> idle.
+"""Local branch moves: idle -> armed -> dragging -> confirming -> pending -> idle.
 
-One serialized session owns the source marker and destination preview. All exits
-restore those edits before a confirmed move is handed to the branch command.
+One serialized session owns the source marker and destination preview. Failed or
+cancelled moves restore those edits; successful moves hand the preview to refresh.
 """
 
 from __future__ import annotations
@@ -14,7 +14,8 @@ from uuid import uuid4
 import sublime
 from sublime_plugin import EventListener, TextCommand
 
-from ..commands.checkout import other_worktree
+from ..commands.branch import gs_move_branch
+from ..commands.checkout import gs_checkout_new_branch, other_worktree
 from .log_graph_mouse import HOLD_MS
 from ..git_command import GitCommand
 from .log_graph_helper import COMMIT_LINE
@@ -54,6 +55,8 @@ class gs_log_graph_branch_drag(TextCommand, GitCommand):
             elif action == "activate":
                 self.activate(state, point)
             return
+        if state["phase"] == "pending":
+            return
         session = BranchDrag(view, state)
         if action == "cancel" or view.change_count() != state["version"]:
             session.close()
@@ -62,7 +65,7 @@ class gs_log_graph_branch_drag(TextCommand, GitCommand):
         elif action == "finish" and state["phase"] == "dragging":
             session.finish()
         elif action == "confirm" and state["phase"] == "confirming" and token == state["token"]:
-            session.close(move=True)
+            session.move()
 
     def want_event(self) -> bool:
         return True
@@ -144,7 +147,7 @@ class GsLogGraphBranchDragListener(EventListener):
         if key != "git_savvy.graph_branch_drag_active":
             return None
         state: DragState | None = view.settings().get(DRAG_KEY)
-        active = state is not None and state["phase"] != "armed"
+        active = state is not None and state["phase"] in {"dragging", "confirming"}
         if operator == sublime.OP_EQUAL:
             return active == operand
         if operator == sublime.OP_NOT_EQUAL:
@@ -154,7 +157,7 @@ class GsLogGraphBranchDragListener(EventListener):
     def on_selection_modified(self, view: sublime.View) -> None:
         state: DragState | None = view.settings().get(DRAG_KEY)
         if (
-            state is None or state["phase"] == "confirming"
+            state is None or state["phase"] in {"confirming", "pending"}
             or view.settings().get(UPDATING_KEY) or not view.sel()
         ):
             return
@@ -186,13 +189,21 @@ class GsLogGraphBranchDragListener(EventListener):
         ):
             cancel_branch_drag(view)
 
-    def on_text_command(self, view: sublime.View, command: str, args: dict | None) -> None:
+    def on_text_command(
+        self, view: sublime.View, command: str, args: dict | None
+    ) -> tuple[str, dict] | None:
+        state: DragState | None = view.settings().get(DRAG_KEY)
+        if state is not None and state["phase"] == "pending" and command == "gs_log_graph_refresh":
+            # Focus changes during checkout recovery must not repaint the old
+            # position. The operation requests its own refresh on success.
+            return "noop", {}
         if view.settings().get(UPDATING_KEY):
-            return
+            return None
         if command in {"gs_log_graph_refresh", "gs_log_graph_multiselect", "gs_clear_multiselect"}:
             cancel_branch_drag(view)
         elif command == "gs_log_graph_mouse" and not (args or {}).get("release"):
             cancel_branch_drag(view)
+        return None
 
     def on_deactivated(self, view: sublime.View) -> None:
         cancel_branch_drag(view)
@@ -257,31 +268,56 @@ class BranchDrag:
             on_done, view.sel()[0].b if view.sel() else -1
         )
 
-    def close(self, move: bool = False) -> None:
+    def move(self) -> None:
         view, state = self.view, self.state
-        # Invalidate callbacks before restoring text or issuing a Git command.
+        window = view.window()
+        if not state["target"] or window is None:
+            self.close()
+            return
+        state["phase"] = "pending"
+        self.save()
+        if state["checked_out_here"]:
+            # Keep ownership through dirty-worktree recovery and its dismissal.
+            gs_checkout_new_branch(window).checkout(
+                branch_name=state["branch"], start_point=state["target"], force=True,
+                on_done=self.on_move_done
+            )
+        else:
+            gs_move_branch(window).move(
+                branch=state["branch"], target=state["target"],
+                previous_tip=state["previous_tip"], undo_owner=view.id(),
+                on_done=self.on_move_done
+            )
+
+    def on_move_done(self, did_move: bool) -> None:
+        view = self.view
+        if not view.is_valid():
+            return
+        state: DragState | None = view.settings().get(DRAG_KEY)
+        if state is None or state["token"] != self.state["token"] or state["phase"] != "pending":
+            return
+        if did_move:
+            # The renderer must diff against the preview, not the old branch
+            # position. Relinquish ownership without rolling back buffer text.
+            self.forget()
+        else:
+            self.close()
+
+    def close(self) -> None:
+        view, state = self.view, self.state
+        # Invalidate callbacks before restoring text.
         view.settings().erase(DRAG_KEY)
         with updating(view):
             self.restore_preview()
             source = self.source_region()
             if source is not None and view.substr(source) == "|":
                 replace_view_content(view, state["branch"], source)
-            for key in (SOURCE_KEY, PREVIEW_KEY, DESTINATION_KEY):
-                view.erase_regions(key)
-        if move and state["target"] and (window := view.window()):
-            if state["checked_out_here"]:
-                # Moving our current branch also updates this checkout, with
-                # the existing dirty-worktree warning and --merge recovery.
-                window.run_command("gs_checkout_new_branch", {
-                    "branch_name": state["branch"], "start_point": state["target"],
-                    "force": True
-                })
-            else:
-                # branch --force still protects branches used by other worktrees.
-                window.run_command("gs_move_branch", {
-                    "branch": state["branch"], "target": state["target"],
-                    "previous_tip": state["previous_tip"], "undo_owner": view.id()
-                })
+            self.forget()
+
+    def forget(self) -> None:
+        self.view.settings().erase(DRAG_KEY)
+        for key in (SOURCE_KEY, PREVIEW_KEY, DESTINATION_KEY):
+            self.view.erase_regions(key)
 
     def destination_at(self, point: int) -> tuple[str | None, int]:
         view = self.view
@@ -385,7 +421,7 @@ class ArmedDrag(TypedDict):
 
 class MovingDrag(TypedDict):
     token: str
-    phase: Literal["dragging", "confirming"]
+    phase: Literal["dragging", "confirming", "pending"]
     branch: str
     previous_tip: FullHash
     checked_out_here: bool

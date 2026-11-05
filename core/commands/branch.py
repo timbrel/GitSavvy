@@ -23,7 +23,7 @@ __all__ = (
 )
 
 
-from typing import Optional, TypeVar
+from typing import Callable, Optional, TypeVar
 from GitSavvy.core.base_commands import Args, Kont
 T = TypeVar("T")
 
@@ -141,10 +141,22 @@ class gs_move_branch(GsWindowCommand):
         undo_owner: sublime.ViewId,
         previous_tip: FullHash | ShortHash | None = None
     ) -> None:
-        if previous_tip is None:
-            previous_tip = self.resolve(f"refs/heads/{branch}")
+        self.move(branch, target, undo_owner, previous_tip)
 
-        self.git("branch", "--force", "--", branch, target)
+    def move(
+        self, branch: str, target: str, undo_owner: sublime.ViewId,
+        previous_tip: FullHash | ShortHash | None = None,
+        on_done: Callable[[bool], None] = lambda moved: None
+    ) -> None:
+        """Report the result before refresh so callers can hand off previews."""
+        try:
+            if previous_tip is None:
+                previous_tip = self.resolve(f"refs/heads/{branch}")
+            self.git("branch", "--force", "--", branch, target)
+        except Exception:
+            on_done(False)
+            raise
+        on_done(True)
         ref_undo.add_branch_move_undo(self, branch, previous_tip, undo_owner)
         self.window.status_message("Moved {} to {}".format(branch, target))
         interface_util.refresh_gitsavvy_interfaces(self.window)
