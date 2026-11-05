@@ -1,3 +1,5 @@
+from typing import Callable
+
 import sublime
 from unittesting import DeferrableTestCase
 
@@ -170,6 +172,49 @@ class TestBranchDrag(DeferrableTestCase):
         done(-1)
         self.assert_restored()
 
+    def test_native_release_without_finish_opens_confirmation(self) -> None:
+        callback = self.schedule_native_release()
+        self.assertEqual(self.state()["phase"], "dragging")
+        callback()
+        self.assertEqual(self.state()["phase"], "confirming")
+        self.assertEqual(len(self.menus), 1)
+        callback()
+        self.assertEqual(len(self.menus), 1)
+        self.menus[-1][1](-1)
+        self.assert_restored()
+
+    def test_normal_finish_takes_precedence_over_native_release_callback(self) -> None:
+        callback = self.schedule_native_release()
+        self.view.run_command("gs_log_graph_branch_drag", {"action": "finish"})
+        callback()
+        self.assertEqual(self.state()["phase"], "confirming")
+        self.assertEqual(len(self.menus), 1)
+
+    def test_native_release_callback_cannot_finish_new_session(self) -> None:
+        callback = self.schedule_native_release()
+        self.cancel()
+        self.start()
+        self.update("40e3d394")
+        token = self.state()["token"]
+        callback()
+        self.assertEqual(self.state()["token"], token)
+        self.assertEqual(self.state()["phase"], "dragging")
+
+    def test_native_release_callback_ignores_resumed_selection(self) -> None:
+        callback = self.schedule_native_release()
+        with drag.updating(self.view):
+            cursor = self.view.sel()[0].b
+            self.view.sel().clear()
+            self.view.sel().add(sublime.Region(0, cursor))
+        callback()
+        self.assertEqual(self.state()["phase"], "dragging")
+
+    def test_native_release_callback_ignores_closed_session(self) -> None:
+        callback = self.schedule_native_release()
+        self.cancel()
+        callback()
+        self.assert_restored()
+
     def test_other_worktree_branch_does_not_start_dragging(self) -> None:
         self.branches[0].worktree_path = "/other/worktree"
         self.branches[0].name = "feature/foo-bar"
@@ -284,6 +329,14 @@ class TestBranchDrag(DeferrableTestCase):
         when(self.view).run_command("drag_select", ...).thenReturn(None)
         callback()
         verify(self.view, times=0).run_command("drag_select", ...)
+
+    def schedule_native_release(self) -> Callable[[], None]:
+        self.start()
+        self.update("40e3d394")
+        self.scheduled.clear()
+        drag.GsLogGraphBranchDragListener().on_selection_modified(self.view)
+        self.assertEqual(len(self.scheduled), 1)
+        return self.scheduled[0]
 
     def start(self, text: str = "throttling", activate: bool = True) -> None:
         point = self.text().index(text)

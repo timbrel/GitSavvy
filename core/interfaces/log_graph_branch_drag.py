@@ -169,6 +169,7 @@ class GsLogGraphBranchDragListener(EventListener):
         session = BranchDrag(view, state)
         target, cursor = session.destination_at(selection.b)
         if list(view.sel()) == [sublime.Region(cursor)] and state["target"] == target:
+            sublime.set_timeout(lambda: finish_after_native_release(view, state["token"]))
             return
         # Synchronous normalization avoids painting a native text selection.
         view.run_command("gs_log_graph_branch_drag", {
@@ -451,6 +452,27 @@ def start_native_selection(
 def activate_held_drag(view: sublime.View, token: str) -> None:
     if view.is_valid():
         view.run_command("gs_log_graph_branch_drag", {"action": "activate", "token": token})
+
+
+def finish_after_native_release(view: sublime.View, token: str) -> None:
+    """Finish on left release even when native tracking consumes right-click.
+
+    Observed on Windows: tracking continues but left release then reports the
+    normalized selection without dispatching finish. Treat this as a normal
+    drop, effectively ignoring the swallowed right-click. Defer so a normal
+    finish can take precedence; moving the branch still needs confirmation.
+    """
+    if not view.is_valid():
+        return
+    state: DragState | None = view.settings().get(DRAG_KEY)
+    if state is None or state["token"] != token or state["phase"] != "dragging":
+        return
+    session = BranchDrag(view, state)
+    if not view.sel():
+        return
+    target, cursor = session.destination_at(view.sel()[-1].b)
+    if list(view.sel()) == [sublime.Region(cursor)] and state["target"] == target:
+        view.run_command("gs_log_graph_branch_drag", {"action": "finish", "token": token})
 
 
 @contextmanager
