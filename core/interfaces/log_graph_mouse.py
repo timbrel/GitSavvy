@@ -134,6 +134,7 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
                 ]
                 actions += self.cherry_pick_and_revert_actions(selected_commits)
             else:
+                actions[2:2] = self.fixup_actions(pt, commit_hash)
                 actions += self.cherry_pick_and_revert_actions([commit_hash])
 
         view.sel().clear()
@@ -150,6 +151,27 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
                     window.run_command(command, args)
 
         view.show_popup_menu([label for label, _, _ in actions], on_done, pt)
+
+    def fixup_actions(self, pt: int, commit_hash: str) -> list[tuple[str, str, dict]]:
+        from .log_graph import is_fixup_or_squash_message
+        from .log_graph_rebase_actions import (
+            Commit, commit_message_from_line, find_base_commit_for_fixup, is_fixup
+        )
+        from ..text_helper import line_from_pt
+
+        line = line_from_pt(self.view, pt)
+        message = commit_message_from_line(self.view, line)
+        if not message or not is_fixup_or_squash_message(message):
+            return []
+        base_commit = find_base_commit_for_fixup(self.view, line, message)
+        if base_commit is None:
+            return []
+        fix = Commit(commit_hash, message)
+        return [(
+            "Apply fix to {}".format(base_commit) if is_fixup(fix) else
+            "Squash with {}".format(base_commit),
+            "gs_rebase_apply_fixup", {"base_commit": base_commit, "fixes": [fix]}
+        )]
 
     def cherry_pick_and_revert_actions(self, commits: list[str]) -> list[tuple[str, str, dict]]:
         from .log_graph_helper import describe_head, format_revision_list
