@@ -115,6 +115,10 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
                     "gs_delete_branch", {"branch": branch, "undo_owner": view.id()}
                 )
             ]
+        elif view.match_selector(target.a, "string.other.rebase-hint.git-savvy"):
+            actions = self.fixup_actions(pt, commit_hash)
+            if not actions:
+                return
         elif not view.match_selector(pt, "constant.numeric.graph.commit-hash.git-savvy"):
             return
         else:
@@ -196,7 +200,8 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
         return next((
             region for region in self.view.find_by_selector(
                 "constant.numeric.graph.commit-hash.git-savvy, "
-                "meta.graph.branch.git-savvy constant.other.git.branch"
+                "meta.graph.branch.git-savvy constant.other.git.branch, "
+                "string.other.rebase-hint.git-savvy"
             )
             if region.begin() <= pt < region.end()
         ), None)
