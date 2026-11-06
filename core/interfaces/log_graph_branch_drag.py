@@ -1,153 +1,241 @@
-"""Local branch moves: idle -> armed -> dragging -> confirming -> pending -> idle.
+"""Drag local branch labels to another commit in the graph.
 
-One serialized session owns the source marker and destination preview. Failed or
-cancelled moves restore those edits; successful moves hand the preview to refresh.
+Lifecycle: armed -> dragging -> confirming -> pending -> cleanup.
+Arming preserves native word selection until a hold or line crossing starts
+the drag. Dropping asks for confirmation before starting the Git operation.
+Before pending, cancellation restores the transient buffer edits. Pending
+ignores cancellation and suppresses graph refreshes: checkout recovery may
+change focus, but the Git operation still owns completion. Failure restores
+the buffer; success leaves the preview for the operation's refresh to replace.
+
+Session tokens reject callbacks from earlier drags. The recorded buffer version
+distinguishes our preview edits from external edits that invalidate the drag.
 """
 
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import Iterator, Literal, TypedDict
+from dataclasses import dataclass
+from typing import Iterator, Literal
 from typing_extensions import TypeAlias
 from uuid import uuid4
 
 import sublime
-from sublime_plugin import EventListener, TextCommand
+from sublime_plugin import EventListener
 
 from ..commands.branch import gs_move_branch
 from ..commands.checkout import gs_checkout_new_branch, other_worktree
-from .log_graph_mouse import HOLD_MS
-from ..git_command import GitCommand
+from .log_graph_mouse import HOLD_MS, PRESS_KEY
+from ..base_commands import GsTextCommand
+from ..git_mixins.branches import Branch
 from .log_graph_helper import COMMIT_LINE
 from ..types import FullHash
 from ..view import replace_view_content
 
 
-__all__ = ("gs_log_graph_branch_drag", "GsLogGraphBranchDragListener")
+__all__ = (
+    "gs_log_graph_branch_drag",
+    "GsLogGraphBranchDragListener"
+)
 
-DRAG_KEY = "git_savvy.graph_branch_drag"
-UPDATING_KEY = "git_savvy.graph_branch_drag_updating"
+
 SOURCE_KEY = "git_savvy.graph_branch_drag_source"
 PREVIEW_KEY = "git_savvy.graph_branch_drag_preview"
 DESTINATION_KEY = "git_savvy.graph_branch_drag_destination"
 REGION_FLAGS = sublime.HIDDEN | sublime.RegionFlags.NO_UNDO
 
 
-class gs_log_graph_branch_drag(TextCommand, GitCommand):
-    """Translate mouse events and token-checked menu choices into transitions."""
+DragAction: TypeAlias = Literal["start", "activate", "update", "finish", "confirm", "cancel"]
 
+
+@dataclass(frozen=True)
+class Preview:
+    original: str
+    rendered: str
+    cursor: int
+    is_source: bool
+
+
+@dataclass(frozen=True)
+class ArmedDrag:
+    token: str
+    region: sublime.Region
+    source: str
+    version: int
+    phase: Literal["armed"] = "armed"
+
+
+@dataclass
+class ActiveDrag:
+    token: str
+    branch: str
+    previous_tip: FullHash
+    checked_out_here: bool
+    source: str
+    target: str | None
+    version: int
+    preview: Preview | None = None
+    phase: Literal["dragging", "confirming", "pending"] = "dragging"
+
+
+DragState: TypeAlias = "ArmedDrag | ActiveDrag"
+
+_DRAGS: dict[sublime.View, DragState] = globals().get("_DRAGS", {})
+_UPDATING: set[sublime.View] = globals().get("_UPDATING", set())
+
+
+def get_drag_state(view: sublime.View) -> DragState | None:
+    return _DRAGS.get(view)
+
+
+def get_drag_state_for_token(view: sublime.View, token: str) -> DragState | None:
+    state = get_drag_state(view)
+    if state and token == state.token:
+        return state
+    return None
+
+
+class gs_log_graph_branch_drag(GsTextCommand):
     def run(
         self, edit: sublime.Edit, event: dict | None = None,
-        action: str = "start", point: int | None = None, token: str | None = None
+        action: DragAction = "start", point: int | None = None, token: str | None = None
     ) -> None:
-        view = self.view
-        state: DragState | None = view.settings().get(DRAG_KEY)
+        state = (
+            get_drag_state_for_token(self.view, token) if token
+            else get_drag_state(self.view)
+        )
         if action == "start":
-            # Never give a second press ownership of an unfinished preview.
-            if state is None and event is not None:
+            if not state and event:
                 self.start(event)
+        elif not state:
             return
-        if state is None or (token is not None and token != state["token"]):
+        elif state.phase == "armed":
+            self.run_armed_action(state, action, point)
+        elif state.phase in {"dragging", "confirming"}:
+            self.run_drag_action(state, action, point, token)
+        elif state.phase == "pending":
             return
-        if state["phase"] == "armed":
-            if action in {"cancel", "finish"} or view.change_count() != state["version"]:
-                view.settings().erase(DRAG_KEY)
-            elif action == "activate":
-                self.activate(state, point)
-            return
-        if state["phase"] == "pending":
-            return
-        session = BranchDrag(view, state)
-        if action == "cancel" or view.change_count() != state["version"]:
-            session.close()
-        elif action == "update" and state["phase"] == "dragging" and point is not None:
-            session.update(point)
-        elif action == "finish" and state["phase"] == "dragging":
-            session.finish()
-        elif action == "confirm" and state["phase"] == "confirming" and token == state["token"]:
-            session.move()
+        else:
+            raise AssertionError("unknown branch drag phase: {}".format(state.phase))
 
     def want_event(self) -> bool:
         return True
 
     def start(self, event: dict) -> None:
         view = self.view
-        if not view.settings().get("git_savvy.log_graph_view"):
-            return
-        view.settings().erase("git_savvy.log_graph_mouse_press")
+        window = view.window()
+        assert window
+
+        view.settings().erase(PRESS_KEY)
         point = view.window_to_text((event["x"], event["y"]))
         region = branch_region_at(view, point)
         match = COMMIT_LINE.search(view.substr(view.line(point)))
-        if region is None or match is None:
+        if not region or not match:
             version = view.change_count()
-            sublime.set_timeout(lambda: start_native_selection(view, event, version=version))
+            sublime.set_timeout(
+                lambda: start_native_selection_if_unchanged(view, event, version)
+            )
             return
-        window = view.window()
-        if window is not None:
-            window.focus_view(view)
-        # The graph can open before branch metadata has been cached.
-        branches = self.current_state().get("branches", []) or self.get_branches()
-        branch = next((
-            branch for branch in branches
-            if not branch.is_remote and branch.name == view.substr(region)
-        ), None)
-        if branch is None or other_worktree(branch, self.repo_path):
+
+        window.focus_view(view)
+        branch = self.draggable_branch(region, use_cached_branches=True)
+        if not branch:
             with updating(view):
                 view.sel().clear()
                 view.sel().add(region)
             return
-        state: ArmedDrag = {
-            "token": uuid4().hex, "phase": "armed", "region": [region.a, region.b],
-            "source": match.group("commit_hash"), "version": view.change_count()
-        }
+
+        state = ArmedDrag(
+            token=uuid4().hex,
+            region=region,
+            source=match.group("commit_hash"),
+            version=view.change_count()
+        )
+        _DRAGS[view] = state
         with updating(view):
-            view.settings().set(DRAG_KEY, state)
             view.sel().clear()
             view.sel().add(view.word(point))
-        # A simple double-click makes no buffer edits.
-        # Release invalidates both callbacks; moving to another commit activates
-        # immediately instead of waiting for the hold threshold.
-        sublime.set_timeout(lambda: activate_held_drag(view, state["token"]), HOLD_MS)
-        sublime.set_timeout(lambda: start_native_selection(view, event, token=state["token"]))
+
+        # Let a double-click select text normally. Holding, or crossing a commit
+        # boundary, turns the selection into a drag.
+        sublime.set_timeout(lambda: activate_held_drag(view, state.token), HOLD_MS)
+        sublime.set_timeout(
+            lambda: start_native_selection_for_drag(view, event, state.token)
+        )
 
     def activate(self, armed: ArmedDrag, point: int | None) -> None:
         view = self.view
-        region = sublime.Region(*armed["region"])
-        branch = next((
-            branch for branch in self.get_branches()
-            if not branch.is_remote and branch.name == view.substr(region)
-        ), None)
-        if branch is None or other_worktree(branch, self.repo_path):
-            view.settings().erase(DRAG_KEY)
+        region = armed.region
+        branch = self.draggable_branch(region)
+        if not branch:
+            _DRAGS.pop(view, None)
             return
-        state: MovingDrag = {
-            "token": armed["token"], "phase": "dragging",
-            "branch": branch.name, "previous_tip": branch.commit_hash,
-            "checked_out_here": branch.active,
-            "source": armed["source"], "target": armed["source"],
-            "version": view.change_count(), "preview": None
-        }
-        session = BranchDrag(view, state)
+
+        state = ActiveDrag(
+            token=armed.token,
+            branch=branch.name,
+            previous_tip=branch.commit_hash,
+            checked_out_here=branch.active,
+            source=armed.source,
+            target=armed.source,
+            version=view.change_count()
+        )
+        _DRAGS[view] = state
+        drag = BranchDrag(view, state)
         with updating(view):
             if point is not None:
-                session.track(DESTINATION_KEY, view.line(point))
-            session.begin(region)
+                drag.track(DESTINATION_KEY, view.line(point))
+            drag.begin(region)
             destinations = view.get_regions(DESTINATION_KEY)
             view.erase_regions(DESTINATION_KEY)
             if destinations:
-                session.update(destinations[0].a)
+                drag.update(destinations[0].a)
+
+    def run_armed_action(
+        self, state: ArmedDrag, action: DragAction, point: int | None
+    ) -> None:
+        if action in {"cancel", "finish"} or self.view.change_count() != state.version:
+            _DRAGS.pop(self.view, None)
+        elif action == "activate":
+            self.activate(state, point)
+
+    def run_drag_action(
+        self, state: ActiveDrag, action: DragAction, point: int | None, token: str | None
+    ) -> None:
+        drag = BranchDrag(self.view, state)
+        if action == "cancel" or self.view.change_count() != state.version:
+            drag.cancel()
+        elif action == "update" and state.phase == "dragging" and point is not None:
+            drag.update(point)
+        elif action == "finish" and state.phase == "dragging":
+            drag.request_confirmation()
+        elif action == "confirm" and state.phase == "confirming" and token:
+            drag.apply_move()
+
+    def draggable_branch(
+        self, region: sublime.Region, use_cached_branches: bool = False
+    ) -> Branch | None:
+        branches = self.current_state().get("branches", []) if use_cached_branches else []
+        if not branches:
+            branches = self.get_branches()
+        name = self.view.substr(region)
+        branch = next((
+            branch for branch in branches
+            if not branch.is_remote and branch.name == name
+        ), None)
+        if not branch or other_worktree(branch, self.repo_path):
+            return None
+        return branch
 
 
 class GsLogGraphBranchDragListener(EventListener):
-    """Route native tracking and lifecycle cancellation; own no drag state."""
-
     def on_query_context(
         self, view: sublime.View, key: str, operator: int, operand: object, match_all: bool
     ) -> bool | None:
         if key != "git_savvy.graph_branch_drag_active":
             return None
-        state: DragState | None = view.settings().get(DRAG_KEY)
-        active = state is not None and state["phase"] in {"dragging", "confirming"}
+        state = get_drag_state(view)
+        active = bool(state and state.phase in {"dragging", "confirming"})
         if operator == sublime.OP_EQUAL:
             return active == operand
         if operator == sublime.OP_NOT_EQUAL:
@@ -155,49 +243,54 @@ class GsLogGraphBranchDragListener(EventListener):
         return None
 
     def on_selection_modified(self, view: sublime.View) -> None:
-        state: DragState | None = view.settings().get(DRAG_KEY)
+        state = get_drag_state(view)
         if (
-            state is None or state["phase"] in {"confirming", "pending"}
-            or view.settings().get(UPDATING_KEY) or not view.sel()
+            not state or state.phase in {"confirming", "pending"}
+            or view in _UPDATING or not view.sel()
         ):
             return
+
         selection = view.sel()[-1]
-        if state["phase"] == "armed":
-            region = sublime.Region(*state["region"])
-            if view.line(selection.b) != view.line(region.a):
+        if state.phase == "armed":
+            if view.line(selection.b) != view.line(state.region.a):
                 view.run_command("gs_log_graph_branch_drag", {
-                    "action": "activate", "point": selection.b, "token": state["token"]
+                    "action": "activate", "point": selection.b, "token": state.token
                 })
             return
-        session = BranchDrag(view, state)
-        target, cursor = session.destination_at(selection.b)
-        if list(view.sel()) == [sublime.Region(cursor)] and state["target"] == target:
-            sublime.set_timeout(lambda: finish_after_native_release(view, state["token"]))
+
+        drag = BranchDrag(view, state)
+        target, cursor = drag.destination_at(selection.b)
+        if list(view.sel()) == [sublime.Region(cursor)] and state.target == target:
+            # Native tracking normally extends the selection before we collapse
+            # it. A notification with the cursor already normalized is a possible
+            # release instead; defer to let a normal finish or more tracking win.
+            sublime.set_timeout(lambda: finish_after_native_release(view, state.token))
             return
+
         # Synchronous normalization avoids painting a native text selection.
         view.run_command("gs_log_graph_branch_drag", {
-            "action": "update", "point": selection.b, "token": state["token"]
+            "action": "update", "point": selection.b, "token": state.token
         })
 
     def on_modified(self, view: sublime.View) -> None:
-        state: DragState | None = view.settings().get(DRAG_KEY)
+        state = get_drag_state(view)
         # Sublime can deliver our own edit notification after the TextCommand
         # returns, when the synchronous update guard is already gone.
         if (
-            state is not None and not view.settings().get(UPDATING_KEY)
-            and view.change_count() != state["version"]
+            state and view not in _UPDATING
+            and view.change_count() != state.version
         ):
             cancel_branch_drag(view)
 
     def on_text_command(
         self, view: sublime.View, command: str, args: dict | None
     ) -> tuple[str, dict] | None:
-        state: DragState | None = view.settings().get(DRAG_KEY)
-        if state is not None and state["phase"] == "pending" and command == "gs_log_graph_refresh":
+        state = get_drag_state(view)
+        if state and state.phase == "pending" and command == "gs_log_graph_refresh":
             # Focus changes during checkout recovery must not repaint the old
             # position. The operation requests its own refresh on success.
             return "noop", {}
-        if view.settings().get(UPDATING_KEY):
+        if view in _UPDATING:
             return None
         if command in {"gs_log_graph_refresh", "gs_log_graph_multiselect", "gs_clear_multiselect"}:
             cancel_branch_drag(view)
@@ -213,9 +306,17 @@ class GsLogGraphBranchDragListener(EventListener):
 
 
 class BranchDrag:
-    """Own transitions and reversible buffer edits for one session."""
+    """Manage reversible preview edits using regions that track buffer shifts.
 
-    def __init__(self, view: sublime.View, state: MovingDrag) -> None:
+    The source label is replaced by a "|" marker. A destination preview replaces
+    a whole commit line, except at the source where it replaces just the marker.
+    Preview stores the replaced text and its rendered form so restoration only
+    undoes text we still recognize as ours. SOURCE_KEY follows the marker (or
+    the label while previewing the source); PREVIEW_KEY follows the replacement.
+    DESTINATION_KEY keeps the hovered line anchored while earlier edits are undone.
+    """
+
+    def __init__(self, view: sublime.View, state: ActiveDrag) -> None:
         self.view = view
         self.state = state
 
@@ -228,34 +329,35 @@ class BranchDrag:
             replace_view_content(view, "|", region)
             self.track(SOURCE_KEY, sublime.Region(region.a, region.a + 1))
             self.place_cursor(region.a + 1)
-            self.save()
+            self.record_buffer_version()
 
     def update(self, point: int) -> None:
         view = self.view
         target, cursor = self.destination_at(point)
         with updating(view):
-            if target != self.state["target"]:
+            if target != self.state.target:
                 # Track the hovered line while undoing the previous preview.
                 self.track(DESTINATION_KEY, view.line(point))
                 self.restore_preview()
                 destinations = view.get_regions(DESTINATION_KEY)
                 if destinations:
-                    cursor = (
-                        self.preview_destination(destinations[0]) if target else
-                        destinations[0].a
-                    )
+                    destination = destinations[0]
+                    if target:
+                        cursor = self.preview_destination(destination)
+                    else:
+                        cursor = destination.a
                 view.erase_regions(DESTINATION_KEY)
-            self.state["target"] = target
+            self.state.target = target
             self.place_cursor(cursor)
-            self.save()
+            self.record_buffer_version()
 
-    def finish(self) -> None:
-        if not self.state["target"] or self.state["target"] == self.state["source"]:
-            self.close()
+    def request_confirmation(self) -> None:
+        if not self.state.target or self.state.target == self.state.source:
+            self.cancel()
             return
-        self.state["phase"] = "confirming"
-        self.save()
-        view, token = self.view, self.state["token"]
+        self.state.phase = "confirming"
+        self.record_buffer_version()
+        view, token = self.view, self.state.token
 
         def on_done(index: int) -> None:
             if view.is_valid():
@@ -264,58 +366,59 @@ class BranchDrag:
                 })
 
         view.show_popup_menu(
-            ["Move '{}' here".format(self.state["branch"])],
+            ["Move '{}' here".format(self.state.branch)],
             on_done, view.sel()[0].b if view.sel() else -1
         )
 
-    def move(self) -> None:
+    def apply_move(self) -> None:
         view, state = self.view, self.state
         window = view.window()
-        if not state["target"] or window is None:
-            self.close()
+        if not state.target or not window:
+            self.cancel()
             return
-        state["phase"] = "pending"
-        self.save()
-        if state["checked_out_here"]:
-            # Keep ownership through dirty-worktree recovery and its dismissal.
+        state.phase = "pending"
+        self.record_buffer_version()
+        if state.checked_out_here:
+            # Checkout may open a dirty-worktree recovery prompt.
             gs_checkout_new_branch(window).checkout(
-                branch_name=state["branch"], start_point=state["target"], force=True,
+                branch_name=state.branch, start_point=state.target, force=True,
                 on_done=self.on_move_done
             )
         else:
             gs_move_branch(window).move(
-                branch=state["branch"], target=state["target"],
-                previous_tip=state["previous_tip"], undo_owner=view.id(),
+                branch=state.branch, target=state.target,
+                previous_tip=state.previous_tip, undo_owner=view.id(),
                 on_done=self.on_move_done
             )
 
     def on_move_done(self, did_move: bool) -> None:
         view = self.view
         if not view.is_valid():
+            _DRAGS.pop(view, None)
             return
-        state: DragState | None = view.settings().get(DRAG_KEY)
-        if state is None or state["token"] != self.state["token"] or state["phase"] != "pending":
+        state = get_drag_state_for_token(view, self.state.token)
+        if not state or state.phase != "pending":
             return
         if did_move:
-            # The renderer must diff against the preview, not the old branch
-            # position. Relinquish ownership without rolling back buffer text.
-            self.forget()
+            # Keep the preview in place until the graph refreshes.
+            self.clear_tracking()
         else:
-            self.close()
+            self.cancel()
 
-    def close(self) -> None:
+    def cancel(self) -> None:
         view, state = self.view, self.state
-        # Invalidate callbacks before restoring text.
-        view.settings().erase(DRAG_KEY)
+        _DRAGS.pop(view, None)
         with updating(view):
             self.restore_preview()
             source = self.source_region()
-            if source is not None and view.substr(source) == "|":
-                replace_view_content(view, state["branch"], source)
-            self.forget()
+            if source and view.substr(source) == "|":
+                replace_view_content(view, state.branch, source)
+            self.clear_tracking()
 
-    def forget(self) -> None:
-        self.view.settings().erase(DRAG_KEY)
+    def clear_tracking(self) -> None:
+        state = get_drag_state_for_token(self.view, self.state.token)
+        if state:
+            _DRAGS.pop(self.view, None)
         for key in (SOURCE_KEY, PREVIEW_KEY, DESTINATION_KEY):
             self.view.erase_regions(key)
 
@@ -323,35 +426,34 @@ class BranchDrag:
         view = self.view
         line = view.line(point)
         match = COMMIT_LINE.search(view.substr(line))
-        if match is None:
+        if not match:
             return None, line.a
-        preview, regions = self.state["preview"], view.get_regions(PREVIEW_KEY)
+        preview, regions = self.state.preview, view.get_regions(PREVIEW_KEY)
         if preview and regions and line.contains(regions[0]):
-            cursor = regions[0].a + preview["cursor"]
-        elif (source := self.source_region()) is not None and line.contains(source):
+            cursor = regions[0].a + preview.cursor
+        elif (source := self.source_region()) and line.contains(source):
             cursor = source.b
         else:
             cursor = line.a + match.end("commit_hash") + 1
         return match.group("commit_hash"), cursor
 
     def preview_destination(self, line: sublime.Region) -> int:
-        """Save a reversible decoration edit and return the branch-name endpoint.
-
-        On the source line, expand only its tracked marker back to the name.
-        """
-        view, branch = self.view, self.state["branch"]
+        view, branch = self.view, self.state.branch
         original = view.substr(line)
         match = COMMIT_LINE.search(original)
-        if match is None:
+        if not match:
             return line.a
         source = self.source_region()
-        is_source = source is not None and line.contains(source)
+        is_source = bool(source and line.contains(source))
         if is_source:
-            assert source is not None
-            region, original, rendered, cursor = source, "|", branch, len(branch)
+            assert source
+            region = source
+            original = "|"
+            rendered = branch
+            cursor = len(branch)
         else:
             region = line
-            if match.group("decoration") is not None:
+            if match.group("decoration"):
                 offset = match.end("decoration")
                 insertion, cursor = ", " + branch, offset + 2 + len(branch)
             else:
@@ -363,24 +465,27 @@ class BranchDrag:
         self.track(PREVIEW_KEY, expanded)
         if is_source:
             self.track(SOURCE_KEY, expanded)
-        self.state["preview"] = {
-            "original": original, "rendered": rendered, "cursor": cursor, "source": is_source
-        }
+        self.state.preview = Preview(
+            original=original,
+            rendered=rendered,
+            cursor=cursor,
+            is_source=is_source
+        )
         return region.a + cursor
 
     def restore_preview(self) -> None:
-        view, preview = self.view, self.state["preview"]
+        view, preview = self.view, self.state.preview
         regions = view.get_regions(PREVIEW_KEY)
-        if preview and regions and view.substr(regions[0]) == preview["rendered"]:
+        if preview and regions and view.substr(regions[0]) == preview.rendered:
             region = regions[0]
-            replace_view_content(view, preview["original"], region)
-            if preview["source"]:
+            replace_view_content(view, preview.original, region)
+            if preview.is_source:
                 self.track(SOURCE_KEY, sublime.Region(region.a, region.a + 1))
         view.erase_regions(PREVIEW_KEY)
-        self.state["preview"] = None
+        self.state.preview = None
 
     def source_region(self) -> sublime.Region | None:
-        """Never restore a stale marker onto unrelated text after a redraw."""
+        """Return the marker only while it still belongs to the source commit."""
         view = self.view
         regions = view.get_regions(SOURCE_KEY)
         if not regions:
@@ -389,11 +494,11 @@ class BranchDrag:
         line = view.line(region.a)
         match = COMMIT_LINE.search(view.substr(line))
         if (
-            match and match.group("commit_hash") == self.state["source"]
-            and match.group("decoration") is not None
+            match and match.group("commit_hash") == self.state.source
+            and match.group("decoration")
             and line.a + match.start("decoration") <= region.a
             and region.b <= line.a + match.end("decoration")
-            and view.substr(region) in ("|", self.state["branch"])
+            and view.substr(region) in ("|", self.state.branch)
         ):
             return region
         return None
@@ -406,56 +511,27 @@ class BranchDrag:
     def track(self, key: str, region: sublime.Region) -> None:
         self.view.add_regions(key, [region], flags=REGION_FLAGS)
 
-    def save(self) -> None:
-        self.state["version"] = self.view.change_count()
-        self.view.settings().set(DRAG_KEY, self.state)
-
-
-class ArmedDrag(TypedDict):
-    token: str
-    phase: Literal["armed"]
-    region: list[int]
-    source: str
-    version: int
-
-
-class MovingDrag(TypedDict):
-    token: str
-    phase: Literal["dragging", "confirming", "pending"]
-    branch: str
-    previous_tip: FullHash
-    checked_out_here: bool
-    source: str
-    target: str | None
-    version: int
-    preview: Preview | None
-
-
-DragState: TypeAlias = "ArmedDrag | MovingDrag"
-
-
-class Preview(TypedDict):
-    original: str
-    rendered: str
-    cursor: int
-    source: bool
+    def record_buffer_version(self) -> None:
+        self.state.version = self.view.change_count()
 
 
 def cancel_branch_drag(view: sublime.View) -> None:
-    if view.is_valid() and view.settings().get(DRAG_KEY):
+    if not get_drag_state(view):
+        return
+    if view.is_valid():
         view.run_command("gs_log_graph_branch_drag", {"action": "cancel"})
+    else:
+        _DRAGS.pop(view, None)
 
 
 def reset_branch_drags() -> None:
-    """Restore transient text on package unload/load, including inactive views."""
-    for window in sublime.windows():
-        for view in window.views():
-            state: DragState | None = view.settings().get(DRAG_KEY)
-            if state is not None:
-                if state["phase"] == "armed":
-                    view.settings().erase(DRAG_KEY)
-                else:
-                    BranchDrag(view, state).close()
+    """Cancel all drags and restore their transient buffer edits."""
+    for view, state in list(_DRAGS.items()):
+        if state.phase == "armed":
+            _DRAGS.pop(view, None)
+        else:
+            BranchDrag(view, state).cancel()
+    _UPDATING.clear()
 
 
 def branch_region_at(view: sublime.View, point: int) -> sublime.Region | None:
@@ -467,22 +543,19 @@ def branch_region_at(view: sublime.View, point: int) -> sublime.Region | None:
     ), None)
 
 
-def start_native_selection(
-    view: sublime.View, event: dict, token: str | None = None, version: int | None = None
+def start_native_selection_if_unchanged(
+    view: sublime.View, event: dict, version: int
 ) -> None:
-    """Start tracking only for the captured session or unchanged fallback buffer.
+    if not get_drag_state(view) and view.change_count() == version:
+        view.run_command("drag_select", {"event": event, "by": "words"})
 
-    A token guards a drag session; without one, version guards plain selection.
-    """
-    if not view.is_valid():
-        return
-    state: DragState | None = view.settings().get(DRAG_KEY)
-    if token is not None:
-        if state is None or state["token"] != token or state["phase"] == "confirming":
-            return
-    elif state is not None or view.change_count() != version:
-        return
-    view.run_command("drag_select", {"event": event, "by": "words"})
+
+def start_native_selection_for_drag(
+    view: sublime.View, event: dict, token: str
+) -> None:
+    state = get_drag_state_for_token(view, token)
+    if state and state.phase != "confirming":
+        view.run_command("drag_select", {"event": event, "by": "words"})
 
 
 def activate_held_drag(view: sublime.View, token: str) -> None:
@@ -491,33 +564,32 @@ def activate_held_drag(view: sublime.View, token: str) -> None:
 
 
 def finish_after_native_release(view: sublime.View, token: str) -> None:
-    """Finish on left release even when native tracking consumes right-click.
+    """Recover a drop when native tracking swallows mouse-up on Windows.
 
-    Observed on Windows: tracking continues but left release then reports the
-    normalized selection without dispatching finish. Treat this as a normal
-    drop, effectively ignoring the swallowed right-click. Defer so a normal
-    finish can take precedence; moving the branch still needs confirmation.
+    Recheck on the next tick: a normal finish may have changed phase, or resumed
+    native tracking may have extended the selection again. Only an unchanged,
+    normalized cursor in the same drag is treated as a release.
     """
     if not view.is_valid():
         return
-    state: DragState | None = view.settings().get(DRAG_KEY)
-    if state is None or state["token"] != token or state["phase"] != "dragging":
+    state = get_drag_state_for_token(view, token)
+    if not state or state.phase != "dragging":
         return
-    session = BranchDrag(view, state)
+    drag = BranchDrag(view, state)
     if not view.sel():
         return
-    target, cursor = session.destination_at(view.sel()[-1].b)
-    if list(view.sel()) == [sublime.Region(cursor)] and state["target"] == target:
+    target, cursor = drag.destination_at(view.sel()[-1].b)
+    if list(view.sel()) == [sublime.Region(cursor)] and state.target == target:
         view.run_command("gs_log_graph_branch_drag", {"action": "finish", "token": token})
 
 
 @contextmanager
 def updating(view: sublime.View) -> Iterator[None]:
     """Suppress native selection normalization and redraw cancellation during edits."""
-    was_updating = view.settings().get(UPDATING_KEY, False)
-    view.settings().set(UPDATING_KEY, True)
+    was_updating = view in _UPDATING
+    _UPDATING.add(view)
     try:
         yield
     finally:
         if not was_updating:
-            view.settings().erase(UPDATING_KEY)
+            _UPDATING.discard(view)

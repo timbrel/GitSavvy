@@ -22,10 +22,9 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
         settings = view.settings()
         settings.erase(PRESS_KEY)
         if release:
-            if settings.get("git_savvy.graph_branch_drag"):
-                view.run_command("gs_log_graph_branch_drag", {
-                    "action": "finish", "event": event
-                })
+            view.run_command("gs_log_graph_branch_drag", {
+                "action": "finish", "event": event
+            })
             return
 
         window = view.window()

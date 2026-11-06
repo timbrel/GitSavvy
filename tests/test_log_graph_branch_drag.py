@@ -320,7 +320,9 @@ class TestBranchDrag(DeferrableTestCase):
 
     def test_stale_move_completion_cannot_touch_new_drag(self) -> None:
         done = self.confirm_pending_move()
-        drag.BranchDrag(self.view, self.state()).close()
+        state = drag.get_drag_state(self.view)
+        assert state and state.phase != "armed"
+        drag.BranchDrag(self.view, state).cancel()
         self.start()
         self.update("c0d0646f")
         token, preview = self.state()["token"], self.text()
@@ -440,7 +442,8 @@ class TestBranchDrag(DeferrableTestCase):
         self.view.run_command("gs_log_graph_branch_drag", {"action": "cancel"})
 
     def state(self) -> dict | None:
-        return self.view.settings().get(drag.DRAG_KEY)
+        state = drag.get_drag_state(self.view)
+        return vars(state) if state else None
 
     def text(self) -> str:
         return self.view.substr(sublime.Region(0, self.view.size()))
