@@ -16,7 +16,7 @@ from ..utils import destructive, uprint
 from ..view import replace_view_content
 from ..interfaces import util as interface_util
 from GitSavvy.core.base_commands import ask_for_branch, GsWindowCommand
-from ..ui__quick_panel import noop, show_actions_panel, show_quick_panel
+from ..ui__quick_panel import noop, show_actions_panel
 
 __all__ = (
     "gs_checkout_branch",
@@ -147,16 +147,14 @@ class gs_checkout_new_branch(GsWindowCommand):
             )
         except GitSavvyError as e:
             if force and DIRTY_WORKTREE_MESSAGE in e.stderr and not merge:
-                show_quick_panel(
-                    self.window,
-                    ["Abort, local changes would be overwritten by checkout.",
-                     "Try merging the changes."],
-                    lambda index: (
-                        self.checkout(branch_name, start_point, force, True, on_done)
-                        if index == 1 else on_done(False)
-                    ),
-                    on_cancel=lambda: on_done(False)
-                )
+                nope = lambda: on_done(False)
+                show_actions_panel(self.window, [
+                    noop("Abort, local changes would be overwritten by checkout.", nope),
+                    (
+                        "Try merging the changes.",
+                        lambda: self.checkout(branch_name, start_point, force, True, on_done)
+                    )
+                ], on_cancel=nope)
                 return
 
             elif BRANCH_ALREADY_EXISTS_MESSAGE.format(branch_name) in e.stderr and not force:

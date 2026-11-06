@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from unittesting import DeferrableTestCase
 
+from GitSavvy.core import ui__quick_panel
 from GitSavvy.core.commands import checkout
 from GitSavvy.core.commands.checkout import CheckoutBranchInputHandler, gs_checkout_branch
 from GitSavvy.core.exceptions import GitSavvyError
@@ -218,8 +219,8 @@ class TestCheckoutNewBranchCompletion(DeferrableTestCase):
         when(checkout.interface_util).refresh_gitsavvy_interfaces(
             self.window, refresh_sidebar=True
         ).thenAnswer(lambda *args, **kwargs: self.events.append("refresh"))
-        when(checkout).show_quick_panel(...).thenAnswer(
-            lambda window, items, on_done, on_cancel: self.panels.append((on_done, on_cancel))
+        when(ui__quick_panel).show_quick_panel(...).thenAnswer(
+            lambda window, items, on_done, on_cancel, selected_index: self.panels.append((on_done, on_cancel))
         )
 
     def tearDown(self) -> None:
