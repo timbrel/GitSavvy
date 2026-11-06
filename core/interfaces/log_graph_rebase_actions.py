@@ -333,10 +333,6 @@ class gs_rebase_action(GsWindowCommand):
                     partial(self.edit, view, commit_hash)
                 ),
                 (
-                    "Fixup commit",
-                    partial(self.create_fixup_commit_and_apply, commit_hash)
-                ),
-                (
                     "Drop commit",
                     partial(self.drop_commits, view, [commit_hash])
                 ),
@@ -348,11 +344,20 @@ class gs_rebase_action(GsWindowCommand):
                     "Extract commit to a <new branch> onto <branch>",
                     partial(self.extract_commits, view, [commit_hash])
                 ),
-                (
-                    "Make fixup commit for {}".format(commit_hash),
-                    partial(self.create_fixup_commit, commit_hash)
-                ),
             ]
+
+            status = self.current_state().get("status")
+            if status and not status.is_clean:
+                actions += [
+                    (
+                        "Make fixup commit for {}".format(commit_hash),
+                        partial(self.create_fixup_commit, commit_hash)
+                    ),
+                    (
+                        "Make fixup commit and apply",
+                        partial(self.create_fixup_commit_and_apply, commit_hash)
+                    ),
+                ]
 
             on_off = lambda setting: "x" if setting else " "
             rebase_merges = _get_setting(self, "git_savvy.log_graph_view.rebase_merges", DEFAULT_VALUE)
