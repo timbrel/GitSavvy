@@ -344,7 +344,7 @@ class gs_log_graph_action(GsWindowCommand):
                     if "behind" in b.upstream.status and "ahead" not in b.upstream.status:
                         actions += [
                             (
-                                "Fast-forward '{}' to '{}'".format(branch_name, b.upstream.canonical_name),
+                                "Move '{}' to '{}'".format(branch_name, b.upstream.canonical_name),
                                 partial(
                                     self.move_branch, branch_name, b.upstream.canonical_name,
                                     previous_tip=b.commit_hash
@@ -354,7 +354,7 @@ class gs_log_graph_action(GsWindowCommand):
                     else:
                         actions += [
                             (
-                                "Update '{}' from '{}'".format(branch_name, b.upstream.canonical_name),
+                                "Update '{}' from '{}' (ff-only)".format(branch_name, b.upstream.canonical_name),
                                 partial(self.update_from_tracking, b.upstream.remote, b.upstream.branch, b.name)
                             ),
                         ]

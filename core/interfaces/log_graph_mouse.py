@@ -195,6 +195,15 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
         if branch.upstream:
             if branch.active:
                 actions.append(("Pull", "gs_pull", {}))
+            elif not checked_out and "behind" in branch.upstream.status and "ahead" not in branch.upstream.status:
+                actions.append((
+                    "Move {} to {}".format(name, branch.upstream.canonical_name),
+                    "gs_move_branch", {
+                        "branch": name,
+                        "target": branch.upstream.canonical_name,
+                        "previous_tip": branch.commit_hash
+                    }
+                ))
             elif not checked_out:
                 actions.append((
                     "Update {} from {} (ff-only)".format(name, branch.upstream.canonical_name),

@@ -37,7 +37,7 @@ class TestLongPressCheckoutActions(DeferrableTestCase):
         self.assertEqual(("gs_fetch", {"remote": "origin", "refspec": "master"}), menu[4][1:])
 
     def test_available_branch_with_upstream(self) -> None:
-        menu = self.branch_menu(active=False, upstream=mock({"remote": "fork", "branch": "topic/nested", "canonical_name": "fork/topic/nested"}))
+        menu = self.branch_menu(active=False, upstream=mock({"remote": "fork", "branch": "topic/nested", "canonical_name": "fork/topic/nested", "status": ""}))
         self.assertEqual([
             "Checkout here", "Checkout in a worktree", "-", "Push",
             "Update feature from fork/topic/nested (ff-only)", "Fetch fork/topic/nested"
@@ -48,6 +48,26 @@ class TestLongPressCheckoutActions(DeferrableTestCase):
         self.assertEqual(
             ("gs_fetch", {"remote": "fork", "refspec": "topic/nested"}), menu[5][1:]
         )
+
+    def test_branch_behind_upstream_offers_move(self) -> None:
+        menu = self.branch_menu(active=False, upstream=mock({
+            "remote": "origin", "branch": "master", "canonical_name": "origin/master",
+            "status": "behind 2"
+        }))
+        self.assertEqual((
+            "Move feature to origin/master", "gs_move_branch",
+            {"branch": "feature", "target": "origin/master", "previous_tip": "abcdef0"}
+        ), menu[4])
+
+    def test_diverged_branch_still_offers_fetch_update(self) -> None:
+        menu = self.branch_menu(active=False, upstream=mock({
+            "remote": "origin", "branch": "master", "canonical_name": "origin/master",
+            "status": "ahead 1, behind 2"
+        }))
+        self.assertEqual((
+            "Update feature from origin/master (ff-only)", "gs_fetch",
+            {"remote": "origin", "refspec": "master:feature"}
+        ), menu[4])
 
     def test_sha_menu_starts_with_detached_checkout_actions(self) -> None:
         view = sublime.active_window().new_file()
