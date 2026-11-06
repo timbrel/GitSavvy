@@ -161,16 +161,16 @@ class gs_log_graph_action(GsWindowCommand):
 
             actions += [
                 (
-                    "Diff {}{}...{}".format(
-                        "file " if file_path else "", base_commit, target_commit
-                    ),
-                    partial(self.sym_diff_two_commits, base_commit, target_commit, file_path)
-                ),
-                (
                     "Diff {}{}..{}".format(
                         "file " if file_path else "", base_commit, target_commit
                     ),
                     partial(self.diff_commit, base_commit, target_commit, file_path)
+                ),
+                (
+                    "Diff {}{}...{}".format(
+                        "file " if file_path else "", base_commit, target_commit
+                    ),
+                    partial(self.sym_diff_two_commits, base_commit, target_commit, file_path)
                 ),
                 (
                     "Compare {}'{}' and '{}'".format(
