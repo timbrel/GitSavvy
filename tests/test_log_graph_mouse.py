@@ -28,7 +28,7 @@ class TestLongPressCheckoutActions(DeferrableTestCase):
             active=True, upstream=mock({"remote": "origin", "branch": "master", "canonical_name": "origin/master"}),
             worktree_path="/repo/current", is_current=True
         )
-        self.assertEqual(["Checkout in a worktree", "-", "Push", "Pull", "Fetch origin/master"],
+        self.assertEqual(["Checkout in a new worktree", "-", "Push", "Pull", "Fetch origin/master"],
                          [label for label, _, _ in menu])
         self.assertEqual(
             ("gs_checkout_in_worktree", {"start_point": "abcdef0"}), menu[0][1:]
@@ -69,7 +69,7 @@ class TestLongPressCheckoutActions(DeferrableTestCase):
             {"remote": "origin", "refspec": "master:feature"}
         ), menu[4])
 
-    def test_sha_menu_starts_with_detached_checkout_actions(self) -> None:
+    def test_sha_menu_shows_create_before_checkout_actions(self) -> None:
         view = sublime.active_window().new_file()
         view.set_scratch(True)
         self.addCleanup(view.close)
@@ -96,10 +96,13 @@ class TestLongPressCheckoutActions(DeferrableTestCase):
         command.show_menu(1, 2, "abcdef0")
 
         labels, on_done, _ = captured[0]
-        self.assertEqual(["Checkout here", "Checkout in a worktree", "-"], labels[:3])
-        on_done(0)
+        self.assertEqual([
+            "Create branch at abcdef0", "Create tag...", "-",
+            "Checkout here", "Checkout in a worktree", "-"
+        ], labels[:6])
+        on_done(3)
         verify(window).run_command("gs_checkout_branch", {"branch": "abcdef0", "detach": True})
-        on_done(1)
+        on_done(4)
         verify(window).run_command(
             "gs_checkout_in_worktree", {"start_point": "abcdef0"}
         )
@@ -140,13 +143,13 @@ class TestLongPressCheckoutActions(DeferrableTestCase):
     def test_cached_worktree_location_detaches_even_without_branch_worktreepath(self) -> None:
         menu = self.branch_menu(active=False, upstream=None, worktree_path="/repo/feature")
         self.assertEqual([
-            "Checkout in a worktree", "Open worktree in a new window", "-", "Push..."
+            "Open worktree in a new window", "Checkout in a new worktree", "-", "Push..."
         ], [label for label, _, _ in menu])
         self.assertEqual(
-            ("gs_checkout_in_worktree", {"start_point": "abcdef0"}), menu[0][1:]
+            ("gs_checkout_in_worktree", {"start_point": "abcdef0"}), menu[1][1:]
         )
         self.assertEqual(
-            ("gs_open_worktree_in_new_window", {"worktree": "/repo/feature"}), menu[1][1:]
+            ("gs_open_worktree_in_new_window", {"worktree": "/repo/feature"}), menu[0][1:]
         )
 
     def test_branch_checked_out_elsewhere_offers_fetch_but_not_pull(self) -> None:
@@ -154,7 +157,7 @@ class TestLongPressCheckoutActions(DeferrableTestCase):
             active=False, upstream=mock({"remote": "origin", "branch": "master", "canonical_name": "origin/master"}), worktree_path="/repo/feature"
         )
         self.assertEqual([
-            "Checkout in a worktree", "Open worktree in a new window", "-", "Push", "Fetch origin/master"
+            "Open worktree in a new window", "Checkout in a new worktree", "-", "Push", "Fetch origin/master"
         ], [label for label, _, _ in menu])
 
     def test_open_worktree_command_only_opens_the_existing_checkout(self) -> None:

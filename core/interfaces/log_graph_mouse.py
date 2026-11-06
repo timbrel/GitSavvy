@@ -155,8 +155,7 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
                     actions.insert(1, ("-", "", {}))
                 actions += self.cherry_pick_and_revert_actions(selected_commits)
             else:
-                actions[2:2] = self.fixup_actions(pt, commit_hash)
-                actions[:0] = [
+                actions[3:3] = [
                     ("Checkout here", "gs_checkout_branch", {"branch": commit_hash, "detach": True}),
                     (
                         "Checkout in a worktree", "gs_checkout_in_worktree",
@@ -164,6 +163,7 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
                     ),
                     ("-", "", {})
                 ]
+                actions[6:6] = self.fixup_actions(pt, commit_hash)
                 actions += self.cherry_pick_and_revert_actions([commit_hash])
 
         view.sel().clear()
@@ -189,18 +189,17 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
         actions: list[tuple[str, str, dict]] = []
         if not checked_out:
             actions.append(("Checkout here", "gs_checkout_branch", {"branch": name}))
-        actions += [
-            (
-                "Checkout in a worktree", "gs_checkout_in_worktree",
-                {"start_point": branch.commit_hash if checked_out else name}
-            )
-        ]
-        if worktree and not worktree.is_current:
+        elif worktree and not worktree.is_current:
             actions.append((
                 "Open worktree in a new window", "gs_open_worktree_in_new_window",
                 {"worktree": worktree.path}
             ))
         actions += [
+            (
+                "Checkout in a new worktree" if checked_out else "Checkout in a worktree",
+                "gs_checkout_in_worktree",
+                {"start_point": branch.commit_hash if checked_out else name}
+            ),
             ("-", "", {}),
             ("Push" if branch.upstream else "Push...", "gs_push", {"local_branch_name": name})
         ]
