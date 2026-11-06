@@ -141,6 +141,18 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
                         {"base_commit": selected_commits[0], "commits": selected_commits[1:]}
                     )
                 ]
+                if len(selected_commits) == 2:
+                    base_commit, target_commit = selected_commits
+                    actions.insert(0, (
+                        "Diff {}..{}".format(base_commit, target_commit),
+                        "gs_diff", {
+                            "base_commit": base_commit,
+                            "target_commit": target_commit,
+                            "in_cached_mode": False,
+                            "disable_stage": True
+                        }
+                    ))
+                    actions.insert(1, ("-", "", {}))
                 actions += self.cherry_pick_and_revert_actions(selected_commits)
             else:
                 actions[2:2] = self.fixup_actions(pt, commit_hash)

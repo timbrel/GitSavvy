@@ -104,6 +104,39 @@ class TestLongPressCheckoutActions(DeferrableTestCase):
             "gs_checkout_in_worktree", {"start_point": "abcdef0"}
         )
 
+    def test_two_selected_commits_offer_direct_diff(self) -> None:
+        view = sublime.active_window().new_file()
+        view.set_scratch(True)
+        self.addCleanup(view.close)
+        view.run_command("append", {"characters": "* abcdef0 newer\n* 1234567 older\n"})
+        view.settings().set("git_savvy.log_graph_view", True)
+        view.settings().set(PRESS_KEY, [1, 2, 2, 9])
+        view.settings().set("git_savvy.multi_selection", [[2, 9], [18, 25]])
+        view.sel().clear()
+        view.sel().add(sublime.Region(2, 9))
+        command = gs_log_graph_mouse(view)
+        when(command).target_at(2).thenReturn(sublime.Region(2, 9))
+        when(command).branch_at(2).thenReturn(None)
+        when(command).cherry_pick_and_revert_actions(["1234567", "abcdef0"]).thenReturn([])
+        when(view).match_selector(2, "string.other.rebase-hint.git-savvy").thenReturn(False)
+        when(view).match_selector(2, "constant.numeric.graph.commit-hash.git-savvy").thenReturn(True)
+        captured = []
+        when(view).show_popup_menu(...).thenAnswer(lambda *args: captured.append(args))
+        window = mock()
+        when(view).window().thenReturn(window)
+        when(window).active_view().thenReturn(view)
+        when(window).run_command(...).thenReturn(None)
+
+        command.show_menu(1, 2, "abcdef0")
+
+        labels, on_done, _ = captured[0]
+        self.assertEqual(["Diff 1234567..abcdef0", "-"], labels[:2])
+        on_done(0)
+        verify(window).run_command("gs_diff", {
+            "base_commit": "1234567", "target_commit": "abcdef0",
+            "in_cached_mode": False, "disable_stage": True
+        })
+
     def test_cached_worktree_location_detaches_even_without_branch_worktreepath(self) -> None:
         menu = self.branch_menu(active=False, upstream=None, worktree_path="/repo/feature")
         self.assertEqual([
