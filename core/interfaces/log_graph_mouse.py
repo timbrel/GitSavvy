@@ -83,29 +83,7 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
         if target is None or target != sublime.Region(press[2], press[3]):
             return
 
-        actions: list[tuple[str, str, dict]] = [
-            (
-                "Create branch at {}".format(commit_hash),
-                "gs_create_branch", {"start_point": commit_hash}
-            ),
-            (
-                "Create tag...",
-                "gs_create_tag", {"target_commit": commit_hash}
-            ),
-            ("-", "", {}),
-            (
-                "Reword",
-                "gs_rebase_reword_commit", {"commit_hash": commit_hash}
-            ),
-            (
-                "Edit",
-                "gs_rebase_edit_commit", {"commit_hash": commit_hash}
-            ),
-            (
-                "Drop",
-                "gs_rebase_drop_commits", {"base_commit": commit_hash, "commits": [commit_hash]}
-            )
-        ]
+        actions: list[tuple[str, str, dict]]
         branch = self.branch_at(pt)
         if branch is not None:
             actions = self.branch_actions(branch) + [
@@ -134,37 +112,53 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
                 for a, b in sorted(selected_regions, reverse=True)
             ))
             if len(selected_commits) >= 2 and commit_hash in selected_commits:
+                diff_actions: list[tuple[str, str, dict]] = []
+                if len(selected_commits) == 2:
+                    base_commit, target_commit = selected_commits
+                    diff_actions = [
+                        (
+                            "Diff {}..{}".format(base_commit, target_commit),
+                            "gs_diff", {
+                                "base_commit": base_commit,
+                                "target_commit": target_commit,
+                                "in_cached_mode": False,
+                                "disable_stage": True
+                            }
+                        ),
+                        ("-", "", {})
+                    ]
                 actions = [
+                    *diff_actions,
                     (
                         "Squash {}".format(format_revision_list(selected_commits)),
                         "gs_rebase_squash_commits",
                         {"base_commit": selected_commits[0], "commits": selected_commits[1:]}
-                    )
+                    ),
+                    *self.cherry_pick_and_revert_actions(selected_commits)
                 ]
-                if len(selected_commits) == 2:
-                    base_commit, target_commit = selected_commits
-                    actions.insert(0, (
-                        "Diff {}..{}".format(base_commit, target_commit),
-                        "gs_diff", {
-                            "base_commit": base_commit,
-                            "target_commit": target_commit,
-                            "in_cached_mode": False,
-                            "disable_stage": True
-                        }
-                    ))
-                    actions.insert(1, ("-", "", {}))
-                actions += self.cherry_pick_and_revert_actions(selected_commits)
             else:
-                actions[3:3] = [
+                actions = [
+                    (
+                        "Create branch at {}".format(commit_hash),
+                        "gs_create_branch", {"start_point": commit_hash}
+                    ),
+                    ("Create tag...", "gs_create_tag", {"target_commit": commit_hash}),
+                    ("-", "", {}),
                     ("Checkout here", "gs_checkout_branch", {"branch": commit_hash, "detach": True}),
                     (
                         "Checkout in a worktree", "gs_checkout_in_worktree",
                         {"start_point": commit_hash}
                     ),
-                    ("-", "", {})
+                    ("-", "", {}),
+                    *self.fixup_actions(pt, commit_hash),
+                    ("Reword", "gs_rebase_reword_commit", {"commit_hash": commit_hash}),
+                    ("Edit", "gs_rebase_edit_commit", {"commit_hash": commit_hash}),
+                    (
+                        "Drop", "gs_rebase_drop_commits",
+                        {"base_commit": commit_hash, "commits": [commit_hash]}
+                    ),
+                    *self.cherry_pick_and_revert_actions([commit_hash])
                 ]
-                actions[6:6] = self.fixup_actions(pt, commit_hash)
-                actions += self.cherry_pick_and_revert_actions([commit_hash])
 
         view.sel().clear()
         view.sel().add(target)
