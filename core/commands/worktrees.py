@@ -5,17 +5,37 @@ import re
 
 import sublime
 
+from ..base_commands import GsWindowCommand
 from ..interfaces import util as interface_util
 from . import ref_undo
 from ..exceptions import GitSavvyError
 from ..git_command import GitCommand
 from ..git_mixins.worktrees import WorktreeTarget
-from ..runtime import on_new_thread
+from ..runtime import on_new_thread, on_worker
 from ..ui__busy_spinner import busy_indicator
 from ..ui__quick_panel import noop, show_actions_panel
 
 
-__all__ = ()
+__all__ = ("gs_checkout_in_worktree", "gs_open_worktree_in_new_window")
+
+
+class gs_checkout_in_worktree(GsWindowCommand):
+    @on_worker
+    def run(self, start_point: str = "HEAD") -> None:
+        if start_point == "HEAD":
+            start_point = self.resolve_commitish(start_point)
+        path = self.create_new_worktree(start_point)
+        self.open_worktree_in_new_window(path, then=self.show_graph)
+
+    def show_graph(self, window: sublime.Window) -> None:
+        if not window.views():
+            window.run_command("gs_graph")
+
+
+class gs_open_worktree_in_new_window(GsWindowCommand):
+    @on_worker
+    def run(self, worktree: str) -> None:
+        self.open_worktree_in_new_window(worktree)
 
 
 def remove_worktree(

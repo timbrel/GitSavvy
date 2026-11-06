@@ -14,8 +14,7 @@ __all__ = (
 
 
 class GsPullBase(GsWindowCommand):
-    def do_pull(self, remote, remote_branch, rebase):
-        # type: (str, str, Optional[bool]) -> None
+    def do_pull(self, remote: str, remote_branch: str, rebase: Optional[bool]) -> None:
         """
         Perform `git pull remote branch`.
         """
@@ -33,7 +32,7 @@ class gs_pull(GsPullBase):
     """
 
     @on_worker
-    def run(self, rebase=None):
+    def run(self, rebase: Optional[bool] = None) -> None:
         upstream = self.get_upstream_for_active_branch()
         if upstream:
             self.do_pull(upstream.remote, upstream.branch, rebase)

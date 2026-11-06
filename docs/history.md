@@ -37,6 +37,21 @@ branch names, tags, and commit IDs.
 
 The `■` character is reserved for worktree markers in graph decorations.
 
+Press and hold a local branch name or commit hash to open its action menu.
+**Checkout here** switches the current working directory; a commit hash is
+checked out detached. **Checkout in a worktree** creates a new worktree and
+opens it in a new window. It attaches to an available branch, but stays
+detached when the branch is already checked out here or elsewhere, or when
+opening a commit hash. For branches checked out elsewhere, **Checkout here**
+is hidden; **Open worktree in a new window** opens their existing checkout
+without modifying it.
+
+Branch menus also offer **Push** (**Push...** without an upstream), plus
+**Fetch** when an upstream is configured. **Pull** is available for the current
+branch and unchecked branches with an upstream. Pulling an unchecked branch
+only fast-forwards it; divergent histories are rejected. Pull is not offered
+for branches checked out elsewhere; open their worktree to pull there.
+
 To move a local branch, double-click its name and hold the second press while
 moving to another commit. The source name becomes `|`; the destination previews
 its new decoration. Release and choose **Move 'branch name' here** to confirm.
@@ -51,6 +66,11 @@ Use `.` to go to next commit and use `,` to go to previous commit.
 Pressing `m` while your cursor is over a particular line will toggle display of a quick panel containing more info about the selected commit. GitSavvy remembers the selection for the next graph view.
 
 Pressing `Enter` while your cursor is over a particular line will show the options similar to that of `git: log`.
+
+## `git: open current commit in a worktree`
+
+Creates a detached worktree at the current `HEAD` commit and opens it in a new
+window, leaving the current checkout unchanged.
 
 ## `git: graph current file`
 

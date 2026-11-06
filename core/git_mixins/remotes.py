@@ -168,7 +168,10 @@ class RemotesMixin(mixin_base):
             refspec or None,
         )
 
-    def pull(self, remote=None, remote_branch=None, rebase=None):
+    def pull(
+        self, remote: str | None = None, remote_branch: str | None = None,
+        rebase: bool | None = None
+    ) -> str:
         """
         Pull from the specified remote and branch if provided, otherwise
         perform default `git pull`.

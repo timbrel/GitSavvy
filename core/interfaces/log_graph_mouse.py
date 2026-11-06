@@ -108,7 +108,8 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
         ]
         branch = self.branch_at(pt)
         if branch is not None:
-            actions = [
+            actions = self.branch_actions(branch) + [
+                ("-", "", {}),
                 (
                     "Rename '{}'".format(branch),
                     "gs_rename_branch", {"branch": branch}
@@ -143,6 +144,14 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
                 actions += self.cherry_pick_and_revert_actions(selected_commits)
             else:
                 actions[2:2] = self.fixup_actions(pt, commit_hash)
+                actions[:0] = [
+                    ("Checkout here", "gs_checkout_branch", {"branch": commit_hash, "detach": True}),
+                    (
+                        "Checkout in a worktree", "gs_checkout_in_worktree",
+                        {"start_point": commit_hash}
+                    ),
+                    ("-", "", {})
+                ]
                 actions += self.cherry_pick_and_revert_actions([commit_hash])
 
         view.sel().clear()
@@ -159,6 +168,37 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
                     window.run_command(command, args)
 
         view.show_popup_menu([label for label, _, _ in actions], on_done, pt)
+
+    def branch_actions(self, name: str) -> list[tuple[str, str, dict]]:
+        branch = next(b for b in self.get_branches() if not b.is_remote and b.name == name)
+        worktrees = self.current_state().get("worktree_locations", [])
+        worktree = next((wt for wt in worktrees if wt.branch_name == name), None)
+        checked_out = branch.active or worktree is not None
+        actions: list[tuple[str, str, dict]] = []
+        if not checked_out:
+            actions.append(("Checkout here", "gs_checkout_branch", {"branch": name}))
+        actions += [
+            (
+                "Checkout in a worktree", "gs_checkout_in_worktree",
+                {"start_point": branch.commit_hash if checked_out else name}
+            )
+        ]
+        if worktree and not worktree.is_current:
+            actions.append((
+                "Open worktree in a new window", "gs_open_worktree_in_new_window",
+                {"worktree": worktree.path}
+            ))
+        actions += [
+            ("-", "", {}),
+            ("Push" if branch.upstream else "Push...", "gs_push", {"local_branch_name": name})
+        ]
+        if branch.upstream:
+            if branch.active:
+                actions.append(("Pull", "gs_pull", {}))
+            elif not checked_out:
+                actions.append(("Pull", "gs_ff_update_branch", {"branch": name}))
+            actions.append(("Fetch", "gs_fetch", {"remote": branch.upstream.remote}))
+        return actions
 
     def fixup_actions(self, pt: int, commit_hash: str) -> list[tuple[str, str, dict]]:
         from .log_graph import is_fixup_or_squash_message
