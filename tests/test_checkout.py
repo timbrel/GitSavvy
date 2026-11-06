@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from unittesting import DeferrableTestCase
 
+from GitSavvy.core import ui__quick_panel
 from GitSavvy.core.commands import checkout
 from GitSavvy.core.commands.checkout import CheckoutBranchInputHandler, gs_checkout_branch
 from GitSavvy.core.exceptions import GitSavvyError
@@ -205,6 +206,64 @@ class TestCheckoutBranch(DeferrableTestCase):
         self.assertTrue(handler.validate(value))
         handler.confirm(value, {"modifier_keys": {"ctrl": ctrl}})
         self.command.run(value)
+
+
+class TestCheckoutNewBranchCompletion(DeferrableTestCase):
+    def setUp(self) -> None:
+        self.window = mock()
+        self.command = checkout.gs_checkout_new_branch(self.window)
+        self.events = []
+        self.panels = []
+        when(self.command).git_throwing_silently(...).thenReturn("")
+        when(self.window).status_message(...).thenReturn(None)
+        when(checkout.interface_util).refresh_gitsavvy_interfaces(
+            self.window, refresh_sidebar=True
+        ).thenAnswer(lambda *args, **kwargs: self.events.append("refresh"))
+        when(ui__quick_panel).show_quick_panel(...).thenAnswer(
+            lambda window, items, on_done, on_cancel, selected_index: self.panels.append((on_done, on_cancel))
+        )
+
+    def tearDown(self) -> None:
+        unstub()
+
+    def test_success_reports_completion_before_refresh(self) -> None:
+        self.command.checkout("topic", "target", force=True, on_done=self.events.append)
+        self.assertEqual(self.events, [True, "refresh"])
+
+    def test_dirty_worktree_retry_retains_completion_callback(self) -> None:
+        self.start_dirty_checkout()
+        self.assertEqual(self.events, [])
+        self.panels[-1][0](1)
+        verify(self.command).git_throwing_silently("checkout", "-B", "topic", "target", "--merge")
+        self.assertEqual(self.events, [True, "refresh"])
+
+    @p.expand([("abort", False), ("dismiss", True)])
+    def test_dirty_worktree_abandonment_reports_failure(self, label: str, dismiss: bool) -> None:
+        self.start_dirty_checkout()
+        on_done, on_cancel = self.panels[-1]
+        if dismiss:
+            on_cancel()
+        else:
+            on_done(0)
+        self.assertEqual(self.events, [False])
+
+    def test_failed_merge_reports_failure_without_refresh(self) -> None:
+        self.start_dirty_checkout()
+        error = GitSavvyError("merge refused", show_panel=False)
+        when(error).show_error_panel().thenReturn(None)
+        when(self.command).git_throwing_silently(
+            "checkout", "-B", "topic", "target", "--merge"
+        ).thenRaise(error)
+        with self.assertRaises(GitSavvyError):
+            self.panels[-1][0](1)
+        self.assertEqual(self.events, [False])
+
+    def start_dirty_checkout(self) -> None:
+        error = GitSavvyError("dirty", stderr=checkout.DIRTY_WORKTREE_MESSAGE, show_panel=False)
+        when(self.command).git_throwing_silently(
+            "checkout", "-B", "topic", "target", None
+        ).thenRaise(error)
+        self.command.checkout("topic", "target", force=True, on_done=self.events.append)
 
 
 def branch(

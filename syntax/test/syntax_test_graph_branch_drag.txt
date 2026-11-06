@@ -1,0 +1,15 @@
+# SYNTAX TEST "Packages/GitSavvy/syntax/graph.sublime-syntax"
+
+  REPO: branch-drag
+
+● 718ab2b9 (|) Second commit | Wed 01:19, herr kaste
+#           ^ meta.graph.branch-move.git-savvy constant.other.git.branch.git-savvy
+#              ^^^^^^^^^^^^^ meta.graph.message.git-savvy - meta.git-savvy.grph.info
+#                              ^^^^^^^^^ storage.type.time.git-savvy
+#                                         ^^^^^^^^^^ entity.name.tag.author.git-savvy
+● 40e3d394 (HEAD -> |, origin/mouse) Clear selections ​ Wed 01:22, herr kaste
+#           ^^^^ constant.other.git.head.git-savvy
+#                   ^ meta.graph.branch-move.git-savvy
+#                      ^^^^^^^^^^^^ constant.other.git.branch.git-savvy
+#                                    ^^^^^^^^^^^^^^^^ meta.graph.message.git-savvy
+#                                                       ^^^^^^^^^ storage.type.time.git-savvy

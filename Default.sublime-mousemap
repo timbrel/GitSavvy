@@ -117,5 +117,27 @@
         "context": [
             { "key": "setting.git_savvy.tags_view", "operator": "equal", "operand": true }
         ]
+    },
+    {
+        "button": "button1",
+        "modifiers": [],
+        "count": 2,
+        "press_command": "gs_log_graph_branch_drag",
+        "command": "gs_log_graph_branch_drag",
+        "args": { "action": "finish" },
+        "context": [
+            { "key": "setting.git_savvy.log_graph_view", "operand": true }
+        ]
+    },
+    {
+        "button": "button2",
+        "modifiers": [],
+        "count": 1,
+        "press_command": "gs_log_graph_branch_drag",
+        "press_args": { "action": "cancel" },
+        "command": "noop",
+        "context": [
+            { "key": "git_savvy.graph_branch_drag_active", "operand": true }
+        ]
     }
 ]

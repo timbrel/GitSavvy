@@ -37,6 +37,15 @@ branch names, tags, and commit IDs.
 
 The `■` character is reserved for worktree markers in graph decorations.
 
+To move a local branch, double-click its name and hold the second press while
+moving to another commit. The source name becomes `|`; the destination previews
+its new decoration. Release and choose **Move 'branch name' here** to confirm.
+Dismiss the menu to abort; releasing on the original commit also aborts.
+Remote-tracking branches and branches checked out in another worktree cannot be
+dragged. Moving the branch checked out here uses `checkout -B`, including the
+usual offer to merge local changes if needed. Other branches move without
+switching checkout and support GitSavvy's ref undo.
+
 Use `.` to go to next commit and use `,` to go to previous commit.
 
 Pressing `m` while your cursor is over a particular line will toggle display of a quick panel containing more info about the selected commit. GitSavvy remembers the selection for the next graph view.

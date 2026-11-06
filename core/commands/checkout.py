@@ -1,7 +1,7 @@
 from __future__ import annotations
 from functools import partial
 import os
-from typing import Any
+from typing import Any, Callable
 
 import sublime
 from sublime_plugin import ListInputHandler
@@ -125,8 +125,18 @@ class gs_checkout_new_branch(GsWindowCommand):
         ),
     }
 
-    def run(self, branch_name, start_point=None, force=False, merge=False):
-        # type: (str, str, bool, bool) -> None
+    def run(
+        self, branch_name: str, start_point: str | None = None,
+        force: bool = False, merge: bool = False
+    ) -> None:
+        self.checkout(branch_name, start_point, force, merge)
+
+    def checkout(
+        self, branch_name: str, start_point: str | None = None,
+        force: bool = False, merge: bool = False,
+        on_done: Callable[[bool], None] = lambda moved: None
+    ) -> None:
+        """Report completion, including abandonment of dirty-worktree recovery."""
         try:
             self.git_throwing_silently(
                 "checkout",
@@ -137,22 +147,20 @@ class gs_checkout_new_branch(GsWindowCommand):
             )
         except GitSavvyError as e:
             if force and DIRTY_WORKTREE_MESSAGE in e.stderr and not merge:
+                nope = lambda: on_done(False)
                 show_actions_panel(self.window, [
-                    noop("Abort, local changes would be overwritten by checkout."),
+                    noop("Abort, local changes would be overwritten by checkout.", nope),
                     (
                         "Try merging the changes.",
-                        lambda: self.window.run_command("gs_checkout_new_branch", {
-                            "branch_name": branch_name,
-                            "start_point": start_point,
-                            "force": force,
-                            "merge": True
-                        })
+                        lambda: self.checkout(branch_name, start_point, force, True, on_done)
                     )
-                ])
+                ], on_cancel=nope)
                 return
 
             elif BRANCH_ALREADY_EXISTS_MESSAGE.format(branch_name) in e.stderr and not force:
-                def overwrite_action():
+                on_done(False)
+
+                def overwrite_action() -> None:
                     old_hash = self.resolve(branch_name)
                     uprint(RECREATE_BRANCH_UNDO_MESSAGE.format(branch_name, old_hash))
 
@@ -173,9 +181,14 @@ class gs_checkout_new_branch(GsWindowCommand):
                 return
 
             else:
+                on_done(False)
                 e.show_error_panel()
                 raise
+        except Exception:
+            on_done(False)
+            raise
 
+        on_done(True)
         self.window.status_message("Created and checked out `{}` branch.".format(branch_name))
         interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
