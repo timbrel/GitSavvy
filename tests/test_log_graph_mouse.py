@@ -38,9 +38,13 @@ class TestLongPressCheckoutActions(DeferrableTestCase):
 
     def test_available_branch_with_upstream(self) -> None:
         menu = self.branch_menu(active=False, upstream=mock({"remote": "fork", "branch": "topic/nested", "canonical_name": "fork/topic/nested"}))
-        self.assertEqual(["Checkout here", "Checkout in a worktree", "-", "Push", "Pull",
-                          "Fetch fork/topic/nested"], [label for label, _, _ in menu])
-        self.assertEqual(("gs_ff_update_branch", {"branch": "feature"}), menu[4][1:])
+        self.assertEqual([
+            "Checkout here", "Checkout in a worktree", "-", "Push",
+            "Update feature from fork/topic/nested (ff-only)", "Fetch fork/topic/nested"
+        ], [label for label, _, _ in menu])
+        self.assertEqual(
+            ("gs_fetch", {"remote": "fork", "refspec": "topic/nested:feature"}), menu[4][1:]
+        )
         self.assertEqual(
             ("gs_fetch", {"remote": "fork", "refspec": "topic/nested"}), menu[5][1:]
         )

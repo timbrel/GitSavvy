@@ -196,7 +196,13 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
             if branch.active:
                 actions.append(("Pull", "gs_pull", {}))
             elif not checked_out:
-                actions.append(("Pull", "gs_ff_update_branch", {"branch": name}))
+                actions.append((
+                    "Update {} from {} (ff-only)".format(name, branch.upstream.canonical_name),
+                    "gs_fetch", {
+                        "remote": branch.upstream.remote,
+                        "refspec": "{}:{}".format(branch.upstream.branch, name)
+                    }
+                ))
             actions.append((
                 "Fetch {}".format(branch.upstream.canonical_name),
                 "gs_fetch", {"remote": branch.upstream.remote, "refspec": branch.upstream.branch}
