@@ -197,7 +197,10 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
                 actions.append(("Pull", "gs_pull", {}))
             elif not checked_out:
                 actions.append(("Pull", "gs_ff_update_branch", {"branch": name}))
-            actions.append(("Fetch", "gs_fetch", {"remote": branch.upstream.remote}))
+            actions.append((
+                "Fetch {}".format(branch.upstream.canonical_name),
+                "gs_fetch", {"remote": branch.upstream.remote, "refspec": branch.upstream.branch}
+            ))
         return actions
 
     def fixup_actions(self, pt: int, commit_hash: str) -> list[tuple[str, str, dict]]:

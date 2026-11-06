@@ -25,22 +25,25 @@ class TestLongPressCheckoutActions(DeferrableTestCase):
 
     def test_current_branch_with_upstream(self) -> None:
         menu = self.branch_menu(
-            active=True, upstream=mock({"remote": "origin"}),
+            active=True, upstream=mock({"remote": "origin", "branch": "master", "canonical_name": "origin/master"}),
             worktree_path="/repo/current", is_current=True
         )
-        self.assertEqual(["Checkout in a worktree", "-", "Push", "Pull", "Fetch"],
+        self.assertEqual(["Checkout in a worktree", "-", "Push", "Pull", "Fetch origin/master"],
                          [label for label, _, _ in menu])
         self.assertEqual(
             ("gs_checkout_in_worktree", {"start_point": "abcdef0"}), menu[0][1:]
         )
         self.assertEqual(("gs_pull", {}), menu[3][1:])
-        self.assertEqual(("gs_fetch", {"remote": "origin"}), menu[4][1:])
+        self.assertEqual(("gs_fetch", {"remote": "origin", "refspec": "master"}), menu[4][1:])
 
     def test_available_branch_with_upstream(self) -> None:
-        menu = self.branch_menu(active=False, upstream=mock({"remote": "fork"}))
-        self.assertEqual(["Checkout here", "Checkout in a worktree", "-", "Push", "Pull", "Fetch"],
-                         [label for label, _, _ in menu])
+        menu = self.branch_menu(active=False, upstream=mock({"remote": "fork", "branch": "topic/nested", "canonical_name": "fork/topic/nested"}))
+        self.assertEqual(["Checkout here", "Checkout in a worktree", "-", "Push", "Pull",
+                          "Fetch fork/topic/nested"], [label for label, _, _ in menu])
         self.assertEqual(("gs_ff_update_branch", {"branch": "feature"}), menu[4][1:])
+        self.assertEqual(
+            ("gs_fetch", {"remote": "fork", "refspec": "topic/nested"}), menu[5][1:]
+        )
 
     def test_sha_menu_starts_with_detached_checkout_actions(self) -> None:
         view = sublime.active_window().new_file()
@@ -91,10 +94,10 @@ class TestLongPressCheckoutActions(DeferrableTestCase):
 
     def test_branch_checked_out_elsewhere_offers_fetch_but_not_pull(self) -> None:
         menu = self.branch_menu(
-            active=False, upstream=mock({"remote": "origin"}), worktree_path="/repo/feature"
+            active=False, upstream=mock({"remote": "origin", "branch": "master", "canonical_name": "origin/master"}), worktree_path="/repo/feature"
         )
         self.assertEqual([
-            "Checkout in a worktree", "Open worktree in a new window", "-", "Push", "Fetch"
+            "Checkout in a worktree", "Open worktree in a new window", "-", "Push", "Fetch origin/master"
         ], [label for label, _, _ in menu])
 
     def test_open_worktree_command_only_opens_the_existing_checkout(self) -> None:
