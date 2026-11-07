@@ -143,9 +143,12 @@ ask_for_branch_ = ask_for_branch(
 )
 
 
-def ask_for_ref(self, args, done, initial_text=""):
-    # type: (GsTextCommand, Args, Kont, str) -> None
-    def on_done(ref):
+def ask_for_ref(self: GsTextCommand, args: Args, done: Kont, initial_text: str = "") -> None:
+    local_branches = self.get_local_branches()
+    local_names = {branch.name for branch in local_branches}
+    suggested_branch = suggested_ref_branch(self.view, local_names)
+
+    def on_done(ref: str) -> None:
         ref = ref.strip().replace(" ", "-")
         if not ref:
             return
@@ -153,7 +156,7 @@ def ask_for_ref(self, args, done, initial_text=""):
         if not ref.startswith("refs/"):
             branch_name = ref
             ref = f"refs/heads/{ref}"
-            for branch in self.get_local_branches():
+            for branch in local_branches:
                 if branch.name == branch_name:
                     if branch.active:
                         show_actions_panel(self.window, [
@@ -162,6 +165,8 @@ def ask_for_ref(self, args, done, initial_text=""):
                                 lambda: ask_for_ref(self, args, done, initial_text=branch_name)
                             )
                         ])
+                    elif branch_name == suggested_branch:
+                        done(ref)
                     else:
                         show_actions_panel(self.window, [
                             (
@@ -176,27 +181,24 @@ def ask_for_ref(self, args, done, initial_text=""):
                     return
         done(ref)
 
-    view = self.view
+    show_single_line_input_panel(
+        "Branch name or ref:",
+        initial_text or suggested_branch or "",
+        on_done,
+    )
+
+
+def suggested_ref_branch(view: sublime.View, local_names: set[str]) -> str | None:
     if (
-        not initial_text
-        and view.settings().get("git_savvy.log_graph_view")
+        view.settings().get("git_savvy.log_graph_view")
         and (frozen_sel := list(multi_selector.get_selection(view)))
         and (line := line_from_pt(view, frozen_sel[0].begin()))
         and (info := describe_graph_line(line.text, known_branches={}))
-        # As we don't feed in `known_branches`, every branch lands in `branches`.
-        # We're actually only interested in `local_branches` but this is also
-        # only the initial text, so we probably don't need to be more accurate here.
-        and (branches := info.get("branches", []))
+        and (branches := [name for name in info.get("branches", []) if name in local_names])
     ):
-        initial_text = branches[-1]
-        if initial_text.endswith("--local"):
-            initial_text = initial_text[:-7]
-
-    show_single_line_input_panel(
-        "Branch name or ref:",
-        initial_text,
-        on_done,
-    )
+        branch = branches[-1]
+        return branch[:-7] if branch.endswith("--local") else branch
+    return None
 
 
 def take_current_branch_name(cmd, args, done):
