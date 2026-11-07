@@ -4,6 +4,7 @@ from .branch import *
 from .changelog import *
 from .checkout import *
 from .cherry_pick import *
+from .command_log import *
 from .commit_compare import *
 from .config import *
 from .context_menu import *

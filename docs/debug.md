@@ -3,6 +3,36 @@
 If you're doing development on GitSavvy, the following commands may be useful.
 
 
+## `GitSavvy: Show Command Log`
+
+Open this command from the Command Palette, or select **Output: GitSavvy Command
+Log** from Sublime's panel selector, to see GitSavvy's recent and running Git
+commands. The log is shared across all Sublime windows and grouped by working
+directory, with the newest commands first in each group. It keeps all running
+commands plus the 15 most recently finished commands across all repositories.
+
+```text
+             -- /path/to/repo --
+> (W) [ 2.3s] $ git fetch origin
+  (W) [ 47ms] $ git stash list
+```
+
+`>` marks a running command; the letter in parentheses is the first character of
+its thread's name. Commands taking less than 100ms appear only when finished.
+Slower commands initially show `[     ]`, then an updating elapsed time after
+one second. Opening the panel shows all currently running commands immediately.
+
+Click **Abort** beside a running command to stop it. Aborted commands show
+`[xxxxx]`. Aborting does not undo changes Git has already made; a rebase or merge
+may still need attention afterward.
+
+The panel becomes available in a window's panel selector after its first Git
+command, but does not open automatically. History is tracked while it is hidden,
+but animation runs only while visible. It shows commands and timings, not their
+stdout or stderr; use the existing output panel for progress or the debug logging
+commands below to record command inputs and outputs.
+
+
 ## `GitSavvy: reload modules (debug)`
 
 This command will reload all GitSavvy-related Python modules and initiate a plugin reset for Sublime Text 3.  Note that the editor's interface may become unresponsive for a second or two while the plugins are reloaded.  However, this workflow is often preferable to closing and re-opening Sublime when testing changes to GitSavvy.

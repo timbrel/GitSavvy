@@ -2,7 +2,7 @@ import io
 import subprocess
 
 from unittesting import DeferrableTestCase
-from GitSavvy.tests.mockito import unstub, when
+from GitSavvy.tests.mockito import unstub, verify, when
 
 from GitSavvy.core import git_command
 from GitSavvy.core.exceptions import GitSavvyError
@@ -88,6 +88,52 @@ class TestGitTimeout(DeferrableTestCase):
         unstub()
 
 
+class TestCommandLogTracking(DeferrableTestCase):
+    def tearDown(self):
+        unstub()
+
+    def test_tracks_the_managed_process_lifetime(self):
+        process = FailingProcess(b"", b"")
+        process.returncode = 0
+        when(git_command.subprocess).Popen(...).thenReturn(process)
+        when(git_command.command_log).start_command(...).thenReturn(42)
+        when(git_command.command_log).finish_command(...)
+
+        TimeoutGitCommand().git("status", working_dir=".")
+
+        verify(git_command.command_log).start_command(...)
+        verify(git_command.command_log).finish_command(42, False)
+
+    def test_tracks_just_the_proc_handoffs_with_a_waiter(self):
+        process = FailingProcess(b"", b"")
+        when(git_command.subprocess).Popen(...).thenReturn(process)
+        when(git_command.command_log).finish_command(...)
+        when(git_command.command_log).finish_when_process_exits(...)
+        when(git_command.command_log).start_command(...).thenReturn(42)
+
+        returned = TimeoutGitCommand().git("status", working_dir=".", just_the_proc=True)
+
+        self.assertIs(returned, process)
+        verify(git_command.command_log).start_command(...)
+        verify(git_command.command_log).finish_when_process_exits(42, process)
+        verify(git_command.command_log, times=0).finish_command(...)
+
+    def test_git_streaming_registers_the_process_once(self):
+        process = StreamingProcess(b"line\n", b"")
+        when(git_command.subprocess).Popen(...).thenReturn(process)
+        when(git_command.command_log).start_command(...).thenReturn(42)
+        when(git_command.command_log).finish_when_process_exits(...)
+
+        self.assertEqual(
+            list(TimeoutGitCommand().git_streaming("status", working_dir=".")),
+            ["line\n"]
+        )
+
+        verify(git_command.command_log, times=1).start_command(...)
+        verify(git_command.command_log, times=1).finish_when_process_exits(42, process)
+        verify(git_command.command_log, times=0).finish_command(...)
+
+
 class TestGitStdoutFormatter(DeferrableTestCase):
     def tearDown(self):
         unstub()
@@ -142,14 +188,24 @@ class TimeoutGitCommand(git_command.mixin_base):
     project_settings = {}
     app_settings = {"show_panel_for": []}
     git_binary_path = "git"
+    repo_path = "."
 
     def some_window(self):
         return TimeoutWindow()
 
 
 class TimeoutWindow:
+    def is_valid(self):
+        return False
+
+    def id(self):
+        return 999_998
+
     def extract_variables(self):
         return {}
+
+    def active_panel(self):
+        return None
 
 
 class TimedOutProcess:

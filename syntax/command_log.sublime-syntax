@@ -1,0 +1,10 @@
+%YAML 1.2
+---
+name: GitSavvy Command Log
+hidden: true
+scope: source.git-savvy.command-log
+contexts:
+  main:
+    - match: '^[ >] \(.\) (\[(?:\s{5}|\s*\d+(?:\.\d+)?(?:ms|s)|xxxxx)\])'
+      captures:
+        1: constant.other.command-timing.git-savvy

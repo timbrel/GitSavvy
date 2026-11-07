@@ -20,7 +20,7 @@ import traceback
 
 import sublime
 
-from . import debug, output_panel
+from . import command_log, debug, output_panel
 from .settings import SettingsMixin
 from .utils import (
     try_kill_proc, paths_upwards, proc_has_been_aborted_by_user,
@@ -330,6 +330,7 @@ class _GitCommand(SettingsMixin):
 
         stdout, stderr = None, None
         p = None
+        command_log_execution_id = None
         vars_for_replace = ChainMap(
             custom_environ or {},
             window.extract_variables(),
@@ -360,7 +361,13 @@ class _GitCommand(SettingsMixin):
                 **popen_kwargs
             )
 
+            command_log.prepare_panel(window)
+            command_log_execution_id = command_log.start_command(
+                working_dir, command_str, p
+            )
+
             if just_the_proc:
+                command_log.finish_when_process_exits(command_log_execution_id, p)
                 return p
 
             if log:
@@ -423,8 +430,10 @@ class _GitCommand(SettingsMixin):
             if not just_the_proc:
                 end = time.time()
                 debug.log_git(final_args, working_dir, stdin, stdout, stderr, end - start)
+                aborted = proc_has_been_aborted_by_user(p) if p else False
+                if command_log_execution_id is not None:
+                    command_log.finish_command(command_log_execution_id, aborted)
                 if log:
-                    aborted = proc_has_been_aborted_by_user(p) if p else False
                     output_panel.finish_abortable_command(panel, p)
                     output_panel.append_done_message(
                         panel,
