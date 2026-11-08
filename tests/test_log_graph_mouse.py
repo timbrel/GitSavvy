@@ -6,8 +6,68 @@ from unittesting import DeferrableTestCase
 
 from GitSavvy.core.commands import worktrees
 from GitSavvy.core.git_mixins.worktrees import WorktreeLocation
-from GitSavvy.core.interfaces.log_graph_mouse import PRESS_KEY, gs_log_graph_mouse
+from GitSavvy.core.interfaces.log_graph_mouse import (
+    PRESS_KEY, TARGET_KEY, GsLogGraphMouseListener, gs_log_graph_mouse
+)
 from GitSavvy.tests.mockito import mock, unstub, verify, when
+
+
+class TestGraphLabelSelection(DeferrableTestCase):
+    def tearDown(self) -> None:
+        unstub()
+
+    def test_dismissing_hold_menu_releases_selection_anchor(self) -> None:
+        view = sublime.active_window().new_file()
+        view.set_scratch(True)
+        self.addCleanup(view.close)
+        view.run_command("append", {"characters": "* abcdef0 (topic) subject\n* 1234567 next\n"})
+        target = sublime.Region(11, 16)
+        view.sel().clear()
+        view.sel().add(target)
+        view.settings().set("git_savvy.log_graph_view", True)
+        view.settings().set(PRESS_KEY, [1, 11, target.a, target.b])
+        view.settings().set(TARGET_KEY, [target.a, target.b])
+        command = gs_log_graph_mouse(view)
+        when(command).target_at(11).thenReturn(target)
+        when(command).branch_at(11).thenReturn("topic")
+        when(command).branch_actions("topic").thenReturn([])
+        captured = []
+        when(view).show_popup_menu(...).thenAnswer(lambda *args: captured.append(args))
+
+        command.show_menu(1, 11, "abcdef0")
+        captured[0][1](-1)
+        # The popup can swallow mouse-up, so no mouse release command follows.
+        view.run_command("move", {"by": "lines", "forward": True})
+        GsLogGraphMouseListener().on_selection_modified(view)
+        self.assertTrue(view.sel()[0].empty(), repr(view.sel()[0]))
+        self.assertEqual(view.rowcol(view.sel()[0].b)[0], 1)
+        self.assertIsNone(view.settings().get(TARGET_KEY))
+
+    def test_horizontal_drag_preserves_initial_label_in_both_directions(self) -> None:
+        view = sublime.active_window().new_file()
+        view.set_scratch(True)
+        try:
+            view.run_command("append", {"characters": "before feature/foo-bar after"})
+            target = sublime.Region(7, 22)
+            listener = GsLogGraphMouseListener()
+            for selection, expected in (
+                (sublime.Region(15, 28), sublime.Region(7, 28)),
+                (sublime.Region(18, 0), sublime.Region(22, 0))
+            ):
+                view.settings().set(PRESS_KEY, [1, 15, target.a, target.b])
+                view.settings().set("git_savvy.log_graph_mouse_target", [target.a, target.b])
+                view.sel().clear()
+                view.sel().add(selection)
+                listener.on_selection_modified(view)
+                self.assertEqual(list(view.sel()), [expected])
+                self.assertIsNone(view.settings().get(PRESS_KEY))
+                # Further native tracking must still include the original label.
+                view.sel().clear()
+                view.sel().add(selection)
+                listener.on_selection_modified(view)
+                self.assertEqual(list(view.sel()), [expected])
+        finally:
+            view.close()
 
 
 class TestLongPressCheckoutActions(DeferrableTestCase):

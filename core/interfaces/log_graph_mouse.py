@@ -11,6 +11,7 @@ from ..git_command import GitCommand
 __all__ = ("gs_log_graph_mouse", "GsLogGraphMouseListener")
 
 PRESS_KEY = "git_savvy.log_graph_mouse_press"
+TARGET_KEY = "git_savvy.log_graph_mouse_target"
 HOLD_MS = 400
 
 
@@ -21,6 +22,7 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
         view = self.view
         settings = view.settings()
         settings.erase(PRESS_KEY)
+        settings.erase(TARGET_KEY)
         if release:
             view.run_command("gs_log_graph_branch_drag", {
                 "action": "finish", "event": event
@@ -48,6 +50,7 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
             )
         args: dict = {"event": event}
         if target is not None:
+            settings.set(TARGET_KEY, [target.a, target.b])
             args["by"] = "words"
         # Let this TextCommand finish so Sublime draws the selection before
         # native drag tracking takes over until mouse release.
@@ -173,6 +176,9 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
                 else:
                     window.run_command(command, args)
 
+        # The popup takes over the gesture and can swallow mouse-up. Do not
+        # keep anchoring later keyboard selections to the pressed label.
+        view.settings().erase(TARGET_KEY)
         view.show_popup_menu([label for label, _, _ in actions], on_done, pt)
 
     def branch_actions(self, name: str) -> list[tuple[str, str, dict]]:
@@ -288,13 +294,21 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
 
 class GsLogGraphMouseListener(EventListener):
     def on_selection_modified(self, view: sublime.View) -> None:
-        press = view.settings().get(PRESS_KEY)
-        if press is None:
+        settings = view.settings()
+        coordinates = settings.get(TARGET_KEY)
+        if coordinates is None:
             return
-        _, pt, a, b = press
-        target = sublime.Region(a, b)
-        if len(view.sel()) != 1 or not target.contains(view.sel()[0]):
-            view.settings().erase(PRESS_KEY)
-        elif view.sel()[0] != target:
+        target = sublime.Region(*coordinates)
+        if len(view.sel()) != 1:
+            settings.erase(PRESS_KEY)
+            settings.erase(TARGET_KEY)
+            return
+        selection = view.sel()[0]
+        if not target.contains(selection):
+            settings.erase(PRESS_KEY)
+        expanded = target.cover(selection)
+        if selection.a > selection.b:
+            expanded = sublime.Region(expanded.end(), expanded.begin())
+        if selection != expanded:
             view.sel().clear()
-            view.sel().add(target)
+            view.sel().add(expanded)
