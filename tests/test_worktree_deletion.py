@@ -6,8 +6,10 @@ from functools import partial
 from unittesting import DeferrableTestCase
 
 from GitSavvy.common.util import actions
-from GitSavvy.core import runtime
+from GitSavvy.core import runtime, ui__worktrees
+from GitSavvy.core.git_mixins.worktrees import WorktreeTarget
 from GitSavvy.core.commands import log_graph_main_actions as graph
+from GitSavvy.core.commands import ref_undo
 from GitSavvy.core.exceptions import GitSavvyError
 from GitSavvy.core.interfaces import branch
 from GitSavvy.tests.mockito import mock, unstub, verify, when
@@ -23,16 +25,24 @@ class TestWorktreeDeletion(DeferrableTestCase):
     def setUp(self) -> None:
         self.window = mock()
         self.view = mock()
+        when(self.view).id().thenReturn(42)
+        when(self.view).window().thenReturn(self.window)
+        self.target = WorktreeTarget(PATH, "feature", False)
+        ref_undo.clear_undo_actions(42)
         self.settings = mock()
         when(self.view).settings().thenReturn(self.settings)
         when(self.settings).set(...).thenReturn(None)
         self.command = branch.gs_branches_delete(self.view)
         self.command.window = self.window
+        when(self.command).get_worktrees().thenRaise(AssertionError("Unnecessary Git query"))
         self.command.interface = mock({"state": {"worktree_deletions_in_progress": set()}})
         when(self.command.interface).just_render().thenReturn(None)
         when(self.command).git(...).thenReturn("")
         when(branch.util.view).refresh_gitsavvy(self.view).thenReturn(None)
-        when(branch).busy_indicator(self.view, start_after=0.5).thenReturn(nullcontext())
+        when(ui__worktrees).busy_indicator(self.view, start_after=0.5).thenReturn(nullcontext())
+        when(ui__worktrees.util.view).refresh_gitsavvy_interfaces(
+            self.window, refresh_sidebar=True
+        ).thenReturn(None)
         when(actions.app_settings).get("prompt_before_destructive_action").thenReturn(False)
         when(runtime).run_on_new_thread(...).thenAnswer(lambda fn, *a, **kw: fn(*a, **kw))
         self.panels = []
@@ -41,10 +51,32 @@ class TestWorktreeDeletion(DeferrableTestCase):
         )
 
     def tearDown(self) -> None:
+        ref_undo.clear_undo_actions(42)
         unstub()
 
+    @p.expand([(False, False), (False, True), (True, False), (True, True)])
+    def test_successful_deletion_records_recreation(self, detached: bool, force: bool) -> None:
+        start_point = "a" * 40 if detached else "feature"
+        self.command.delete_worktree(WorktreeTarget(PATH, start_point, detached), force)
+
+        undo, = ref_undo.get_undo_actions(42)
+        options = ("--detach",) if detached else ()
+        self.assertEqual(undo.command, (
+            "worktree", "add", *options, "--", PATH, start_point
+        ))
+        self.assertEqual(ref_undo.get_undo_actions(43), [])
+
+    def test_failed_deletion_records_undo_only_after_successful_force_retry(self) -> None:
+        self._fail_removal(DIRTY)
+        self.command.delete_worktree(self.target, False)
+        self.assertEqual(ref_undo.get_undo_actions(42), [])
+
+        self.panels[0][1](2)
+        undo, = ref_undo.get_undo_actions(42)
+        self.assertEqual(undo.command, ("worktree", "add", "--", PATH, "feature"))
+
     def test_clean_worktree_is_removed_without_a_recovery_panel(self) -> None:
-        self.command.delete_worktree(PATH, False)
+        self.command.delete_worktree(self.target, False)
 
         verify(self.command).git(
             "worktree", "remove", None, PATH,
@@ -63,7 +95,7 @@ class TestWorktreeDeletion(DeferrableTestCase):
     ) -> None:
         self._fail_removal(LOCKED + suffix + "\nuse 'remove -f -f' to override or unlock first\n", force)
 
-        self.command.delete_worktree(PATH, force)
+        self.command.delete_worktree(self.target, force)
 
         self.assertEqual(self.panels[0][0], [message, "Unlock and delete the worktree"])
         verify(self.command, times=0).git("worktree", "unlock", PATH, ...)
@@ -78,7 +110,7 @@ class TestWorktreeDeletion(DeferrableTestCase):
         self._fail_removal(DIRTY)
         when(self.command).open_worktree_in_new_window(PATH).thenReturn(None)
 
-        self.command.delete_worktree(PATH, False)
+        self.command.delete_worktree(self.target, False)
 
         self.assertEqual(self.panels[0][0], [
             "Abort, worktree contains modified or untracked files.",
@@ -97,7 +129,7 @@ class TestWorktreeDeletion(DeferrableTestCase):
     @p.expand([(0,), (-1,)])
     def test_abort_or_cancel_does_not_delete_or_unlock(self, index: int) -> None:
         self._fail_removal(LOCKED + "\n")
-        self.command.delete_worktree(PATH, False)
+        self.command.delete_worktree(self.target, False)
 
         self.panels[0][1](index)
 
@@ -106,7 +138,7 @@ class TestWorktreeDeletion(DeferrableTestCase):
 
     def test_unlocking_a_dirty_worktree_still_requires_force_confirmation(self) -> None:
         self._fail_removal(LOCKED + ", lock reason: build in progress\n")
-        self.command.delete_worktree(PATH, False)
+        self.command.delete_worktree(self.target, False)
         self._fail_removal(DIRTY)
 
         self.panels[0][1](1)
@@ -121,7 +153,7 @@ class TestWorktreeDeletion(DeferrableTestCase):
         when(error).show_error_panel().thenReturn(None)
 
         with self.assertRaises(GitSavvyError):
-            self.command.delete_worktree(PATH, False)
+            self.command.delete_worktree(self.target, False)
 
         verify(error).show_error_panel()
         self.assertEqual(self.panels, [])
@@ -129,7 +161,7 @@ class TestWorktreeDeletion(DeferrableTestCase):
 
     def test_failed_unlock_does_not_retry_removal(self) -> None:
         self._fail_removal(LOCKED + "\n")
-        self.command.delete_worktree(PATH, False)
+        self.command.delete_worktree(self.target, False)
         error = GitSavvyError("unlock failed", show_panel=False)
         when(self.command).git("worktree", "unlock", PATH, ...).thenRaise(error)
         when(error).show_error_panel().thenReturn(None)
@@ -160,13 +192,18 @@ class TestGraphWorktreeDeletion(TestWorktreeDeletion):
     def setUp(self) -> None:
         super().setUp()
         self.command = self.command_class(self.window)
-        self.command.delete_worktree = partial(graph.delete_worktree_from_graph, self.command)
+        ref_undo.clear_undo_actions(42)
+        self.command.delete_worktree = partial(
+            graph.delete_worktree_from_graph, self.command, self.view
+        )
+        when(self.command).get_worktrees().thenRaise(AssertionError("Unnecessary Git query"))
         when(self.command).git(...).thenReturn("")
         when(graph.util.view).refresh_gitsavvy_interfaces(
             self.window, refresh_sidebar=True
         ).thenReturn(None)
 
     def _assert_refreshed(self) -> None:
+        verify(ui__worktrees, atleast=1).busy_indicator(self.view, start_after=0.5)
         verify(graph.util.view, atleast=1).refresh_gitsavvy_interfaces(
             self.window, refresh_sidebar=True
         )

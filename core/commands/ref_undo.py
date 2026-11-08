@@ -14,6 +14,7 @@ from sublime_plugin import EventListener
 from ...common import util
 from ..base_commands import GsTextCommand
 from ..git_command import GitCommand
+from ..git_mixins.worktrees import WorktreeTarget
 from ..types import CommitHash, FullHash, ShortHash
 from ..ui__quick_panel import show_quick_panel
 
@@ -50,7 +51,9 @@ class gs_ref_undo(GsTextCommand):
             self.git(*undo_action.command)
             remove_undo_action(undo_owner, undo_action)
             self.window.status_message(undo_action.description + ".")
-            util.view.refresh_gitsavvy_interfaces(self.window)
+            util.view.refresh_gitsavvy_interfaces(
+                self.window, refresh_sidebar=undo_action.command[0] == "worktree"
+            )
 
         show_quick_panel(
             self.window,
@@ -62,6 +65,20 @@ class gs_ref_undo(GsTextCommand):
 class GsRefUndoCleanup(EventListener):
     def on_close(self, view) -> None:
         clear_undo_actions(view.id())
+
+
+def add_worktree_undo(
+    target: WorktreeTarget, undo_owner: UndoOwner
+) -> None:
+    options = ("--detach",) if target.detached else ()
+    add_undo_action(
+        undo_owner,
+        RefUndoAction(
+            f"Re-create worktree at {target.path}",
+            ("worktree", "add", *options, "--", target.path, target.start_point),
+            time.time()
+        )
+    )
 
 
 def add_branch_undo(
