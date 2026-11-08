@@ -55,22 +55,46 @@ class TestCommandLog(DeferrableTestCase):
         log = command_log.CommandLog()
         log.start(1, "/repo", "git status", "D", Process(), 0)
 
-        self.assertEqual(log.snapshots_for_render(), [])
+        self.assertEqual(log.commands_for_render(), [])
         self.assertTrue(log.reveal(1))
-        self.assertEqual([command.execution_id for command in log.snapshots_for_render()], [1])
+        self.assertEqual([command.execution_id for command in log.commands_for_render()], [1])
 
         log.start(2, "/repo", "git diff", "D", Process(), 0)
         log.finish(2, 0.1, aborted=False)
         self.assertEqual(
-            [command.execution_id for command in log.snapshots_for_render()],
+            [command.execution_id for command in log.commands_for_render()],
             [1, 2]
         )
 
+    def test_state_changes_replace_records_without_changing_previous_renders(self):
+        log = command_log.CommandLog()
+        process = Process()
+        log.start(1, "/repo", "git status", "D", process, 0)
+        initial = log.commands[1]
+
+        log.reveal_all_running()
+        rendered = log.commands_for_render()
+        self.assertIs(rendered[0], log.commands[1])
+        self.assertFalse(initial.shown_while_running)
+        self.assertTrue(rendered[0].shown_while_running)
+
+        log.finish(1, 2, aborted=True)
+        finished = log.commands_for_render()[0]
+        self.assertIsNot(finished, rendered[0])
+        self.assertTrue(rendered[0].is_running)
+        self.assertFalse(rendered[0].aborted)
+        self.assertIs(rendered[0].proc, process)
+        self.assertFalse(finished.is_running)
+        self.assertTrue(finished.aborted)
+        self.assertIsNone(finished.proc)
+        with self.assertRaises(AttributeError):
+            finished.aborted = False
+
     def test_groups_by_working_dir_and_orders_newest_first(self):
         text, annotations = command_log.render_commands([
-            snapshot(1, "/older", "git status", 0, 0.063),
-            snapshot(2, "/newer", "git fetch", 0, 1.2, thread_name="W"),
-            snapshot(3, "/older", "git diff", 0, 12.6),
+            command_record(1, "/older", "git status", 0, 0.063),
+            command_record(2, "/newer", "git fetch", 0, 1.2, thread_name="W"),
+            command_record(3, "/older", "git diff", 0, 12.6),
         ], now=20)
 
         self.assertEqual(
@@ -86,13 +110,13 @@ class TestCommandLog(DeferrableTestCase):
 
     def test_running_timing_is_blank_until_one_second(self):
         text, _ = command_log.render_commands([
-            snapshot(1, "/repo", "git status", 1, None),
+            command_record(1, "/repo", "git status", 1, None),
         ], now=1.999)
 
         self.assertIn("  (D) [     ] $ git status", text)
 
     def test_abort_annotation_appears_only_after_one_second(self):
-        command = snapshot(1, "/repo", "git status", 10, None)
+        command = command_record(1, "/repo", "git status", 10, None)
         for elapsed, expected_ids in [(0.1, []), (0.2, []), (0.999, []), (1.0, [1]), (1.1, [1])]:
             with self.subTest(elapsed=elapsed):
                 text, annotations = command_log.render_commands([command], now=10 + elapsed)
@@ -102,8 +126,8 @@ class TestCommandLog(DeferrableTestCase):
 
     def test_formats_running_and_aborted_commands(self):
         text, annotations = command_log.render_commands([
-            snapshot(1, "/repo", "git status", 1, None, thread_name="W"),
-            snapshot(2, "/repo", "git stash list", 2, 2.2, aborted=True),
+            command_record(1, "/repo", "git status", 1, None, thread_name="W"),
+            command_record(2, "/repo", "git stash list", 2, 2.2, aborted=True),
         ], now=2.5)
 
         self.assertEqual(
@@ -165,8 +189,8 @@ class TestCommandLog(DeferrableTestCase):
 
     def test_identical_running_commands_keep_distinct_abort_ids(self):
         _, annotations = command_log.render_commands([
-            snapshot(7, "/repo", "git status", 0, None),
-            snapshot(8, "/repo", "git status", 0, None),
+            command_record(7, "/repo", "git status", 0, None),
+            command_record(8, "/repo", "git status", 0, None),
         ], now=2)
 
         self.assertEqual([annotation.execution_id for annotation in annotations], [8, 7])
@@ -280,7 +304,7 @@ class TestCommandLog(DeferrableTestCase):
 
         for now in (1.1, 1.2, 1.2):
             command_log._render(1, panel)
-            expected, _ = command_log.render_commands(log.snapshots_for_render(), now)
+            expected, _ = command_log.render_commands(log.commands_for_render(), now)
             self.assertEqual(panel.text, expected)
 
         verify(command_log, times=1)._draw_abort_annotations(...)
@@ -291,8 +315,8 @@ class TestCommandLog(DeferrableTestCase):
             self.assertEqual(region.size(), 1)
 
     def test_text_update_falls_back_when_line_count_or_width_changes(self):
-        running = snapshot(1, "/repo", "git fetch", 0, None)
-        finished = snapshot(2, "/other", "git status", 0, 0.047)
+        running = command_record(1, "/repo", "git fetch", 0, None)
+        finished = command_record(2, "/other", "git status", 0, 0.047)
         cases = [
             ([running], 9999, [running], 10000),
             ([running], 2, [running, finished], 2),
@@ -314,7 +338,7 @@ class TestCommandLog(DeferrableTestCase):
                 self.assertEqual(panel.writes, [(expected, None)])
 
     def test_blank_phase_schedules_only_the_one_second_transition(self):
-        command = snapshot(1, "/repo", "git status", 0, None)
+        command = command_record(1, "/repo", "git status", 0, None)
         when(command_log.sublime).set_timeout(...)
 
         command_log._schedule_next_render(17, [command], 0.1)
@@ -343,7 +367,7 @@ class TestCommandLog(DeferrableTestCase):
         self.assertNotIn(17, command_log._rendered_panels)
 
 
-def snapshot(
+def command_record(
     execution_id,
     working_dir,
     command,
@@ -352,14 +376,15 @@ def snapshot(
     aborted=False,
     thread_name="D"
 ):
-    return command_log.CommandSnapshot(
+    return command_log.Command(
         execution_id,
         working_dir,
         command,
         thread_name,
         started_at,
-        finished_at,
-        aborted
+        proc=None,
+        finished_at=finished_at,
+        aborted=aborted
     )
 
 

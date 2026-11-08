@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import partial
 from itertools import count
 import os
@@ -30,7 +30,7 @@ GROUP_PREFIX = "             -- "
 COMMAND_PREFIX = "{} ({}) "
 
 
-@dataclass
+@dataclass(frozen=True)
 class Command:
     execution_id: int
     working_dir: str
@@ -41,20 +41,6 @@ class Command:
     finished_at: Optional[float] = None
     aborted: bool = False
     shown_while_running: bool = False
-
-    @property
-    def is_running(self) -> bool:
-        return self.finished_at is None
-
-
-class CommandSnapshot(NamedTuple):
-    execution_id: int
-    working_dir: str
-    command: str
-    thread_name: str
-    started_at: float
-    finished_at: Optional[float]
-    aborted: bool
 
     @property
     def is_running(self) -> bool:
@@ -93,9 +79,9 @@ class CommandLog:
         if not command or not command.is_running:
             return
 
-        command.finished_at = finished_at
-        command.aborted = aborted
-        command.proc = None
+        self.commands[execution_id] = replace(
+            command, finished_at=finished_at, aborted=aborted, proc=None
+        )
         self._trim_finished_commands()
 
     def reveal(self, execution_id: int) -> bool:
@@ -103,17 +89,17 @@ class CommandLog:
         if not command or not command.is_running:
             return False
 
-        command.shown_while_running = True
+        self.commands[execution_id] = replace(command, shown_while_running=True)
         return True
 
     def reveal_all_running(self) -> None:
         for command in self.commands.values():
             if command.is_running:
-                command.shown_while_running = True
+                self.commands[command.execution_id] = replace(command, shown_while_running=True)
 
-    def snapshots_for_render(self) -> List[CommandSnapshot]:
+    def commands_for_render(self) -> List[Command]:
         return [
-            snapshot(command)
+            command
             for command in self.commands.values()
             if not command.is_running or command.shown_while_running
         ]
@@ -224,10 +210,10 @@ def window_closed(window_id: int) -> None:
 
 
 def render_commands(
-    commands: Iterable[CommandSnapshot],
+    commands: Iterable[Command],
     now: float
 ) -> Tuple[str, List[Annotation]]:
-    grouped: Dict[str, List[CommandSnapshot]] = {}
+    grouped: Dict[str, List[Command]] = {}
     for command in commands:
         grouped.setdefault(command.working_dir, []).append(command)
 
@@ -267,18 +253,6 @@ def render_commands(
     return "".join(chunks), annotations
 
 
-def snapshot(command: Command) -> CommandSnapshot:
-    return CommandSnapshot(
-        command.execution_id,
-        command.working_dir,
-        command.command,
-        command.thread_name,
-        command.started_at,
-        command.finished_at,
-        command.aborted
-    )
-
-
 def _render_visible_panels() -> None:
     for window in sublime.windows():
         if _panel_is_visible(window):
@@ -289,7 +263,7 @@ def _render_visible_panels() -> None:
 
 def _render(window_id: int, panel: sublime.View) -> None:
     with _lock:
-        commands = _commands.snapshots_for_render()
+        commands = _commands.commands_for_render()
 
     now = time.monotonic()
     text, annotations = render_commands(commands, now)
@@ -331,7 +305,7 @@ def _update_panel_text(panel: sublime.View, previous: str, text: str) -> bool:
 
 def _schedule_next_render(
     window_id: int,
-    commands: List[CommandSnapshot],
+    commands: List[Command],
     now: float
 ) -> None:
     running = [command for command in commands if command.is_running]
@@ -452,7 +426,7 @@ def _wait_for_process(execution_id: int, proc: subprocess.Popen) -> None:
     finish_command(execution_id, proc_has_been_aborted_by_user(proc))
 
 
-def _timing_field(command: CommandSnapshot, now: float) -> str:
+def _timing_field(command: Command, now: float) -> str:
     if command.aborted:
         return "[xxxxx]"
 
