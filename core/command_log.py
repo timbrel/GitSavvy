@@ -24,6 +24,8 @@ FINISHED_COMMAND_LIMIT = 15
 SHOW_RUNNING_AFTER_MS = 100
 ANIMATE_RUNNING_AFTER_SECONDS = 1.0
 ANIMATION_INTERVAL_MS = 100
+# Prefer the scope accent unless its contrast is too weak; then use normal text.
+MIN_ANNOTATION_CONTRAST = 3.0
 GROUP_PREFIX = "             -- "
 COMMAND_PREFIX = "{} ({}) "
 
@@ -62,7 +64,6 @@ class CommandSnapshot(NamedTuple):
 class Annotation(NamedTuple):
     execution_id: int
     start: int
-    end: int
 
 
 class CommandLog:
@@ -251,17 +252,17 @@ def render_commands(
             key=lambda command: command.execution_id,
             reverse=True
         ):
+            show_abort = command.is_running and now - command.started_at >= ANIMATE_RUNNING_AFTER_SECONDS
             line = "{}{} $ {}\n".format(
-                COMMAND_PREFIX.format(">" if command.is_running else " ", command.thread_name),
+                COMMAND_PREFIX.format(">" if show_abort else " ", command.thread_name),
                 _timing_field(command, now),
                 command.command
             )
             start = offset
-            end = start + len(line) - 1
             chunks.append(line)
             offset += len(line)
-            if command.is_running:
-                annotations.append(Annotation(command.execution_id, start, end))
+            if show_abort:
+                annotations.append(Annotation(command.execution_id, start))
 
     return "".join(chunks), annotations
 
@@ -395,15 +396,55 @@ def _draw_abort_annotations(
         panel.erase_regions(ANNOTATION_KEY)
         return
 
+    style = panel.style_for_scope(
+        "source.git-savvy.command-log constant.other.command-timing.git-savvy"
+    )
+    panel_style = panel.style()
+    color = _annotation_text_color(style, panel_style)
+    link_style = (
+        "display: inline-block; padding: 1px 0.6em; "
+        "color: {}; background-color: {}; text-decoration: none"
+    ).format(color, panel_style["background"])
     panel.add_regions(
         ANNOTATION_KEY,
-        [sublime.Region(annotation.start, annotation.end) for annotation in annotations],
-        annotations=['<a href="{}">Abort</a>'.format(annotation.execution_id)
-                     for annotation in annotations],
+        [sublime.Region(annotation.start) for annotation in annotations],
+        annotations=[
+            '<a href="{}" style="{}">Abort</a>'.format(annotation.execution_id, link_style)
+            for annotation in annotations
+        ],
         annotation_color="#aaa0",
         on_navigate=lambda href: abort_command(int(href)),
         flags=sublime.RegionFlags.NO_UNDO
     )
+
+
+def _annotation_text_color(scope_style: dict, panel_style: dict) -> str:
+    """Choose the scope color most legible as text on the panel background."""
+    background = panel_style["background"]
+    base = _luminance(background)
+
+    def contrast(color: str) -> float:
+        luminance = _luminance(color, background)
+        return (max(base, luminance) + 0.05) / (min(base, luminance) + 0.05)
+
+    candidates = [scope_style["foreground"]]
+    if scope_style.get("background"):
+        candidates.append(scope_style["background"])
+    color = max(candidates, key=contrast)
+    return color if contrast(color) >= MIN_ANNOTATION_CONTRAST else panel_style["foreground"]
+
+
+def _luminance(color: str, background: str = "#000000") -> float:
+    # Sublime resolves scheme colors to hex RGB(A). Composite translucent scope
+    # colors against the panel before comparing their contrast.
+    channels = bytes.fromhex(color.lstrip("#"))
+    rgb = [channel / 255 for channel in channels[:3]]
+    if len(channels) == 4:
+        alpha = channels[3] / 255
+        backdrop = bytes.fromhex(background.lstrip("#"))
+        rgb = [c * alpha + b / 255 * (1 - alpha) for c, b in zip(rgb, backdrop)]
+    linear = [c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4 for c in rgb]
+    return sum(c * weight for c, weight in zip(linear, (0.2126, 0.7152, 0.0722)))
 
 
 def _wait_for_process(execution_id: int, proc: subprocess.Popen) -> None:

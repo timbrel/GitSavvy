@@ -89,7 +89,16 @@ class TestCommandLog(DeferrableTestCase):
             snapshot(1, "/repo", "git status", 1, None),
         ], now=1.999)
 
-        self.assertIn("> (D) [     ] $ git status", text)
+        self.assertIn("  (D) [     ] $ git status", text)
+
+    def test_abort_annotation_appears_only_after_one_second(self):
+        command = snapshot(1, "/repo", "git status", 10, None)
+        for elapsed, expected_ids in [(0.1, []), (0.2, []), (0.999, []), (1.0, [1]), (1.1, [1])]:
+            with self.subTest(elapsed=elapsed):
+                text, annotations = command_log.render_commands([command], now=10 + elapsed)
+                prefix = "> (D)" if expected_ids else "  (D)"
+                self.assertIn(prefix, text)
+                self.assertEqual([annotation.execution_id for annotation in annotations], expected_ids)
 
     def test_formats_running_and_aborted_commands(self):
         text, annotations = command_log.render_commands([
@@ -104,6 +113,8 @@ class TestCommandLog(DeferrableTestCase):
             "> (W) [ 1.5s] $ git status\n"
         )
         self.assertEqual([annotation.execution_id for annotation in annotations], [1])
+        annotation = annotations[0]
+        self.assertEqual(text[annotation.start], ">")
 
     def test_selected_process_reports_activity_until_completion(self):
         when(command_log.sublime).set_timeout(...)
@@ -166,12 +177,33 @@ class TestCommandLog(DeferrableTestCase):
 
         command_log._draw_abort_annotations(
             panel,
-            [command_log.Annotation(42, 5, 20)]
+            [command_log.Annotation(42, 5)]
         )
         panel.on_navigate("42")
 
         verify(command_log).abort_command(42)
-        self.assertEqual(panel.annotations, ['<a href="42">Abort</a>'])
+        self.assertEqual(panel.annotations, [
+            '<a href="42" style="display: inline-block; padding: 1px 0.6em; '
+            'color: #aaaa00; background-color: #00202b; text-decoration: none">Abort</a>'
+        ])
+        self.assertEqual(panel.regions[0].begin(), 5)
+        self.assertTrue(panel.regions[0].empty())
+
+    def test_annotation_chooses_readable_scope_color_without_a_fill(self):
+        cases = [
+            ("#ffaa00", "#00202b", "#00202b", "#ffffff", "#ffaa00"),
+            ("#000000", "#aaaa00", "#00202b", "#ffffff", "#aaaa00"),
+            ("#ffffff", "#000088", "#ffffff", "#000000", "#000088"),
+            ("#00202b", "#00202b", "#00202b", "#ffffff", "#ffffff"),
+            ("#000000", "#aaaa0000", "#00202b", "#ffffff", "#ffffff"),
+        ]
+        for foreground, background, panel_bg, panel_fg, expected in cases:
+            with self.subTest(foreground=foreground, background=background):
+                color = command_log._annotation_text_color(
+                    {"foreground": foreground, "background": background},
+                    {"foreground": panel_fg, "background": panel_bg}
+                )
+                self.assertEqual(color, expected)
 
     def test_prepares_a_missing_panel_without_showing_it(self):
         window = Window(1, None)
@@ -379,6 +411,12 @@ class Panel:
             self.text = text
         else:
             self.text = self.text[:region.begin()] + text + self.text[region.end():]
+
+    def style_for_scope(self, scope):
+        return {"foreground": "#000000", "background": "#aaaa00"}
+
+    def style(self):
+        return {"foreground": "#ffffff", "background": "#00202b"}
 
     def add_regions(self, key, regions, **kwargs):
         self.key = key

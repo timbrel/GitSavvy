@@ -17,13 +17,13 @@ commands plus the 15 most recently finished commands across all repositories.
   (W) [ 47ms] $ git stash list
 ```
 
-`>` marks a running command; the letter in parentheses is the first character of
-its thread's name. Commands taking less than 100ms appear only when finished.
+`>` marks a command running for at least one second; the letter in parentheses
+is the first character of its thread's name. Commands taking less than 100ms appear only when finished.
 Slower commands initially show `[     ]`, then an updating elapsed time after
 one second. Opening the panel shows all currently running commands immediately.
 
-Click **Abort** beside a running command to stop it. Aborted commands show
-`[xxxxx]`. Aborting does not undo changes Git has already made; a rebase or merge
+After one second, an **Abort** link appears beside a running command. Click it
+to stop the command. Aborted commands show `[xxxxx]`. Aborting does not undo changes Git has already made; a rebase or merge
 may still need attention afterward.
 
 Git commands have no default timeout. A hidden command on GitSavvy's Worker
