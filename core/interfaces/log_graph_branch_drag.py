@@ -143,7 +143,7 @@ class gs_log_graph_branch_drag(GsTextCommand):
         if not branch:
             with updating(view):
                 view.sel().clear()
-                view.sel().add(region)
+                view.sel().add(view.word(point))
             return
 
         state = ArmedDrag(

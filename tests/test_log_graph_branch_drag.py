@@ -65,13 +65,13 @@ class TestBranchDrag(DeferrableTestCase):
             self.assertIn("(|, origin/throttling)", self.text())
             self.cancel()
 
-    def test_uncached_non_draggable_branches_keep_the_whole_label_selected(self) -> None:
+    def test_uncached_non_draggable_branches_select_name_components(self) -> None:
         when(drag.gs_log_graph_branch_drag).current_state().thenReturn({})
         self.branches[0].worktree_path = "/other/worktree"
-        for label in ("origin/throttling", "throttling"):
+        for label, component in (("origin/throttling", "origin"), ("throttling", "throttling")):
             self.start(label, activate=False)
             self.assertIsNone(self.state())
-            self.assertEqual(self.view.substr(self.view.sel()[0]), label)
+            self.assertEqual(self.view.substr(self.view.sel()[0]), component)
             self.assertEqual(self.text(), CONTENT)
         self.assertEqual(self.scheduled, [])
 
@@ -135,14 +135,14 @@ class TestBranchDrag(DeferrableTestCase):
             self.assertIsNone(self.state())
             self.assertEqual(self.text(), CONTENT)
 
-    def test_remote_double_click_keeps_the_whole_label_selected(self) -> None:
+    def test_remote_double_click_selects_name_component(self) -> None:
         point = CONTENT.index("origin/throttling") + len("origin/th")
         version = self.view.change_count()
         self.view.run_command("gs_log_graph_branch_drag", {
             "event": {"x": point, "y": 0, "button": 1}
         })
         self.view.run_command("gs_log_graph_branch_drag", {"action": "finish"})
-        self.assertEqual(self.view.substr(self.view.sel()[0]), "origin/throttling")
+        self.assertEqual(self.view.substr(self.view.sel()[0]), "throttling")
         self.assertIsNone(self.state())
         self.assertEqual(self.view.change_count(), version)
         self.assertEqual(self.scheduled, [])
@@ -235,9 +235,10 @@ class TestBranchDrag(DeferrableTestCase):
         content = CONTENT.replace("throttling", "feature/foo-bar")
         replace_view_content(self.view, content)
         version = self.view.change_count()
-        self.start("foo")
-        self.view.run_command("gs_log_graph_branch_drag", {"action": "finish"})
-        self.assertEqual(self.view.substr(self.view.sel()[0]), "feature/foo-bar")
+        for component in ("feature", "foo", "bar"):
+            self.start(component)
+            self.view.run_command("gs_log_graph_branch_drag", {"action": "finish"})
+            self.assertEqual(self.view.substr(self.view.sel()[0]), component)
         self.assertIsNone(self.state())
         self.assertEqual(self.text(), content)
         self.assertEqual(self.view.change_count(), version)
