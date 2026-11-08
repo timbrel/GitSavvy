@@ -1,7 +1,7 @@
 """Drag local branch labels to another commit in the graph.
 
 Lifecycle: armed -> dragging -> confirming -> pending -> cleanup.
-Arming preserves native word selection until a hold or line crossing starts
+Arming preserves the whole branch label until a hold or line crossing starts
 the drag. Dropping asks for confirmation before starting the Git operation.
 Before pending, cancellation restores the transient buffer edits. Pending
 ignores cancellation and suppresses graph refreshes: checkout recovery may
@@ -155,9 +155,9 @@ class gs_log_graph_branch_drag(GsTextCommand):
         _DRAGS[view] = state
         with updating(view):
             view.sel().clear()
-            view.sel().add(view.word(point))
+            view.sel().add(region)
 
-        # Let a double-click select text normally. Holding, or crossing a commit
+        # Keep the branch selected as a label. Holding, or crossing a commit
         # boundary, turns the selection into a drag.
         sublime.set_timeout(lambda: activate_held_drag(view, state.token), HOLD_MS)
         sublime.set_timeout(
@@ -257,6 +257,10 @@ class GsLogGraphBranchDragListener(EventListener):
                 view.run_command("gs_log_graph_branch_drag", {
                     "action": "activate", "point": selection.b, "token": state.token
                 })
+            elif list(view.sel()) != [state.region]:
+                with updating(view):
+                    view.sel().clear()
+                    view.sel().add(state.region)
             return
 
         drag = BranchDrag(view, state)

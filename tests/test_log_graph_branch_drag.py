@@ -90,19 +90,32 @@ class TestBranchDrag(DeferrableTestCase):
         self.assertEqual(self.menus, [])
         verify(drag.gs_log_graph_branch_drag, times=0).get_branches()
 
-    def test_double_click_selects_branch_name_components(self) -> None:
+    def test_double_click_selects_whole_branch_label(self) -> None:
         replace_view_content(self.view, CONTENT.replace("throttling", "feature/foo-bar"))
         self.branches[0].name = "feature/foo-bar"
         version = self.view.change_count()
         for part in ("feature", "foo", "bar"):
             self.start(part, activate=False)
-            self.assertEqual(self.view.substr(self.view.sel()[0]), part)
+            self.assertEqual(self.view.substr(self.view.sel()[0]), "feature/foo-bar")
+            point = self.text().index(part)
+            self.view.sel().clear()
+            self.view.sel().add(self.view.word(point))
             drag.GsLogGraphBranchDragListener().on_selection_modified(self.view)
+            self.assertEqual(self.view.substr(self.view.sel()[0]), "feature/foo-bar")
             self.view.run_command("gs_log_graph_branch_drag", {"action": "finish"})
-            self.assertEqual(self.view.substr(self.view.sel()[0]), part)
+            self.assertEqual(self.view.substr(self.view.sel()[0]), "feature/foo-bar")
             self.assertIsNone(self.state())
         self.assertEqual(self.view.change_count(), version)
         verify(drag.gs_log_graph_branch_drag, times=0).get_branches()
+
+    def test_horizontal_movement_keeps_armed_label_selected(self) -> None:
+        self.start(activate=False)
+        point = self.text().index("Second commit") + len("Second")
+        self.view.sel().clear()
+        self.view.sel().add(sublime.Region(self.text().index("throttling"), point))
+        drag.GsLogGraphBranchDragListener().on_selection_modified(self.view)
+        self.assertEqual(self.state()["phase"], "armed")
+        self.assertEqual(self.view.substr(self.view.sel()[0]), "throttling")
 
     def test_moving_to_another_line_activates_without_hold_timeout(self) -> None:
         self.start(activate=False)
