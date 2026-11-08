@@ -26,6 +26,17 @@ Click **Abort** beside a running command to stop it. Aborted commands show
 `[xxxxx]`. Aborting does not undo changes Git has already made; a rebase or merge
 may still need attention afterward.
 
+Git commands have no default timeout. A hidden command on GitSavvy's Worker
+that takes more than five seconds shows a rolling spinner with
+`◐ · Git is running (open Git Command Log for details)` in the active view's
+status bar. This single indicator follows
+you across views and windows, and disappears when no qualifying slow commands
+remain. Open the Command Log to inspect or abort them.
+
+Calls with an explicit timeout (including `None`) do not trigger the indicator.
+Neither do commands using the output panel or calls on dedicated threads, such
+as commands waiting for an editor. Explicit numeric timeouts still apply.
+
 The panel becomes available in a window's panel selector after its first Git
 command, but does not open automatically. History is tracked while it is hidden,
 but animation runs only while visible. It shows commands and timings, not their

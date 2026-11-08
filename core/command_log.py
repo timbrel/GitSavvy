@@ -11,6 +11,7 @@ from typing import Dict, Iterable, List, NamedTuple, Optional, Tuple
 
 import sublime
 
+from . import git_activity
 from .runtime import enqueue_on_ui
 from .utils import abort_proc, proc_has_been_aborted_by_user
 from .view import replace_view_content
@@ -140,7 +141,9 @@ _rendered_panels: Dict[int, Tuple[sublime.View, str, List[Annotation]]] = {}
 def start_command(
     working_dir: str,
     command: str,
-    proc: subprocess.Popen
+    proc: subprocess.Popen,
+    *,
+    show_spinner: bool = False
 ) -> int:
     execution_id = next(_next_execution_id)
     actual_working_dir = os.path.abspath(os.fspath(working_dir))
@@ -158,6 +161,8 @@ def start_command(
         partial(_reveal_running_command, execution_id),
         SHOW_RUNNING_AFTER_MS
     )
+    if show_spinner:
+        git_activity.start(execution_id)
     return execution_id
 
 
@@ -177,6 +182,7 @@ def finish_command(execution_id: int, aborted: bool) -> None:
     with _lock:
         _commands.finish(execution_id, time.monotonic(), aborted)
 
+    git_activity.finish(execution_id)
     enqueue_on_ui(_render_visible_panels)
 
 

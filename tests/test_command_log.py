@@ -105,6 +105,19 @@ class TestCommandLog(DeferrableTestCase):
         )
         self.assertEqual([annotation.execution_id for annotation in annotations], [1])
 
+    def test_selected_process_reports_activity_until_completion(self):
+        when(command_log.sublime).set_timeout(...)
+        when(command_log.git_activity).start(...)
+        when(command_log.git_activity).finish(...)
+
+        execution_id = command_log.start_command(
+            ".", "git status", Process(), show_spinner=True
+        )
+        command_log.finish_command(execution_id, aborted=True)
+
+        verify(command_log.git_activity).start(execution_id)
+        verify(command_log.git_activity).finish(execution_id)
+
     def test_start_captures_the_calling_thread_name(self):
         when(command_log.sublime).set_timeout(...)
 

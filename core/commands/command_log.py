@@ -3,7 +3,7 @@ from __future__ import annotations
 import sublime
 from sublime_plugin import EventListener
 
-from .. import command_log
+from .. import command_log, git_activity
 from ..base_commands import GsWindowCommand
 
 
@@ -19,6 +19,15 @@ class gs_show_command_log(GsWindowCommand):
 
 
 class GsCommandLogEventListener(EventListener):
+    def on_activated(self, view: sublime.View) -> None:
+        git_activity.refresh()
+
+    def on_deactivated(self, view: sublime.View) -> None:
+        git_activity.clear_view(view)
+
+    def on_pre_close(self, view: sublime.View) -> None:
+        git_activity.clear_view(view)
+
     def on_post_window_command(
         self,
         window: sublime.Window,
