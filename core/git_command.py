@@ -46,7 +46,6 @@ def map_(it: Iterable[T], k: Callable[[T], object]):
 git_binaries = {}  # type: Dict[str, Tuple[int, int, int]]
 binary_not_found_message_displayed, git_too_old_message_displayed = False, False
 
-repo_paths: dict[FullPath, FullPath] = {}
 #: A mapping from a repo_path to the actual ".git" path
 #: Typically this *is* "{repo_path}/.git"
 git_dirs: dict[FullPath, FullPath] = {}
@@ -218,53 +217,6 @@ def log_git_runtime(fn):
     return decorated
 
 
-def __search_for_git(folder: FullPath) -> FullPath | None:
-    for p in paths_upwards(folder):
-        if is_git_directory(os.path.join(p, ".git")):
-            return p
-        if p == HOME:
-            break
-    return None
-
-
-def is_git_directory(suspect: str) -> bool:
-    try:
-        st = os.stat(suspect)
-    except (OSError, ValueError):
-        return False
-
-    if not stat.S_ISDIR(st.st_mode):
-        return True
-    # Test if the dir looks like a git dir.  `HEAD` is mandatory.
-    ok = os.path.exists(os.path.join(suspect, "HEAD"))
-    if not ok:
-        util.debug.dprint("fatal: {} has no HEAD file.".format(suspect))
-    return ok
-
-
-def search_for_git(folder: FullPath) -> FullPath | None:
-    util.debug.dprint("searching .git repo starting at ", folder)
-    try:
-        return __search_for_git(folder)
-    except Exception as e:
-        util.debug.dprint("searching raised: {}".format(e))
-        return None
-
-
-def search_for_git_toplevel(start_folder: FullPath) -> FullPath | None:
-    real_start_folder = resolve_path(start_folder)
-    real_repo_path = search_for_git(real_start_folder)
-    if real_start_folder == start_folder:
-        return real_repo_path
-    if not real_repo_path:
-        return None
-
-    user_repo_path = search_for_git(start_folder)
-    if user_repo_path and os.path.samefile(real_repo_path, user_repo_path):
-        return user_repo_path
-    return real_repo_path
-
-
 @lru_cache(1)
 def which_git():
     # type: () -> Optional[str]
@@ -295,11 +247,6 @@ def git_version_from_path(git_path):
             "pretend a minimal, valid version".format(stdout)
         )
         return MIN_GIT_VERSION
-
-
-def is_subpath(topfolder, path):
-    # type: (str, str) -> bool
-    return os.path.commonprefix([topfolder, path]) == topfolder
 
 
 DEFAULT_TIMEOUT = 120.0
@@ -669,61 +616,12 @@ class _GitCommand(SettingsMixin):
         except AttributeError:
             return self.window.extract_variables().get("file")  # type: ignore[attr-defined]
 
-    def _search_paths(self) -> Iterator[FullPath]:
-        def __search_paths() -> Iterator[FullPath]:
-            file_name = self._current_filename()
-            if file_name and not os.path.isfile(file_name):
-                file_name = None
-            if file_name:
-                yield FullPath(os.path.dirname(file_name))
-
-            # Support https://packagecontrol.io/packages/dired or the compatible
-            # https://packagecontrol.io/packages/FileBrowser
-            if view := self._current_view():
-                if dired_path := view.settings().get("dired_path"):
-                    yield FullPath(os.path.normpath(dired_path))
-
-            window = self._current_window()
-            if window:
-                folders = window.folders()
-                if folders:
-                    if (
-                        not file_name
-                        or not is_subpath(resolve_path(folders[0]), resolve_path(file_name))
-                    ):
-                        yield FullPath(folders[0])
-
-        return filter(os.path.isdir, __search_paths())
-
     def find_repo_path(self) -> FullPath | None:
-        view = self._current_view()
-        repo_path = view.settings().get("git_savvy.repo_path") if view else None
-        if repo_path and os.path.exists(repo_path):
-            return FullPath(repo_path)
-
-        return next(filter_(map(self._find_git_toplevel, self._search_paths())), None)
-
-    def _find_git_toplevel(self, folder: FullPath) -> FullPath | None:
-        try:
-            return repo_paths[folder]
-        except KeyError:
-            repo_path = search_for_git_toplevel(folder)
-            if repo_path:
-                util.debug.dprint("repo path:", os.path.join(repo_path, ".git"))
-                # Check if we followed links, as `paths_upwards` is only a string operation,
-                # then fill the cache upwards.
-                if folder.startswith(repo_path):
-                    for p in paths_upwards(folder):
-                        if p in repo_paths:
-                            break
-                        repo_paths[p] = repo_path
-                        if p == repo_path:
-                            break
-                else:
-                    repo_paths[folder] = repo_path
-            else:
-                util.debug.dprint("found no .git path for {}".format(folder))
-            return repo_path
+        return find_repo_path_(
+            self._current_window(),
+            self._current_view(),
+            self._current_filename()
+        )
 
     def get_repo_path(self) -> FullPath:
         repo_path = self.find_repo_path()
@@ -901,3 +799,136 @@ class GitCommand(
     _GitCommand
 ):
     pass
+
+
+###
+### Find a repo path for a view or a window
+###
+
+repo_paths: dict[FullPath, FullPath] = {}
+
+
+def find_repo_path_for_view(view: sublime.View) -> FullPath | None:
+    return find_repo_path_(view.window(), view, view.file_name())
+
+
+def find_repo_path_for_window(window: sublime.Window) -> FullPath | None:
+    # The active sheet may not be a view, e.g. an image, but it still has a "file".
+    return find_repo_path_(window, window.active_view(), window.extract_variables().get("file"))
+
+
+def find_repo_path_(
+    window: sublime.Window | None,
+    view: sublime.View | None,
+    file_name: str | None
+) -> FullPath | None:
+    repo_path = view.settings().get("git_savvy.repo_path") if view else None
+    if repo_path and os.path.exists(repo_path):
+        return FullPath(repo_path)
+
+    return next(filter_(map(find_git_toplevel, search_paths(window, view, file_name))), None)
+
+
+def search_paths(
+    window: sublime.Window | None,
+    view: sublime.View | None,
+    file_name: str | None
+) -> Iterator[FullPath]:
+    if file_name and not os.path.isfile(file_name):
+        file_name = None
+
+    def __search_paths() -> Iterator[FullPath]:
+        if file_name:
+            yield FullPath(os.path.dirname(file_name))
+
+        # Support https://packagecontrol.io/packages/dired or the compatible
+        # https://packagecontrol.io/packages/FileBrowser
+        if view:
+            if dired_path := view.settings().get("dired_path"):
+                yield FullPath(os.path.normpath(dired_path))
+
+        if window:
+            folders = window.folders()
+            if folders:
+                if (
+                    not file_name
+                    or not is_subpath(resolve_path(folders[0]), resolve_path(file_name))
+                ):
+                    yield FullPath(folders[0])
+
+    return filter(os.path.isdir, __search_paths())
+
+
+def find_git_toplevel(folder: FullPath) -> FullPath | None:
+    try:
+        return repo_paths[folder]
+    except KeyError:
+        repo_path = search_for_git_toplevel(folder)
+        if repo_path:
+            util.debug.dprint("repo path:", os.path.join(repo_path, ".git"))
+            # Check if we followed links, as `paths_upwards` is only a string operation,
+            # then fill the cache upwards.
+            if folder.startswith(repo_path):
+                for p in paths_upwards(folder):
+                    if p in repo_paths:
+                        break
+                    repo_paths[p] = repo_path
+                    if p == repo_path:
+                        break
+            else:
+                repo_paths[folder] = repo_path
+        else:
+            util.debug.dprint("found no .git path for {}".format(folder))
+        return repo_path
+
+
+def search_for_git_toplevel(start_folder: FullPath) -> FullPath | None:
+    real_start_folder = resolve_path(start_folder)
+    real_repo_path = search_for_git(real_start_folder)
+    if real_start_folder == start_folder:
+        return real_repo_path
+    if not real_repo_path:
+        return None
+
+    user_repo_path = search_for_git(start_folder)
+    if user_repo_path and os.path.samefile(real_repo_path, user_repo_path):
+        return user_repo_path
+    return real_repo_path
+
+
+def search_for_git(folder: FullPath) -> FullPath | None:
+    util.debug.dprint("searching .git repo starting at ", folder)
+    try:
+        return __search_for_git(folder)
+    except Exception as e:
+        util.debug.dprint("searching raised: {}".format(e))
+        return None
+
+
+def __search_for_git(folder: FullPath) -> FullPath | None:
+    for p in paths_upwards(folder):
+        if is_git_directory(os.path.join(p, ".git")):
+            return p
+        if p == HOME:
+            break
+    return None
+
+
+def is_git_directory(suspect: str) -> bool:
+    try:
+        st = os.stat(suspect)
+    except (OSError, ValueError):
+        return False
+
+    if not stat.S_ISDIR(st.st_mode):
+        return True
+    # Test if the dir looks like a git dir.  `HEAD` is mandatory.
+    ok = os.path.exists(os.path.join(suspect, "HEAD"))
+    if not ok:
+        util.debug.dprint("fatal: {} has no HEAD file.".format(suspect))
+    return ok
+
+
+def is_subpath(topfolder, path):
+    # type: (str, str) -> bool
+    return os.path.commonprefix([topfolder, path]) == topfolder
