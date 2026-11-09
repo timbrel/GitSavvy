@@ -236,6 +236,7 @@ class gs_show_file_at_commit_help_panel(GsAbstractOpenHelpPanel):
     [O]            open working dir file
     [g]            show in graph
     [b]            open blame view
+    [h]            open file on GitHub
     [n]/[p]        show next/previous revision of this file
     [N]/[P]        show previous revision of visible code / return
     [l]            choose different revision of this file

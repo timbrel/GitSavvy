@@ -425,9 +425,14 @@ class HistoryMixin(mixin_base):
             target_commit
         ).strip().splitlines()
 
+    @cached(not_if={"commit": is_dynamic_ref})
+    def file_paths_at_commit(self, commit: str, paths: tuple[str, ...]) -> set[str]:
+        """Return the requested repository-relative paths present at commit."""
+        output = self.git("ls-tree", "-r", "-z", "--name-only", commit, "--", *paths)
+        return {path for path in output.split("\0") if path}
+
     @cached(not_if={"commit_hash": is_dynamic_ref})
-    def get_file_content_at_commit(self, filename, commit_hash):
-        # type: (str, Optional[str]) -> str
+    def get_file_content_at_commit(self, filename: str, commit_hash: Optional[str]) -> str:
         filename = self.to_short_path(filename)
         return self.git("show", "{}:{}".format(commit_hash or "", filename))
 

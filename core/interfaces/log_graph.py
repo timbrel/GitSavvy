@@ -877,15 +877,16 @@ class gs_log_graph_edit_files(GsTextCommand):
         )
 
     @lru_cache(1)
-    def list_controlled_files(self, __cc):
-        # type: (int) -> List[str]
-        return self.git(
+    def list_controlled_files(self, __cc: int) -> list[str]:
+        output = self.git(
             "ls-tree",
             "-r",
+            "-z",
             "--full-tree",
             "--name-only",
             "HEAD"
-        ).strip().splitlines()
+        )
+        return list(filter_(output.split("\0")))
 
 
 class gs_log_graph_toggle_all_setting(GsTextCommand):

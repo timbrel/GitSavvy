@@ -4,11 +4,12 @@ import sublime
 
 from unittesting import DeferrableTestCase, expectedFailure
 from GitSavvy.tests.parameterized import parameterized as p
-from GitSavvy.tests.mockito import spy2, unstub, verify, when
+from GitSavvy.tests.mockito import mock, spy2, unstub, verify, when
 
 from GitSavvy.core import app_state, store
 from GitSavvy.core.interfaces.log_graph import (
     extract_commit_hash,
+    gs_log_graph_edit_files,
     navigate_to_symbol,
     GitCommand
 )
@@ -99,6 +100,33 @@ b0d95ed
 f950461
 6df205d
 """.strip().split('\n')
+
+
+class TestGraphFileListing(DeferrableTestCase):
+    def setUp(self) -> None:
+        self.command = gs_log_graph_edit_files(mock())
+        self.addCleanup(unstub)
+        self.addCleanup(self.command.list_controlled_files.cache_clear)
+
+    @p.expand([
+        ("", []),
+        ("normal.md\0", ["normal.md"]),
+        (' spaced \0tab\tname\0line\nname\0quote".md\0ü.md\0',
+         [" spaced ", "tab\tname", "line\nname", 'quote".md', "ü.md"])
+    ])
+    def test_preserves_filenames(self, output: str, expected: list[str]) -> None:
+        when(self.command).git("ls-tree", ...).thenReturn(output)
+
+        self.assertEqual(self.command.list_controlled_files(0), expected)
+        verify(self.command).git("ls-tree", "-r", "-z", "--full-tree", "--name-only", "HEAD")
+
+    def test_caches_until_graph_changes(self) -> None:
+        when(self.command).git("ls-tree", ...).thenReturn("first\0", "second\0")
+
+        self.assertEqual(self.command.list_controlled_files(0), ["first"])
+        self.assertEqual(self.command.list_controlled_files(0), ["first"])
+        self.assertEqual(self.command.list_controlled_files(1), ["second"])
+        verify(self.command, times=2).git("ls-tree", ...)
 
 
 class TestGraphViewCommitHashExtraction(DeferrableTestCase):
