@@ -29,6 +29,7 @@ from typing import (
 )
 
 import sublime
+from sublime_plugin import EventListener
 
 from .. import store, utils
 from ..base_commands import GsTextCommand
@@ -63,7 +64,7 @@ from .log_graph_helper import (
 
 T = TypeVar("T")
 
-__all__ = ("gs_log_graph_refresh",)
+__all__ = ("gs_log_graph_refresh", "GsLogGraphStateListener")
 
 GIT_SUPPORTS_HUMAN_DATE_FORMAT = (2, 21, 0)
 FALLBACK_DATE_FORMAT = 'format:%Y-%m-%d %H:%M'
@@ -316,16 +317,25 @@ class PaintingStateMachine:
         self._current_state = other
 
 
-caret_styles = {}  # type: Dict[sublime.View, str]
-block_caret_statuses = {}  # type: Dict[sublime.View, bool]
-drawn_graph_statuses = {}  # type: Dict[sublime.View, bool]
-head_commit_seen = {}  # type: Dict[sublime.View, bool]
+# Retain the user settings across reloads.
+caret_styles: dict[sublime.View, str] = globals().get("caret_styles", {})
+block_caret_statuses: dict[sublime.View, bool] = globals().get("block_caret_statuses", {})
+
+drawn_graph_statuses: dict[sublime.View, bool] = {}
+head_commit_seen: dict[sublime.View, bool] = {}
 LEFT_COLUMN_WIDTH = 82
 SHOW_ALL_DECORATED_COMMITS = False
 
 
-def set_caret_style(view, caret_style="smooth"):
-    # type: (sublime.View, str) -> None
+class GsLogGraphStateListener(EventListener):
+    def on_close(self, view: sublime.View) -> None:
+        caret_styles.pop(view, None)
+        block_caret_statuses.pop(view, None)
+        drawn_graph_statuses.pop(view, None)
+        head_commit_seen.pop(view, None)
+
+
+def set_caret_style(view: sublime.View, caret_style: str = "smooth") -> None:
     start_busy_indicator(view)
     if view not in caret_styles:
         caret_styles[view] = view.settings().get("caret_style")
