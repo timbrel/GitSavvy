@@ -34,12 +34,8 @@ class GsCommandLogEventListener(EventListener):
         command_name: str,
         args: dict | None
     ) -> None:
-        if (
-            command_name == "show_panel"
-            and args
-            and args.get("panel") == "output.{}".format(command_log.PANEL_NAME)
-        ):
-            command_log.panel_opened()
+        if command_name in {"show_panel", "hide_panel"}:
+            command_log.panel_visibility_changed()
 
     def on_pre_close_window(self, window: sublime.Window) -> None:
         command_log.window_closed(window.id())

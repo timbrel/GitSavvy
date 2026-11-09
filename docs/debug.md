@@ -20,7 +20,7 @@ commands plus the 15 most recently finished commands across all repositories.
 `>` marks a command running for at least one second; the letter in parentheses
 is the first character of its thread's name. Commands taking less than 100ms appear only when finished.
 Slower commands initially show `[     ]`, then an updating elapsed time after
-one second. Opening the panel shows all currently running commands immediately.
+one second. Opening the panel uses the same 100ms threshold for running commands.
 
 After one second, an **Abort** link appears beside a running command. Click it
 to stop the command. Aborted commands show `[xxxxx]`. Aborting does not undo changes Git has already made; a rebase or merge
@@ -38,10 +38,10 @@ Neither do commands using the output panel or calls on dedicated threads, such
 as commands waiting for an editor. Explicit numeric timeouts still apply.
 
 The panel becomes available in a window's panel selector after its first Git
-command, but does not open automatically. History is tracked while it is hidden,
-but animation runs only while visible. It shows commands and timings, not their
-stdout or stderr; use the existing output panel for progress or the debug logging
-commands below to record command inputs and outputs.
+command, but does not open automatically. History is tracked while it is hidden;
+redraws are scheduled only while the panel is visible. It shows commands and
+timings, not their stdout or stderr; use the existing output panel for progress
+or the debug logging commands below to record command inputs and outputs.
 
 
 ## `GitSavvy: reload modules (debug)`

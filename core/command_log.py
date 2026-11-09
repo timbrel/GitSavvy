@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from functools import partial
 from itertools import count
+import math
 import os
 import subprocess
 import threading
@@ -21,9 +22,9 @@ PANEL_NAME = "GitSavvy Command Log"
 PANEL_SETTING = "git_savvy.command_log_panel"
 ANNOTATION_KEY = "git_savvy.command_log.abort"
 FINISHED_COMMAND_LIMIT = 15
-SHOW_RUNNING_AFTER_MS = 100
+SHOW_RUNNING_AFTER_SECONDS = 0.1
 ANIMATE_RUNNING_AFTER_SECONDS = 1.0
-ANIMATION_INTERVAL_MS = 100
+ANIMATION_INTERVAL_SECONDS = 0.1
 # Prefer the scope accent unless its contrast is too weak; then use normal text.
 MIN_ANNOTATION_CONTRAST = 3.0
 GROUP_PREFIX = "             -- "
@@ -40,7 +41,6 @@ class Command:
     proc: Optional[subprocess.Popen]
     finished_at: Optional[float] = None
     aborted: bool = False
-    shown_while_running: bool = False
 
     @property
     def is_running(self) -> bool:
@@ -50,6 +50,11 @@ class Command:
 class Annotation(NamedTuple):
     execution_id: int
     start: int
+
+
+class PendingRender(NamedTuple):
+    due_at: float
+    token: object
 
 
 class CommandLog:
@@ -84,26 +89,6 @@ class CommandLog:
         )
         self._trim_finished_commands()
 
-    def reveal(self, execution_id: int) -> bool:
-        command = self.commands.get(execution_id)
-        if not command or not command.is_running:
-            return False
-
-        self.commands[execution_id] = replace(command, shown_while_running=True)
-        return True
-
-    def reveal_all_running(self) -> None:
-        for command in self.commands.values():
-            if command.is_running:
-                self.commands[command.execution_id] = replace(command, shown_while_running=True)
-
-    def commands_for_render(self) -> List[Command]:
-        return [
-            command
-            for command in self.commands.values()
-            if not command.is_running or command.shown_while_running
-        ]
-
     def running_process(self, execution_id: int) -> Optional[subprocess.Popen]:
         command = self.commands.get(execution_id)
         return command.proc if command and command.is_running else None
@@ -121,8 +106,14 @@ class CommandLog:
 _lock = threading.Lock()
 _next_execution_id = count(1)
 _commands = CommandLog()
-_render_due_at: Dict[int, float] = {}
-_rendered_panels: Dict[int, Tuple[sublime.View, str, List[Annotation]]] = {}
+# Protected by _lock. The UI thread tracks whether any log panel is visible;
+# command threads only need that boolean to request a shared redraw.
+_has_visible_panel = False
+_pending_render: Optional[PendingRender] = None
+_prepared_windows: set[int] = set()
+# Only the UI thread reads or writes rendered content.
+_last_render: Tuple[str, List[Annotation]] = ("", [])
+_rendered_panels: set[sublime.View] = set()
 
 
 def start_command(
@@ -135,19 +126,18 @@ def start_command(
     execution_id = next(_next_execution_id)
     actual_working_dir = os.path.abspath(os.fspath(working_dir))
     with _lock:
+        started_at = time.monotonic()
         _commands.start(
             execution_id,
             actual_working_dir,
             command,
             threading.current_thread().name[:1],
             proc,
-            time.monotonic()
+            started_at
         )
+        if _has_visible_panel:
+            _request_redraw(started_at + SHOW_RUNNING_AFTER_SECONDS)
 
-    sublime.set_timeout(
-        partial(_reveal_running_command, execution_id),
-        SHOW_RUNNING_AFTER_MS
-    )
     if show_spinner:
         git_activity.start(execution_id)
     return execution_id
@@ -167,16 +157,28 @@ def finish_when_process_exits(
 
 def finish_command(execution_id: int, aborted: bool) -> None:
     with _lock:
-        _commands.finish(execution_id, time.monotonic(), aborted)
+        finished_at = time.monotonic()
+        _commands.finish(execution_id, finished_at, aborted)
+        if _has_visible_panel:
+            _request_redraw(finished_at)
 
     git_activity.finish(execution_id)
-    enqueue_on_ui(_render_visible_panels)
 
 
 def prepare_panel(window: sublime.Window) -> None:
+    window_id = window.id()
+    with _lock:
+        if window_id in _prepared_windows:
+            return
+        _prepared_windows.add(window_id)
+
     def create_if_missing() -> None:
-        if window.is_valid() and not window.find_output_panel(PANEL_NAME):
-            ensure_panel(window)
+        if not window.is_valid():
+            window_closed(window_id)
+        else:
+            if not window.find_output_panel(PANEL_NAME):
+                ensure_panel(window)
+            panel_visibility_changed()
 
     enqueue_on_ui(create_if_missing)
 
@@ -184,15 +186,21 @@ def prepare_panel(window: sublime.Window) -> None:
 def show(window: sublime.Window) -> None:
     panel = ensure_panel(window)
     window.run_command("show_panel", {"panel": "output.{}".format(PANEL_NAME)})
-    panel_opened()
+    panel_visibility_changed()
     panel.show(0)
 
 
-def panel_opened() -> None:
+def panel_visibility_changed() -> None:
+    """On the UI thread, update visibility and draw newly opened panels."""
+    global _has_visible_panel, _pending_render
+    visible_panels = _visible_panels()
+    _rendered_panels.intersection_update(visible_panels)
     with _lock:
-        _commands.reveal_all_running()
-
-    _render_visible_panels()
+        _has_visible_panel = bool(visible_panels)
+        if visible_panels:
+            _request_redraw(time.monotonic())
+        else:
+            _pending_render = None
 
 
 def abort_command(execution_id: int) -> None:
@@ -205,8 +213,15 @@ def abort_command(execution_id: int) -> None:
 
 
 def window_closed(window_id: int) -> None:
-    _render_due_at.pop(window_id, None)
-    _rendered_panels.pop(window_id, None)
+    global _has_visible_panel, _pending_render
+    # on_pre_close_window runs while the closing window is still valid.
+    visible_panels = _visible_panels(exclude_window_id=window_id)
+    with _lock:
+        _has_visible_panel = bool(visible_panels)
+        if not visible_panels:
+            _pending_render = None
+        _prepared_windows.discard(window_id)
+    _rendered_panels.intersection_update(visible_panels)
 
 
 def render_commands(
@@ -215,6 +230,8 @@ def render_commands(
 ) -> Tuple[str, List[Annotation]]:
     grouped: Dict[str, List[Command]] = {}
     for command in commands:
+        if command.is_running and now < command.started_at + SHOW_RUNNING_AFTER_SECONDS:
+            continue
         grouped.setdefault(command.working_dir, []).append(command)
 
     groups = sorted(
@@ -253,29 +270,34 @@ def render_commands(
     return "".join(chunks), annotations
 
 
-def _render_visible_panels() -> None:
-    for window in sublime.windows():
-        if _panel_is_visible(window):
-            panel = window.find_output_panel(PANEL_NAME)
-            if panel:
-                _render(window.id(), panel)
-
-
-def _render(window_id: int, panel: sublime.View) -> None:
+def _render() -> None:
+    global _has_visible_panel, _last_render, _rendered_panels
+    visible_panels = _visible_panels()
+    _rendered_panels.intersection_update(visible_panels)
     with _lock:
-        commands = _commands.commands_for_render()
+        _has_visible_panel = bool(visible_panels)
+        if not visible_panels:
+            return
+        commands = list(_commands.commands.values())
 
     now = time.monotonic()
     text, annotations = render_commands(commands, now)
-    previous = _rendered_panels.get(window_id)
-    if previous and previous[0] == panel and previous[2] == annotations:
-        if not _update_panel_text(panel, previous[1], text):
+    previous_text, previous_annotations = _last_render
+    for panel in visible_panels:
+        if panel in _rendered_panels and previous_annotations == annotations:
+            if not _update_panel_text(panel, previous_text, text):
+                _draw_abort_annotations(panel, annotations)
+        else:
+            replace_view_content(panel, text)
             _draw_abort_annotations(panel, annotations)
-    else:
-        replace_view_content(panel, text)
-        _draw_abort_annotations(panel, annotations)
-    _rendered_panels[window_id] = (panel, text, annotations)
-    _schedule_next_render(window_id, commands, now)
+    _last_render = (text, annotations)
+    _rendered_panels = set(visible_panels)
+
+    due_at = _next_render_at(commands, now)
+    if due_at is not None:
+        with _lock:
+            if _has_visible_panel:
+                _request_redraw(due_at)
 
 
 def _update_panel_text(panel: sublime.View, previous: str, text: str) -> bool:
@@ -303,51 +325,44 @@ def _update_panel_text(panel: sublime.View, previous: str, text: str) -> bool:
     return True
 
 
-def _schedule_next_render(
-    window_id: int,
-    commands: List[Command],
-    now: float
-) -> None:
-    running = [command for command in commands if command.is_running]
-    if not running:
-        _render_due_at.pop(window_id, None)
+def _next_render_at(commands: Iterable[Command], now: float) -> Optional[float]:
+    deadlines = []
+    for command in commands:
+        if not command.is_running:
+            continue
+        if now < command.started_at + SHOW_RUNNING_AFTER_SECONDS:
+            due_at = command.started_at + SHOW_RUNNING_AFTER_SECONDS
+        elif now < command.started_at + ANIMATE_RUNNING_AFTER_SECONDS:
+            due_at = command.started_at + ANIMATE_RUNNING_AFTER_SECONDS
+        else:
+            due_at = now + ANIMATION_INTERVAL_SECONDS
+        deadlines.append(due_at)
+    return min(deadlines, default=None)
+
+
+def _request_redraw(due_at: float) -> None:
+    # Caller holds _lock. An earlier paint will recompute the next deadline
+    # from the latest command history, so later requests need no callback.
+    global _pending_render
+    if _pending_render is not None and _pending_render.due_at <= due_at:
         return
 
-    elapsed = [max(0.0, now - command.started_at) for command in running]
-    delay = (
-        ANIMATION_INTERVAL_MS / 1000
-        if any(runtime >= ANIMATE_RUNNING_AFTER_SECONDS for runtime in elapsed)
-        else min(ANIMATE_RUNNING_AFTER_SECONDS - runtime for runtime in elapsed)
-    )
-    due_at = now + delay
-    scheduled_due_at = _render_due_at.get(window_id)
-    if scheduled_due_at is not None and scheduled_due_at <= due_at:
-        return
-
-    _render_due_at[window_id] = due_at
+    token = object()
+    _pending_render = PendingRender(due_at, token)
     sublime.set_timeout(
-        partial(_animate, window_id, due_at),
-        max(1, round(delay * 1000))
+        partial(_redraw, token),
+        max(0, math.ceil((due_at - time.monotonic()) * 1000))
     )
 
 
-def _animate(window_id: int, due_at: float) -> None:
-    if _render_due_at.get(window_id) != due_at:
-        return
-    _render_due_at.pop(window_id, None)
-
-    window = next((window for window in sublime.windows() if window.id() == window_id), None)
-    if window and _panel_is_visible(window):
-        panel = window.find_output_panel(PANEL_NAME)
-        if panel:
-            _render(window_id, panel)
-
-
-def _reveal_running_command(execution_id: int) -> None:
+def _redraw(token: object) -> None:
+    global _pending_render
     with _lock:
-        revealed = _commands.reveal(execution_id)
-    if revealed:
-        _render_visible_panels()
+        if _pending_render is None or _pending_render.token is not token:
+            return
+        _pending_render = None
+
+    _render()
 
 
 def ensure_panel(window: sublime.Window) -> sublime.View:
@@ -358,8 +373,14 @@ def ensure_panel(window: sublime.Window) -> sublime.View:
     return panel
 
 
-def _panel_is_visible(window: sublime.Window) -> bool:
-    return window.active_panel() == "output.{}".format(PANEL_NAME)
+def _visible_panels(exclude_window_id: Optional[int] = None) -> List[sublime.View]:
+    return [
+        panel
+        for window in sublime.windows()
+        if window.id() != exclude_window_id
+        if window.active_panel() == "output.{}".format(PANEL_NAME)
+        if (panel := window.find_output_panel(PANEL_NAME))
+    ]
 
 
 def _draw_abort_annotations(

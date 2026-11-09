@@ -1,3 +1,4 @@
+import heapq
 import os
 import shutil
 import subprocess
@@ -6,16 +7,14 @@ import threading
 from unittesting import DeferrableTestCase
 
 from GitSavvy.core import command_log
+from GitSavvy.core.commands.command_log import GsCommandLogEventListener
 from GitSavvy.core.utils import STARTUPINFO
-from GitSavvy.tests.mockito import ANY, unstub, verify, when
+from GitSavvy.tests.mockito import unstub, verify, when
 
 
 class TestCommandLog(DeferrableTestCase):
     def tearDown(self):
-        with command_log._lock:
-            command_log._commands.commands.clear()
-        command_log._render_due_at.clear()
-        command_log._rendered_panels.clear()
+        reset_command_log()
         unstub()
 
     def test_keeps_all_running_and_the_most_recently_finished(self):
@@ -51,35 +50,31 @@ class TestCommandLog(DeferrableTestCase):
         self.assertIn(1, log.commands)
         self.assertNotIn(2, log.commands)
 
-    def test_delays_running_commands_but_always_shows_completed_commands(self):
-        log = command_log.CommandLog()
-        log.start(1, "/repo", "git status", "D", Process(), 0)
+    def test_derives_running_visibility_from_timestamps(self):
+        command = command_record(1, "/repo", "git status", 10, None)
 
-        self.assertEqual(log.commands_for_render(), [])
-        self.assertTrue(log.reveal(1))
-        self.assertEqual([command.execution_id for command in log.commands_for_render()], [1])
+        self.assertEqual(command_log.render_commands([command], now=10.099), ("", []))
+        text, annotations = command_log.render_commands([command], now=10.1)
+        self.assertIn("  (D) [     ] $ git status", text)
+        self.assertEqual(annotations, [])
+        self.assertEqual(command_log.render_commands([command], now=10.099), ("", []))
 
-        log.start(2, "/repo", "git diff", "D", Process(), 0)
-        log.finish(2, 0.1, aborted=False)
-        self.assertEqual(
-            [command.execution_id for command in log.commands_for_render()],
-            [1, 2]
-        )
+    def test_completed_commands_appear_without_waiting_for_the_threshold(self):
+        command = command_record(1, "/repo", "git status", 0, 0.047)
+
+        text, _ = command_log.render_commands([command], now=0.047)
+
+        self.assertIn("  (D) [ 47ms] $ git status", text)
 
     def test_state_changes_replace_records_without_changing_previous_renders(self):
         log = command_log.CommandLog()
         process = Process()
         log.start(1, "/repo", "git status", "D", process, 0)
-        initial = log.commands[1]
-
-        log.reveal_all_running()
-        rendered = log.commands_for_render()
+        rendered = list(log.commands.values())
         self.assertIs(rendered[0], log.commands[1])
-        self.assertFalse(initial.shown_while_running)
-        self.assertTrue(rendered[0].shown_while_running)
 
         log.finish(1, 2, aborted=True)
-        finished = log.commands_for_render()[0]
+        finished = log.commands[1]
         self.assertIsNot(finished, rendered[0])
         self.assertTrue(rendered[0].is_running)
         self.assertFalse(rendered[0].aborted)
@@ -160,7 +155,7 @@ class TestCommandLog(DeferrableTestCase):
 
         command = command_log._commands.commands[execution_id]
         self.assertEqual(command.thread_name, threading.current_thread().name[:1])
-        verify(command_log.sublime).set_timeout(ANY(), 100)
+        verify(command_log.sublime, times=0).set_timeout(...)
 
     def test_handoff_waiter_preserves_process_identity_and_output(self):
         proc = waiting_git_process()
@@ -229,73 +224,14 @@ class TestCommandLog(DeferrableTestCase):
                 )
                 self.assertEqual(color, expected)
 
-    def test_prepares_a_missing_panel_without_showing_it(self):
-        window = Window(1, None)
-        when(command_log).enqueue_on_ui(...).thenAnswer(lambda callback: callback())
-        when(command_log).ensure_panel(window)
-        when(command_log).show(...)
-
-        command_log.prepare_panel(window)
-
-        verify(command_log).ensure_panel(window)
-        verify(command_log, times=0).show(...)
-
-    def test_preparing_an_existing_panel_does_nothing(self):
-        window = Window(1, Panel())
-        when(command_log).enqueue_on_ui(...).thenAnswer(lambda callback: callback())
-        when(command_log).ensure_panel(...)
-
-        command_log.prepare_panel(window)
-
-        verify(command_log, times=0).ensure_panel(...)
-
-    def test_queued_preparation_ignores_a_closed_window(self):
-        window = Window(1, None)
-        when(window).is_valid().thenReturn(False)
-        when(command_log).enqueue_on_ui(...).thenAnswer(lambda callback: callback())
-        when(command_log).ensure_panel(...)
-
-        command_log.prepare_panel(window)
-
-        verify(command_log, times=0).ensure_panel(...)
-
-    def test_each_visible_window_receives_global_updates(self):
-        first_panel = Panel()
-        second_panel = Panel()
-        first_window = Window(1, first_panel)
-        second_window = Window(2, second_panel)
-        when(command_log.sublime).windows().thenReturn([first_window, second_window])
-        when(command_log)._render(...)
-
-        command_log._render_visible_panels()
-
-        verify(command_log)._render(1, first_panel)
-        verify(command_log)._render(2, second_panel)
-
-    def test_each_panel_renders_the_same_application_history(self):
-        log = command_log._commands
-        log.start(1, "/repo", "git status", "D", Process(), 0)
-        log.finish(1, 0.047, aborted=False)
-        first_panel = Panel()
-        second_panel = Panel()
-        rendered = []
-        when(command_log).replace_view_content(...).thenAnswer(
-            lambda panel, text: rendered.append((panel, text))
-        )
-
-        command_log._render(1, first_panel)
-        command_log._render(2, second_panel)
-
-        self.assertEqual(rendered[0][1], rendered[1][1])
-        self.assertIn("  (D) [ 47ms] $ git status", rendered[0][1])
-
     def test_timer_ticks_preserve_abort_annotations_and_command_text(self):
         log = command_log._commands
         log.start(1, "/répo", "git status", "D", Process(), 0)
         log.start(2, "/other", "git fetch", "W", Process(), 0)
-        log.reveal_all_running()
         panel = Panel()
-        when(command_log.time).monotonic().thenReturn(1.1, 1.2, 1.2)
+        window = Window(1, panel)
+        window.visible = True
+        when(command_log.sublime).windows().thenReturn([window])
         when(command_log.sublime).set_timeout(...)
         when(command_log).replace_view_content(...).thenAnswer(
             lambda panel, text, region=None: panel.replace_content(text, region)
@@ -303,8 +239,9 @@ class TestCommandLog(DeferrableTestCase):
         when(command_log)._draw_abort_annotations(...)
 
         for now in (1.1, 1.2, 1.2):
-            command_log._render(1, panel)
-            expected, _ = command_log.render_commands(log.commands_for_render(), now)
+            when(command_log.time).monotonic().thenReturn(now)
+            command_log._render()
+            expected, _ = command_log.render_commands(log.commands.values(), now)
             self.assertEqual(panel.text, expected)
 
         verify(command_log, times=1)._draw_abort_annotations(...)
@@ -337,34 +274,273 @@ class TestCommandLog(DeferrableTestCase):
                 self.assertEqual(panel.text, expected)
                 self.assertEqual(panel.writes, [(expected, None)])
 
-    def test_blank_phase_schedules_only_the_one_second_transition(self):
-        command = command_record(1, "/repo", "git status", 0, None)
-        when(command_log.sublime).set_timeout(...)
 
-        command_log._schedule_next_render(17, [command], 0.1)
-        command_log._schedule_next_render(17, [command], 0.5)
+class TestCommandLogRendering(DeferrableTestCase):
+    def setUp(self):
+        reset_command_log()
+        self.now = 0.0
+        self.callbacks = []
+        self.scheduled = 0
+        self.paints = []
+        self.window = Window(1, Panel())
+        self.windows = [self.window]
+        self.render = command_log.render_commands
+        when(command_log.time).monotonic().thenAnswer(lambda: self.now)
+        when(command_log.sublime).windows().thenAnswer(lambda: self.windows)
+        when(command_log.sublime).set_timeout(...).thenAnswer(self.schedule)
+        when(command_log).render_commands(...).thenAnswer(self.record_render)
+        when(command_log).replace_view_content(...).thenAnswer(
+            lambda panel, text, region=None: panel.replace_content(text, region)
+        )
+        # The status-bar spinner has its own lifecycle and tests.
+        when(command_log.git_activity).start(...)
+        when(command_log.git_activity).finish(...)
 
-        verify(command_log.sublime, times=1).set_timeout(...)
-        self.assertEqual(command_log._render_due_at[17], 1.0)
+    def tearDown(self):
+        reset_command_log()
+        unstub()
 
-    def test_finishing_cancels_a_pending_blank_phase_render(self):
-        command_log._render_due_at[17] = 1.0
+    def test_hidden_commands_only_update_history(self):
+        limit = command_log.FINISHED_COMMAND_LIMIT
+        for _ in range(limit + 2):
+            execution_id = command_log.start_command(".", "git status", Process())
+            command_log.finish_command(execution_id, aborted=False)
 
-        command_log._schedule_next_render(17, [], 0.2)
-        command_log._animate(17, 1.0)
+        self.assertEqual(self.scheduled, 0)
+        self.assertEqual(self.paints, [])
+        verify(command_log.sublime, times=0).windows()
+        self.open_panel()
+        self.assertEqual(self.window.panel.text.count("$ git status"), limit)
+        self.assertEqual(self.callbacks, [])
 
-        self.assertNotIn(17, command_log._render_due_at)
+    def test_preparation_runs_once_without_opening_the_panel(self):
+        cases = [
+            ("missing", True, False, False),
+            ("existing", True, True, False),
+            ("closed", False, False, False),
+            ("already visible", True, True, True),
+        ]
+        for window_id, (name, valid, exists, visible) in enumerate(cases, 1):
+            with self.subTest(name=name):
+                window = Window(window_id, Panel() if exists else None)
+                window.visible = visible
+                self.windows = [window]
+                when(window).is_valid().thenReturn(valid)
+                when(command_log).ensure_panel(window).thenAnswer(
+                    lambda window: setattr(window, "panel", Panel())
+                )
+                scheduled, paints = self.scheduled, len(self.paints)
 
-    def test_closing_a_window_preserves_global_command_records(self):
-        command_log._commands.start(1, "/repo", "git status", "D", Process(), 0)
-        command_log._render_due_at[17] = 1.0
-        command_log._rendered_panels[17] = (Panel(), "old render", [])
+                command_log.prepare_panel(window)
+                command_log.prepare_panel(window)
+                self.advance_to(self.now)
+                if valid:
+                    command_log.prepare_panel(window)
 
-        command_log.window_closed(17)
+                verify(command_log, times=int(valid and not exists)).ensure_panel(window)
+                self.assertEqual(window.visible, visible)
+                self.assertEqual(len(self.paints) - paints, int(visible))
+                self.assertEqual(self.scheduled - scheduled, 1 + int(visible))
 
-        self.assertIn(1, command_log._commands.commands)
-        self.assertNotIn(17, command_log._render_due_at)
-        self.assertNotIn(17, command_log._rendered_panels)
+    def test_visible_panels_share_timestamp_driven_redraws(self):
+        other_window = Window(2, Panel())
+        self.windows.append(other_window)
+        command_log.start_command(".", "git status", Process())
+        self.advance_to(0.05)
+        self.window.visible = other_window.visible = True
+        command_log.panel_visibility_changed()
+        command_log.panel_visibility_changed()
+        self.advance_to(self.now)
+        self.assertEqual(self.window.panel.text, "")
+        self.assertEqual(other_window.panel.text, "")
+
+        cases = [
+            (0.099, 1, ""),
+            (0.102, 2, "[     ]"),
+            (0.999, 2, "[     ]"),
+            (1.002, 3, "[ 1.0s]"),
+            (1.103, 4, "[ 1.1s]"),
+        ]
+        for now, paints, timing in cases:
+            with self.subTest(now=now):
+                self.advance_to(now)
+                self.assertEqual(len(self.paints), paints)
+                self.assertEqual(len(self.callbacks), 1)
+                self.assertEqual(self.window.panel.text, other_window.panel.text)
+                self.assertIn(timing, self.window.panel.text)
+        self.assertEqual(len(self.window.panel.annotations), 1)
+
+    def test_earlier_paint_reschedules_a_new_commands_appearance(self):
+        self.now = -0.02
+        command_log.start_command(".", "git status", Process())
+        self.now = 0.0
+        self.open_panel()  # The first command will appear at 80ms.
+        scheduled = self.scheduled
+
+        command_log.start_command(".", "git diff", Process())
+        self.assertEqual(self.scheduled, scheduled)
+        self.advance_to(0.081)
+        self.assertIn("git status", self.window.panel.text)
+        self.assertNotIn("git diff", self.window.panel.text)
+        self.assertEqual(len(self.paints), 2)
+
+        self.advance_to(0.102)
+        self.assertIn("git diff", self.window.panel.text)
+        self.assertEqual(len(self.paints), 3)
+
+    def test_superseded_callback_cannot_paint_at_a_reused_deadline(self):
+        command_log.start_command(".", "git status", Process())
+        self.open_panel()
+        self.advance_to(0.2)
+
+        command_log.start_command(".", "git diff", Process())
+        self.advance_to(0.302)
+        self.assertIn("git diff", self.window.panel.text)
+        paints = len(self.paints)
+
+        # Both the superseded callback and the new one target the 1s transition.
+        self.advance_to(1.002)
+        self.assertEqual(len(self.paints), paints + 1)
+
+    def test_fast_completions_share_one_redraw_and_stop_scheduling(self):
+        self.open_panel()
+        first = command_log.start_command(".", "git status", Process())
+        second = command_log.start_command(".", "git diff", Process())
+        self.advance_to(0.047)
+
+        command_log.finish_command(first, aborted=False)
+        scheduled = self.scheduled
+        command_log.finish_command(second, aborted=False)
+        self.assertEqual(self.scheduled, scheduled)
+        self.advance_to(self.now)
+
+        self.assertEqual(len(self.paints), 2)
+        self.assertIn("[ 47ms] $ git status", self.window.panel.text)
+        self.assertIn("[ 47ms] $ git diff", self.window.panel.text)
+        self.advance_to(2)
+        self.assertEqual(len(self.paints), 2)
+        self.assertEqual(self.callbacks, [])
+
+    def test_start_during_a_paint_is_not_lost(self):
+        started = []
+
+        def replace_content(panel, text, region=None):
+            panel.replace_content(text, region)
+            if not started:
+                started.append(command_log.start_command(".", "git status", Process()))
+
+        when(command_log).replace_view_content(...).thenAnswer(replace_content)
+        self.open_panel()
+        self.assertEqual(self.window.panel.text, "")
+
+        self.advance_to(0.102)
+        self.assertIn("git status", self.window.panel.text)
+        self.assertEqual(len(self.paints), 2)
+
+    def test_hidden_panels_stop_redrawing_even_if_the_hide_event_is_missed(self):
+        command_log.start_command(".", "git status", Process())
+        listener = GsCommandLogEventListener()
+        cases = [
+            ("hide_panel", None),
+            ("show_panel", {"panel": "output.other"}),
+            ("show_panel", {"panel": "output." + command_log.PANEL_NAME, "toggle": True}),
+            (None, None),
+        ]
+        for command, args in cases:
+            with self.subTest(command=command, args=args):
+                self.open_panel()
+                paints = len(self.paints)
+                self.window.visible = False
+                if command:
+                    listener.on_post_window_command(self.window, command, args)
+                self.advance_to(self.now + 2)
+                self.assertEqual(len(self.paints), paints)
+                self.assertEqual(self.callbacks, [])
+
+                scheduled = self.scheduled
+                execution_id = command_log.start_command(".", "git diff", Process())
+                command_log.finish_command(execution_id, aborted=False)
+                self.assertEqual(self.scheduled, scheduled)
+
+    def test_new_or_stale_panels_get_full_renders(self):
+        command_log.start_command(".", "git status", Process())
+        self.advance_to(1.1)
+        self.open_panel()
+        other_window = Window(2, Panel())
+
+        for state in ("new", "reopened", "recreated"):
+            with self.subTest(state=state):
+                if state == "reopened":
+                    other_window.visible = False
+                    command_log.panel_visibility_changed()
+                    stale_text = other_window.panel.text
+                    self.advance_to(2.1)
+                    self.assertEqual(other_window.panel.text, stale_text)
+                    self.assertNotEqual(self.window.panel.text, stale_text)
+                elif state == "recreated":
+                    other_window.panel = Panel()
+                existing_annotations = self.window.panel.annotations
+
+                self.open_panel(other_window)
+
+                self.assertEqual(other_window.panel.text, self.window.panel.text)
+                self.assertEqual(other_window.panel.writes[-1], (self.window.panel.text, None))
+                self.assertEqual(len(other_window.panel.annotations), 1)
+                self.assertIs(self.window.panel.annotations, existing_annotations)
+
+    def test_redraws_continue_until_the_last_window_closes(self):
+        other_window = Window(2, Panel())
+        self.open_panel()
+        self.open_panel(other_window)
+        command_log.start_command(".", "git status", Process())
+
+        command_log.window_closed(1)
+        self.windows.remove(self.window)
+        self.advance_to(1.1)
+        self.assertEqual(self.window.panel.text, "")
+        self.assertIn("git status", other_window.panel.text)
+
+        paints = len(self.paints)
+        command_log.window_closed(2)
+        self.windows.clear()
+        scheduled = self.scheduled
+        command_log.start_command(".", "git diff", Process())
+        self.advance_to(2)
+        self.assertEqual(self.scheduled, scheduled)
+        self.assertEqual(len(self.paints), paints)
+        self.assertEqual(self.callbacks, [])
+
+    def open_panel(self, window=None):
+        window = window or self.window
+        if window not in self.windows:
+            self.windows.append(window)
+        window.visible = True
+        command_log.panel_visibility_changed()
+        self.advance_to(self.now)
+
+    def schedule(self, callback, delay=0):
+        self.scheduled += 1
+        heapq.heappush(self.callbacks, (self.now + delay / 1000, self.scheduled, callback))
+
+    def advance_to(self, now):
+        while self.callbacks and self.callbacks[0][0] <= now:
+            self.now, _, callback = heapq.heappop(self.callbacks)
+            callback()
+        self.now = now
+
+    def record_render(self, commands, now):
+        self.paints.append(now)
+        return self.render(commands, now)
+
+
+def reset_command_log():
+    with command_log._lock:
+        command_log._commands.commands.clear()
+        command_log._has_visible_panel = False
+        command_log._pending_render = None
+        command_log._prepared_windows.clear()
+    command_log._last_render = ("", [])
+    command_log._rendered_panels.clear()
 
 
 def command_record(
@@ -411,6 +587,7 @@ class Window:
     def __init__(self, window_id, panel):
         self.window_id = window_id
         self.panel = panel
+        self.visible = False
 
     def id(self):
         return self.window_id
@@ -419,7 +596,7 @@ class Window:
         return True
 
     def active_panel(self):
-        return "output.{}".format(command_log.PANEL_NAME)
+        return "output.{}".format(command_log.PANEL_NAME) if self.visible else None
 
     def find_output_panel(self, name):
         return self.panel
