@@ -25,6 +25,7 @@ FINISHED_COMMAND_LIMIT = 15
 SHOW_RUNNING_AFTER_SECONDS = 0.1
 ANIMATE_RUNNING_AFTER_SECONDS = 1.0
 ANIMATION_INTERVAL_SECONDS = 0.1
+COMMAND_GAP_SECONDS = 1.0
 # Prefer the scope accent unless its contrast is too weak; then use normal text.
 MIN_ANNOTATION_CONTRAST = 3.0
 GROUP_PREFIX = "             -- "
@@ -250,11 +251,22 @@ def render_commands(
         heading = "{}{} --\n".format(GROUP_PREFIX, working_dir)
         chunks.append(heading)
         offset += len(heading)
+        newer_started_at: Optional[float] = None
         for command in sorted(
             group_commands,
             key=lambda command: command.execution_id,
             reverse=True
         ):
+            if (
+                newer_started_at is not None
+                and command.finished_at is not None
+                and newer_started_at - command.finished_at >= COMMAND_GAP_SECONDS
+            ):
+                separator = "   ⋮\n"
+                chunks.append(separator)
+                offset += len(separator)
+            newer_started_at = command.started_at
+
             show_abort = command.is_running and now - command.started_at >= ANIMATE_RUNNING_AFTER_SECONDS
             line = "{}{} $ {}\n".format(
                 COMMAND_PREFIX.format(">" if show_abort else " ", command.thread_name),

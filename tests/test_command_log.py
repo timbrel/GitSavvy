@@ -103,6 +103,47 @@ class TestCommandLog(DeferrableTestCase):
         )
         self.assertEqual(annotations, [])
 
+    def test_gap_separator_keeps_abort_offsets(self):
+        text, annotations = command_log.render_commands([
+            command_record(4, "/repo", "git fetch", 3, None),
+            command_record(3, "/repo", "git status", 1, 2),
+            command_record(2, "/other", "git diff", 0.5, None),
+        ], now=5)
+
+        self.assertEqual(
+            text,
+            "             -- /repo --\n"
+            "> (D) [ 2.0s] $ git fetch\n"
+            "   ⋮\n"
+            "  (D) [ 1.0s] $ git status\n"
+            "\n"
+            "             -- /other --\n"
+            "> (D) [ 4.5s] $ git diff\n"
+        )
+        self.assertEqual(annotations, [
+            command_log.Annotation(4, text.index("> (D) [ 2.0s]")),
+            command_log.Annotation(2, text.index("> (D) [ 4.5s]")),
+        ])
+
+    def test_gap_separators_require_one_second_within_the_same_directory(self):
+        cases = [
+            (2, 2.999, "/repo", False),
+            (2, 3, "/repo", True),
+            (2, 4, "/repo", True),
+            (2, 2, "/repo", False),
+            (2, 1.5, "/repo", False),
+            (None, 3, "/repo", False),
+            (2, 3, "/other", False),
+        ]
+        for finished_at, started_at, working_dir, separated in cases:
+            with self.subTest(finished_at=finished_at, started_at=started_at, working_dir=working_dir):
+                text, _ = command_log.render_commands([
+                    command_record(1, working_dir, "git status", 0, finished_at),
+                    command_record(2, "/repo", "git diff", started_at, None),
+                ], now=10)
+
+                self.assertEqual("   ⋮\n" in text, separated)
+
     def test_running_timing_is_blank_until_one_second(self):
         text, _ = command_log.render_commands([
             command_record(1, "/repo", "git status", 1, None),

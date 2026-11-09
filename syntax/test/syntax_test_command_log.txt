@@ -10,6 +10,8 @@
 # ^^^ - constant.other.command-timing.git-savvy
 #     ^^^^^^^ constant.other.command-timing.git-savvy
 #            ^^^^^^^^^^^^^^^^^^ - constant.other.command-timing.git-savvy
+   ⋮
+#  ^ - constant.other.command-timing.git-savvy
   (D) [xxxxx] $ git status
 # ^^^ - constant.other.command-timing.git-savvy
 #     ^^^^^^^ constant.other.command-timing.git-savvy

@@ -14,6 +14,7 @@ commands plus the 15 most recently finished commands across all repositories.
 ```text
              -- /path/to/repo --
 > (W) [ 2.3s] $ git fetch origin
+   ⋮
   (W) [ 47ms] $ git stash list
 ```
 
@@ -21,6 +22,9 @@ commands plus the 15 most recently finished commands across all repositories.
 is the first character of its thread's name. Commands taking less than 100ms appear only when finished.
 Slower commands initially show `[     ]`, then an updating elapsed time after
 one second. Opening the panel uses the same 100ms threshold for running commands.
+
+Within each working directory, a gap of at least one second between consecutive
+commands gets a `⋮` separator.
 
 After one second, an **Abort** link appears beside a running command. Click it
 to stop the command. Aborted commands show `[xxxxx]`. Aborting does not undo changes Git has already made; a rebase or merge
