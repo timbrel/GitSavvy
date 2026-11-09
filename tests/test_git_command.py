@@ -12,6 +12,37 @@ class TestGitTimeout(DeferrableTestCase):
     def tearDown(self):
         unstub()
 
+    def test_timeout_policy(self):
+        cases = [
+            # panel argument, panel setting, thread default, explicit timeout, expected
+            (False, [], "unset", "unset", 120.0),
+            (True, [], "unset", "unset", None),
+            (None, ["status"], "unset", "unset", None),
+            (False, ["status"], "unset", "unset", 120.0),
+            (False, [], None, "unset", None),
+            (True, [], 10.0, "unset", None),
+            (False, [], 10.0, "unset", 10.0),
+            (True, [], None, 0.2, 0.2),
+            (None, ["status"], "unset", 0.2, 0.2),
+            (False, [], "unset", None, None),
+        ]
+        previous = getattr(git_command.auto_timeout, "value", "unset")
+        try:
+            for show_panel, settings, thread_default, explicit, expected in cases:
+                with self.subTest(case=(show_panel, settings, thread_default, explicit)):
+                    if thread_default == "unset":
+                        if hasattr(git_command.auto_timeout, "value"):
+                            del git_command.auto_timeout.value
+                    else:
+                        git_command.auto_timeout.value = thread_default
+                    self.assert_timeout(show_panel, settings, explicit, expected)
+        finally:
+            if previous == "unset":
+                if hasattr(git_command.auto_timeout, "value"):
+                    del git_command.auto_timeout.value
+            else:
+                git_command.auto_timeout.value = previous
+
     def test_kills_and_reaps_the_process(self):
         process = TimedOutProcess()
         when(git_command.subprocess).Popen(...).thenReturn(process)
@@ -29,6 +60,32 @@ class TestGitTimeout(DeferrableTestCase):
 
         self.assertTrue(process.got_killed)
         self.assertEqual(process.communicate_calls, [0.2, None])
+
+    def assert_timeout(self, show_panel, settings, explicit, expected):
+        process = FailingProcess(b"", b"")
+        process.returncode = 0
+        observed = []
+
+        def communicate(stdin=None, timeout=None):
+            observed.append(timeout)
+            return b"", b""
+
+        process.communicate = communicate
+        when(git_command.subprocess).Popen(...).thenReturn(process)
+        when(git_command.output_panel).init_panel(...).thenReturn(object())
+        when(git_command.output_panel).append_to_panel(...)
+        when(git_command.output_panel).start_abortable_command(...)
+        when(git_command.output_panel).finish_abortable_command(...)
+        when(git_command.output_panel).append_done_message(...)
+        when(git_command).communicate_and_log(...).thenAnswer(
+            lambda proc, stdin, log, timeout, log_stdout: communicate(stdin, timeout)
+        )
+        command = TimeoutGitCommand()
+        command.app_settings = {"show_panel_for": settings}
+        kwargs = {} if explicit == "unset" else {"timeout": explicit}
+        command.git("status", working_dir=".", show_panel=show_panel, **kwargs)
+        self.assertEqual(observed, [expected])
+        unstub()
 
 
 class TestGitStdoutFormatter(DeferrableTestCase):

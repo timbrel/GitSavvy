@@ -300,11 +300,6 @@ class _GitCommand(SettingsMixin):
         only changes what the output panel and the error message show; the
         returned stdout and `GitSavvyError.stdout` stay unformatted.
         """
-        if timeout == NOT_SET:
-            try:
-                timeout = auto_timeout.value
-            except AttributeError:
-                timeout = DEFAULT_TIMEOUT
         window = self.some_window()
         final_args = self._add_global_flags(git_cmd, list(args))
         command = [self.git_binary_path] + list(filter_(final_args))
@@ -312,6 +307,10 @@ class _GitCommand(SettingsMixin):
 
         if show_panel is None:
             show_panel = git_cmd in self.app_settings.get("show_panel_for")
+
+        if timeout == NOT_SET:
+            # Visible commands can be aborted by the user instead of timing out.
+            timeout = None if show_panel else getattr(auto_timeout, "value", DEFAULT_TIMEOUT)
 
         log = None
         if show_panel:
