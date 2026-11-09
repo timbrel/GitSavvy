@@ -7,13 +7,13 @@ from GitSavvy.tests.parameterized import parameterized as p
 from GitSavvy.tests.mockito import spy2, unstub, verify, when
 
 from GitSavvy.core import app_state, store
-from GitSavvy.core.commands.log_graph import (
+from GitSavvy.core.interfaces.log_graph import (
     extract_commit_hash,
     navigate_to_symbol,
     GitCommand
 )
-from GitSavvy.core.commands.log_graph_renderer import gs_log_graph_refresh
-from GitSavvy.core.commands.show_commit_info import gs_show_commit_info
+from GitSavvy.core.interfaces.log_graph_renderer import gs_log_graph_refresh
+from GitSavvy.core.interfaces.show_commit_info import gs_show_commit_info
 from GitSavvy.core.git_mixins.status import WorkingDirState
 from GitSavvy.core.settings import app_settings
 

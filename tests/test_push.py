@@ -23,7 +23,7 @@ class TestPushStartsCiObservation(DeferrableTestCase):
         self.window = mock()
         when(self.window).status_message(...).thenReturn(None)
         when(self.window).run_command(...).thenReturn(None)
-        when(push.util.view).refresh_gitsavvy_interfaces(...).thenReturn(None)
+        when(push.interface_util).refresh_gitsavvy_interfaces(...).thenReturn(None)
         when(push.ci_status).on_successful_push(...).thenReturn(None)
 
     def tearDown(self):

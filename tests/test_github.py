@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from unittesting import DeferrableTestCase
 
-from GitSavvy.core.commands import show_commit
+from GitSavvy.core.interfaces import show_commit
 from GitSavvy.github import github
 from GitSavvy.github.commands import pull_request
 from GitSavvy.github.commands.pull_request import gs_github_pull_request
@@ -116,7 +116,7 @@ class TestPullRequestDiff(DeferrableTestCase):
         window, view = mock(), mock()
         command = mock({"window": window, "base_remote": repository, "pr": {"number": 42}})
         when(github).get_pull_request_diff(42, repository).thenReturn("diff content")
-        when(pull_request.util.view).create_scratch_view(window, "pr_diff", ...).thenReturn(view)
+        when(pull_request).create_scratch_view(window, "pr_diff", ...).thenReturn(view)
         when(pull_request).replace_view_content(view, "diff content").thenReturn(None)
 
         gs_github_pull_request.view_diff_for_pr(command)
@@ -185,7 +185,7 @@ class TestMissingPullRequestHead(DeferrableTestCase):
         when(command).git("fetch", "upstream", "refs/pull/42/head").thenReturn("")
         when(command).git("branch", "--no-track", "pr-42", "FETCH_HEAD").thenReturn("")
         when(window).run_command("gs_checkout_branch", {"branch": "pr-42"}).thenReturn(None)
-        when(pull_request.util.view).refresh_gitsavvy_interfaces(window).thenReturn(None)
+        when(pull_request.interface_util).refresh_gitsavvy_interfaces(window).thenReturn(None)
         when(pull_request.sublime).yes_no_cancel_dialog(...).thenRaise(AssertionError("Unexpected prompt"))
 
         gs_github_pull_request.create_branch_for_pr(command, "pr-42", checkout=checkout)
@@ -193,7 +193,7 @@ class TestMissingPullRequestHead(DeferrableTestCase):
         verify(command).git("fetch", "upstream", "refs/pull/42/head")
         verify(command).git("branch", "--no-track", "pr-42", "FETCH_HEAD")
         verify(window, times=int(checkout)).run_command("gs_checkout_branch", {"branch": "pr-42"})
-        verify(pull_request.util.view, times=int(not checkout)).refresh_gitsavvy_interfaces(window)
+        verify(pull_request.interface_util, times=int(not checkout)).refresh_gitsavvy_interfaces(window)
 
 
 class TestPullRequestTransport(DeferrableTestCase):

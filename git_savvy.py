@@ -74,13 +74,12 @@ def reloader(package_name=__spec__.parent, plugin_name=__name__):
 with reloader():
     import sublime
 
-    from .common.commands import *
-    from .common.ui import *
-    from .common.global_events import *
+    from .core.global_events import *
+    from .core.output_panel import *
     from .core.commands import *
     from .core.settings import _AppSettings, app_settings
     from .core.settings import *
-    from .core.interfaces import *
+    from .core.interfaces.all import *
     from .core.runtime import *
     from .core.caches import *
     from .github.commands import *
@@ -96,7 +95,7 @@ UNUSED_APP_SETTINGS = (
 
 
 def plugin_loaded() -> None:
-    from .common.theme_generator import start_watchers
+    from .core.theme_generator import start_watchers
     from .core.commands.context_menu import start_context_menu_watcher
     from .github import ci_status
     prepare_gitsavvy()
@@ -106,7 +105,7 @@ def plugin_loaded() -> None:
 
 
 def plugin_unloaded() -> None:
-    from .common.theme_generator import shutdown_executor, stop_watchers
+    from .core.theme_generator import shutdown_executor, stop_watchers
     from .core import app_state
     from .core.commands.context_menu import stop_context_menu_watcher
     from .github import ci_status
@@ -118,8 +117,8 @@ def plugin_unloaded() -> None:
 
 
 def prepare_gitsavvy() -> None:
-    from .common import util
     from .core import app_state, runtime, store
+    from .core.interfaces import util as interface_util
 
     app_state.load()
     store.load_app_state()
@@ -127,7 +126,7 @@ def prepare_gitsavvy() -> None:
 
     # Ensure all interfaces are ready.
     def prepare_views() -> None:
-        util.view.refresh_gitsavvy(sublime.active_window().active_view())
+        interface_util.refresh_gitsavvy(sublime.active_window().active_view())
 
     sublime.set_timeout_async(prepare_views)
 

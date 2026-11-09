@@ -1,5 +1,5 @@
 from .log import gs_log_by_branch
-from ...common import util
+from ..interfaces import util as interface_util
 from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.runtime import on_worker
 
@@ -30,25 +30,25 @@ class gs_cherry_pick(gs_log_by_branch):
                 f"Commit{s} {label} cherry-picked successfully."
             )
         finally:
-            util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+            interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
 class gs_cherry_pick_abort(GsWindowCommand):
     @on_worker
     def run(self):
         self.git("cherry-pick", "--abort")
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
 class gs_cherry_pick_continue(GsWindowCommand):
     @on_worker
     def run(self):
         self.git("cherry-pick", "--continue")
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
 class gs_cherry_pick_skip(GsWindowCommand):
     @on_worker
     def run(self):
         self.git("cherry-pick", "--skip")
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)

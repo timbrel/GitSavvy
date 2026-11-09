@@ -47,8 +47,8 @@ import time
 
 import sublime
 
-from GitSavvy.common.util.debug import dprint
 from GitSavvy.core import store
+from GitSavvy.core.debug import dprint
 from GitSavvy.core.caches import Cache
 from GitSavvy.core.fns import last
 from GitSavvy.core.git_mixins.remotes import by_raw_key

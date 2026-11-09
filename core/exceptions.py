@@ -1,5 +1,5 @@
 import sublime
-from ..common import util
+from . import debug
 
 
 from typing import Optional, Sequence
@@ -18,10 +18,12 @@ class GitSavvyError(Exception):
         if msg:
             if show_panel:
                 self.show_error_panel()
-            util.debug.log_error(msg)
+            debug.log_error(msg)
 
     def show_error_panel(self):
-        util.log.display_panel(self.window or sublime.active_window(), self.message)
+        from . import output_panel
+
+        output_panel.display_panel(self.window or sublime.active_window(), self.message)
 
 
 class AbortedGitCall(GitSavvyError):

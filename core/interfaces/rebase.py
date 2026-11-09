@@ -3,16 +3,20 @@ import os
 import re
 
 import sublime
-from sublime_plugin import WindowCommand
 
-from ...common import ui, util
-from ..commands import GsNavigate
+
+from . import util as interface_util
+from . import dashboard_base as ui
+from .. import debug
+from ..commands.navigate import GsNavigateBase
 from ..exceptions import GitSavvyError
+from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand
 from ..git_command import GitCommand
 from ..git_mixins.rebase import NearestBranchMixin
 from ..ui_mixins.quick_panel import PanelActionMixin, show_log_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.runtime import enqueue_on_worker, on_worker
+from GitSavvy.core.utils import super_key
 
 
 __all__ = (
@@ -35,6 +39,8 @@ __all__ = (
     "gs_rebase_on_top_of",
     "gs_rebase_toggle_preserve_mode",
     "gs_rebase_navigate_commits",
+    "gs_edit_view_complete",
+    "gs_edit_view_close",
 )
 
 
@@ -62,7 +68,7 @@ def move_cursor(view, line_change):
     sels.add_all(new_sels)
 
 
-class gs_show_rebase(WindowCommand, GitCommand):
+class gs_show_rebase(GsWindowCommand):
 
     """
     Open a status view for the active git repository.
@@ -223,7 +229,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
 
     @ui.section("super_key")
     def render_super_key(self):
-        return util.super_key
+        return super_key
 
     @ui.section("preserve_merges")
     def render_preserve_merge(self):
@@ -240,7 +246,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
             return ""
         else:
             return self.template_help.format(
-                super_key=util.super_key,
+                super_key=super_key,
                 conflicts_bindings=self.render_conflicts_bindings(),
                 skip_commit_key='k' if not vintageous_friendly else 'K')
 
@@ -340,7 +346,7 @@ class RebaseInterface(ui.Interface, NearestBranchMixin, GitCommand):
                 base_ref = self.nearest_branch(
                     self.get_current_branch_name(),
                     default=(upstream and upstream.canonical_name) or "master")
-                util.debug.add_to_log('Found base ref {}'.format(base_ref))
+                debug.add_to_log('Found base ref {}'.format(base_ref))
 
             branches = self.get_branches()
 
@@ -464,7 +470,7 @@ class gs_rebase_undo(RebaseInterfaceCommand):
         finally:
             self.checkout_ref(branch_name)
             self.interface.set_log(log, cursor)
-            util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
+            interface_util.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
 
 class gs_rebase_redo(RebaseInterfaceCommand):
@@ -499,7 +505,7 @@ class gs_rebase_redo(RebaseInterfaceCommand):
         finally:
             self.checkout_ref(branch_name)
             self.interface.set_log(log, cursor)
-            util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
+            interface_util.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
 
 class RewriteBase(RebaseInterfaceCommand):
@@ -564,7 +570,7 @@ class RewriteBase(RebaseInterfaceCommand):
         finally:
             self.interface.complete_action(branch_name, ref, success, description)
 
-        util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
+        interface_util.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
 
 class gs_rebase_squash(RewriteBase):
@@ -669,7 +675,7 @@ class gs_rebase_edit(RewriteBase):
         else:
             return
 
-        ui.EditView(content=entry.raw_body,
+        EditView(content=entry.raw_body,
                     repo_path=self.repo_path,
                     window=self.view.window(),
                     on_done=lambda commit_msg: self.do_edit(entry, commit_msg))
@@ -856,7 +862,7 @@ class gs_rebase_stage_file(RebaseInterfaceCommand):
                  for line in self.view.substr(reg).split("\n") if line)
         for path in paths:
             self.stage_file(path)
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
 
 
 class gs_rebase_use_commit_version(RebaseInterfaceCommand):
@@ -877,7 +883,7 @@ class gs_rebase_use_commit_version(RebaseInterfaceCommand):
             else:
                 self.git("checkout", "--theirs", "--", path)
                 self.stage_file(path)
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
 
     def is_commit_version_deleted(self, path, conflicts):
         for conflict in conflicts:
@@ -903,7 +909,7 @@ class gs_rebase_use_base_version(RebaseInterfaceCommand):
             else:
                 self.git("checkout", "--ours", "--", path)
                 self.stage_file(path)
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
 
     def is_base_version_deleted(self, path, conflicts):
         for conflict in conflicts:
@@ -967,7 +973,7 @@ class gs_rebase_define_base_ref(PanelActionMixin, RebaseInterfaceCommand):
     def set_base_ref(self, ref):
         if ref:
             self.view.settings().set("git_savvy.rebase.base_ref", ref)
-            util.view.refresh_gitsavvy(self.view)
+            interface_util.refresh_gitsavvy(self.view)
 
 
 class gs_rebase_on_top_of(gs_rebase_define_base_ref):
@@ -995,7 +1001,7 @@ class gs_rebase_on_top_of(gs_rebase_define_base_ref):
                 "--rebase-merges" if self.interface.preserve_merges() else None,
                 selection)
         finally:
-            util.view.refresh_gitsavvy(self.view, refresh_sidebar=True)
+            interface_util.refresh_gitsavvy(self.view, refresh_sidebar=True)
 
 
 class gs_rebase_toggle_preserve_mode(RebaseInterfaceCommand):
@@ -1004,10 +1010,10 @@ class gs_rebase_toggle_preserve_mode(RebaseInterfaceCommand):
         preserve = self.view.settings().get("git_savvy.rebase.preserve_merges", False)
         self.view.settings().set("git_savvy.rebase.preserve_merges", not preserve)
         self.app_settings.set("rebase_preserve_merges", not preserve)
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
 
 
-class gs_rebase_navigate_commits(GsNavigate):
+class gs_rebase_navigate_commits(GsNavigateBase):
 
     """
     Move cursor to the next (or previous) selectable commit in the dashboard.
@@ -1026,3 +1032,68 @@ class gs_rebase_navigate_commits(GsNavigate):
             regions = self.view.find_by_selector(commit_selector)
 
         return regions
+
+
+EDIT_DEFAULT_HELP_TEXT = "## To finalize your edit, press {super_key}+Enter.  To cancel, close the view.\n"
+edit_views = {}
+
+
+class EditView:
+    def __init__(self, content, on_done, repo_path, help_text=None, window=None):
+        self.window = window or sublime.active_window()
+        self.view = self.window.new_file()
+
+        self.view.set_scratch(True)
+        self.view.set_read_only(False)
+        self.view.set_name("EDIT")
+        self.view.set_syntax_file("Packages/GitSavvy/syntax/make_commit.sublime-syntax")
+        self.view.settings().set("git_savvy.edit_view", True)
+        self.view.settings().set("git_savvy.repo_path", repo_path)
+
+        self.on_done = on_done
+        self.render(content, help_text)
+
+        edit_views[self.view.id()] = self
+
+    def render(self, starting_content, help_text):
+        regions = {}
+
+        starting_content += "\n\n"
+
+        regions["content"] = (0, len(starting_content))
+        content = starting_content + (help_text or EDIT_DEFAULT_HELP_TEXT).format(super_key=super_key)
+        regions["help"] = (len(starting_content), len(content))
+
+        self.view.run_command("gs_new_content_and_regions", {
+            "content": content,
+            "regions": regions
+        })
+
+
+class gs_edit_view_complete(GsTextCommand):
+    """Invoke callback with edit view content."""
+
+    @on_worker
+    def run(self, edit):
+        edit_view = edit_views.get(self.view.id(), None)
+        if not edit_view:
+            sublime.error_message("Unable to complete edit.  Please try again.")
+            return
+
+        help_region = self.view.get_regions("git_savvy_interface.help")[0]
+        content_before = self.view.substr(sublime.Region(0, help_region.begin()))
+        content_after = self.view.substr(sublime.Region(help_region.end(), self.view.size() - 1))
+        content = (content_before + content_after).strip()
+
+        self.view.close()
+        edit_view.on_done(content)
+
+
+class gs_edit_view_close(GsTextCommand):
+    """Clean up references to closed edit views."""
+
+    @on_worker
+    def run(self, edit):
+        view_id = self.view.id()
+        if view_id in edit_views:
+            del edit_views[view_id]

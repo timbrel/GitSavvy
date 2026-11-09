@@ -1,11 +1,12 @@
 import sublime
-from sublime_plugin import WindowCommand
 
-from ..git_command import GitCommand
+
+from GitSavvy.core.base_commands import GsWindowCommand
+from .. import output_panel
 from ..runtime import enqueue_on_worker
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..view import replace_view_content
-from ...common import util
+from ..interfaces import util as interface_util
 from GitSavvy.core.runtime import run_new_daemon_thread
 
 
@@ -14,7 +15,7 @@ __all__ = (
 )
 
 
-class gs_custom(WindowCommand, GitCommand):
+class gs_custom(GsWindowCommand):
 
     """
     Run the specified custom command asynchronously.
@@ -64,7 +65,7 @@ class gs_custom(WindowCommand, GitCommand):
             self.window.status_message(complete_msg)
 
             if output_to_panel:
-                util.log.display_panel(self.window, stdout)
+                output_panel.display_panel(self.window, stdout)
             if output_to_buffer:
                 view = self.window.new_file()
                 view.set_scratch(True)
@@ -72,7 +73,7 @@ class gs_custom(WindowCommand, GitCommand):
                     view.set_syntax_file(syntax)
                 replace_view_content(view, stdout.replace("\r", "\n"))
 
-            util.view.refresh_gitsavvy_interfaces(self.window)
+            interface_util.refresh_gitsavvy_interfaces(self.window)
 
         if run_in_thread:
             run_new_daemon_thread(program)

@@ -3,13 +3,14 @@ from dataclasses import dataclass
 import email.utils
 from itertools import chain
 import os
-from typing import Generic, Iterator, List, Literal, NamedTuple, Optional, overload, TypeVar
+from typing import Generic, Iterator, List, Literal, NamedTuple, Optional, overload, Sequence, TypeVar
 from typing_extensions import TypeAlias
 
 from ..exceptions import GitSavvyError
-from ...common import util
+from GitSavvy.core.dates import fuzzy
 from GitSavvy.core.fns import last, pairwise, take
 from GitSavvy.core.git_command import mixin_base
+from GitSavvy.core.parse_diff import Hunk, SplittedDiff
 from GitSavvy.core.caches import Cache, cached
 from GitSavvy.core.types import CommitHash, FullHash, FullPath, ShortHash, ShortPath
 
@@ -176,7 +177,7 @@ class HistoryMixin(mixin_base):
             for entry in logs:
                 yield (["{} {}".format(entry.reflog_selector, entry.reflog_name),
                         "{} {}".format(entry.short_hash, entry.summary),
-                        "{}, {}".format(entry.author, util.dates.fuzzy(entry.datetime))],
+                        "{}, {}".format(entry.author, fuzzy(entry.datetime))],
                        entry.long_hash)
             skip = skip + limit
 
@@ -551,49 +552,59 @@ class HistoryMixin(mixin_base):
         return self.git("diff", "--no-color", "-U0", base_spec, "--", target_file_path)
 
     def adjust_line_according_to_diff(self, diff: str, line: int) -> int:
-        hunks = util.parse_diff(diff)
+        hunks = SplittedDiff.from_string(diff).hunks
         if not hunks:
             return line
 
         return self.adjust_line_according_to_hunks(hunks, line)
 
     def reverse_adjust_line_according_to_diff(self, diff: str, line: int) -> int:
-        hunks = util.parse_diff(diff)
+        hunks = SplittedDiff.from_string(diff).hunks
         if not hunks:
             return line
 
         return self.reverse_adjust_line_according_to_hunks(hunks, line)
 
-    def adjust_line_according_to_hunks(self, hunks, line):
+    def adjust_line_according_to_hunks(self, hunks: Sequence[Hunk], line: int) -> int:
         for hunk in reversed(hunks):
-            head_start = hunk.head_start if hunk.head_length else hunk.head_start + 1
-            saved_start = hunk.saved_start if hunk.saved_length else hunk.saved_start + 1
-            head_end = head_start + hunk.head_length
-            saved_end = saved_start + hunk.saved_length
+            metadata = hunk.metadata()
+            from_start = (
+                metadata.from_start
+                if metadata.from_length
+                else metadata.from_start + 1
+            )
+            to_start = (
+                metadata.to_start
+                if metadata.to_length
+                else metadata.to_start + 1
+            )
+            from_end = from_start + metadata.from_length
+            to_end = to_start + metadata.to_length
 
-            if head_end <= line:
-                return saved_end + line - head_end
-            elif head_start <= line:
-                return saved_start
+            if from_end <= line:
+                return to_end + line - from_end
+            elif from_start <= line:
+                return to_start
 
         # fails to find matching
         return line
 
-    def reverse_adjust_line_according_to_hunks(self, hunks, line):
+    def reverse_adjust_line_according_to_hunks(self, hunks: Sequence[Hunk], line: int) -> int:
         for hunk in reversed(hunks):
-            head_start = hunk.head_start
-            saved_start = hunk.saved_start
-            if hunk.saved_length == 0:
-                saved_start += 1
-            elif hunk.head_length == 0:
-                saved_start -= 1
-            head_end = head_start + hunk.head_length
-            saved_end = saved_start + hunk.saved_length
+            metadata = hunk.metadata()
+            from_start = metadata.from_start
+            to_start = metadata.to_start
+            if metadata.to_length == 0:
+                to_start += 1
+            elif metadata.from_length == 0:
+                to_start -= 1
+            from_end = from_start + metadata.from_length
+            to_end = to_start + metadata.to_length
 
-            if saved_end <= line:
-                return head_end + line - saved_end
-            elif saved_start <= line:
-                return head_start
+            if to_end <= line:
+                return from_end + line - to_end
+            elif to_start <= line:
+                return from_start
 
         # fails to find matching
         return line

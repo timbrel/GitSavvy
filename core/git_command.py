@@ -20,7 +20,7 @@ import traceback
 
 import sublime
 
-from ..common import util
+from . import debug, output_panel
 from .settings import SettingsMixin
 from .utils import (
     try_kill_proc, paths_upwards, proc_has_been_aborted_by_user,
@@ -221,7 +221,7 @@ def log_git_runtime(fn):
             saved_exception = e
         finally:
             end_time = time.perf_counter()
-            util.debug.log_git(args, self.repo_path, None, "<SNIP>", stderr, end_time - start_time)
+            debug.log_git(args, self.repo_path, None, "<SNIP>", stderr, end_time - start_time)
             if saved_exception:
                 raise saved_exception from None
     return decorated
@@ -252,7 +252,7 @@ def git_version_from_path(git_path):
     if match:
         return tuple(map(int, match.groups()))  # type: ignore[return-value]
     else:
-        util.debug.dprint(
+        debug.dprint(
             "could not parse the `git --version` output:\n\n{}\n\n"
             "pretend a minimal, valid version".format(stdout)
         )
@@ -308,15 +308,15 @@ class _GitCommand(SettingsMixin):
         window = self.some_window()
         final_args = self._add_global_flags(git_cmd, list(args))
         command = [self.git_binary_path] + list(filter_(final_args))
-        command_str = util.debug.pretty_git_command(command[1:])
+        command_str = debug.pretty_git_command(command[1:])
 
         if show_panel is None:
             show_panel = git_cmd in self.app_settings.get("show_panel_for")
 
         log = None
         if show_panel:
-            panel = util.log.init_panel(window)
-            log = partial(util.log.append_to_panel, panel)
+            panel = output_panel.init_panel(window)
+            log = partial(output_panel.append_to_panel, panel)
             log("$ {}\n".format(command_str))
 
         if not working_dir:
@@ -365,7 +365,7 @@ class _GitCommand(SettingsMixin):
                 return p
 
             if log:
-                util.log.start_abortable_command(panel, p)
+                output_panel.start_abortable_command(panel, p)
 
             if isinstance(stdin, str):
                 stdin = stdin.encode(encoding=stdin_encoding)
@@ -423,11 +423,11 @@ class _GitCommand(SettingsMixin):
         finally:
             if not just_the_proc:
                 end = time.time()
-                util.debug.log_git(final_args, working_dir, stdin, stdout, stderr, end - start)
+                debug.log_git(final_args, working_dir, stdin, stdout, stderr, end - start)
                 if log:
                     aborted = proc_has_been_aborted_by_user(p) if p else False
-                    util.log.finish_abortable_command(panel, p)
-                    util.log.append_done_message(
+                    output_panel.finish_abortable_command(panel, p)
+                    output_panel.append_done_message(
                         panel,
                         end - start,
                         "Aborted" if aborted else "Done"
@@ -525,7 +525,7 @@ class _GitCommand(SettingsMixin):
             stdout = "<STDOUT SNIPPED>\n" if received_some_stdout else ""
             raise GitSavvyError(
                 "$ {}\n\n{}".format(
-                    util.debug.pretty_git_command(args),
+                    debug.pretty_git_command(args),
                     ''.join([stdout, stderr])
                 ),
                 cmd=proc.args,
@@ -613,9 +613,9 @@ class _GitCommand(SettingsMixin):
         try:
             version = git_binaries[git_path]
         except KeyError:
-            util.debug.dprint("git executable: {}".format(git_path))
+            debug.dprint("git executable: {}".format(git_path))
             git_binaries[git_path] = version = git_version_from_path(git_path)
-            util.debug.dprint("git version: {}".format(version))
+            debug.dprint("git version: {}".format(version))
 
         if version < MIN_GIT_VERSION:
             if not git_too_old_message_displayed:
@@ -897,7 +897,7 @@ def find_git_toplevel(folder: FullPath) -> FullPath | None:
     except KeyError:
         repo_path = search_for_git_toplevel(folder)
         if repo_path:
-            util.debug.dprint("repo path:", os.path.join(repo_path, ".git"))
+            debug.dprint("repo path:", os.path.join(repo_path, ".git"))
             # Check if we followed links, as `paths_upwards` is only a string operation,
             # then fill the cache upwards.
             if folder.startswith(repo_path):
@@ -910,7 +910,7 @@ def find_git_toplevel(folder: FullPath) -> FullPath | None:
             else:
                 repo_paths[folder] = repo_path
         else:
-            util.debug.dprint("found no .git path for {}".format(folder))
+            debug.dprint("found no .git path for {}".format(folder))
         return repo_path
 
 
@@ -929,11 +929,11 @@ def search_for_git_toplevel(start_folder: FullPath) -> FullPath | None:
 
 
 def search_for_git(folder: FullPath) -> FullPath | None:
-    util.debug.dprint("searching .git repo starting at ", folder)
+    debug.dprint("searching .git repo starting at ", folder)
     try:
         return __search_for_git(folder)
     except Exception as e:
-        util.debug.dprint("searching raised: {}".format(e))
+        debug.dprint("searching raised: {}".format(e))
         return None
 
 
@@ -957,7 +957,7 @@ def is_git_directory(suspect: str) -> bool:
     # Test if the dir looks like a git dir.  `HEAD` is mandatory.
     ok = os.path.exists(os.path.join(suspect, "HEAD"))
     if not ok:
-        util.debug.dprint("fatal: {} has no HEAD file.".format(suspect))
+        debug.dprint("fatal: {} has no HEAD file.".format(suspect))
     return ok
 
 

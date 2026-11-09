@@ -3,7 +3,7 @@ from textwrap import dedent
 from unittesting import DeferrableTestCase
 from GitSavvy.tests.parameterized import parameterized as p
 
-from GitSavvy.core.commands.log_graph_rebase_actions import (
+from GitSavvy.core.interfaces.log_graph_rebase_actions import (
     extract_commits, change_first_action, copy_commits, drop_commits, fixup_commits,
     insert_commits, squash_commits, Commit
 )

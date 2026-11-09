@@ -1,18 +1,24 @@
 import os
 
-import sublime
-from sublime_plugin import WindowCommand
-
-from ..git_command import GitCommand
-from ...common import util
+from ..base_commands import GsWindowCommand
+from ..runtime import on_worker
+from ..interfaces import util as interface_util
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui__quick_panel import show_noop_panel, show_quick_panel
+
+
+__all__ = (
+    "gs_ignore",
+    "gs_ignore_pattern",
+    "gs_assume_unchanged",
+    "gs_restore_assumed_unchanged",
+)
 
 
 IGNORE_PATTERN_PROMPT = "Enter pattern to ignore:"
 
 
-class GsIgnoreCommand(WindowCommand, GitCommand):
+class gs_ignore(GsWindowCommand):
 
     """
     Add a `.gitignore` entry for the provided relative path or pattern
@@ -25,10 +31,10 @@ class GsIgnoreCommand(WindowCommand, GitCommand):
 
         self.add_ignore(os.path.join("/", file_path_or_pattern))
         self.window.status_message("Ignored file `{}`.".format(file_path_or_pattern))
-        util.view.refresh_gitsavvy(self.window.active_view())
+        interface_util.refresh_gitsavvy(self.window.active_view())
 
 
-class GsIgnorePatternCommand(WindowCommand, GitCommand):
+class gs_ignore_pattern(GsWindowCommand):
 
     """
     Prompt the user for an ignore pattern and, once entered, create
@@ -41,20 +47,18 @@ class GsIgnorePatternCommand(WindowCommand, GitCommand):
     def on_done(self, ignore_pattern):
         self.add_ignore(ignore_pattern)
         self.window.status_message("Ignored pattern `{}`.".format(ignore_pattern))
-        util.view.refresh_gitsavvy(self.window.active_view())
+        interface_util.refresh_gitsavvy(self.window.active_view())
 
 
-class GsAssumeUnchangedCommand(WindowCommand, GitCommand):
+class gs_assume_unchanged(GsWindowCommand):
 
     """
     Prompt the user with a quick panel of unstaged files.  After the selection
     is made, temporarily treat selected file as unchanged.
     """
 
+    @on_worker
     def run(self):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
         self._unstaged_files = [
             f.path for f in self.get_working_dir_status().unstaged_files
         ]
@@ -65,10 +69,10 @@ class GsAssumeUnchangedCommand(WindowCommand, GitCommand):
         fpath = self._unstaged_files[index]
         self.git("update-index", "--assume-unchanged", fpath)
 
-        util.view.refresh_gitsavvy(self.window.active_view())
+        interface_util.refresh_gitsavvy(self.window.active_view())
 
 
-class GsRestoreAssumedUnchangedCommand(WindowCommand, GitCommand):
+class gs_restore_assumed_unchanged(GsWindowCommand):
 
     """
     Show the user a quick panel of previously temporarily-ignored files.  When
@@ -76,10 +80,8 @@ class GsRestoreAssumedUnchangedCommand(WindowCommand, GitCommand):
     and display the panel again.
     """
 
+    @on_worker
     def run(self):
-        sublime.set_timeout_async(self.run_async, 0)
-
-    def run_async(self):
         all_file_lines = (
             line.split(" ", 1)
             for line in self.git("ls-files", "-v").split("\n")
@@ -96,6 +98,6 @@ class GsRestoreAssumedUnchangedCommand(WindowCommand, GitCommand):
         fpath = self._ignored_files[index]
         self.git("update-index", "--no-assume-unchanged", fpath)
 
-        util.view.refresh_gitsavvy(self.window.active_view())
+        interface_util.refresh_gitsavvy(self.window.active_view())
 
         self.window.run_command("gs_restore_assumed_unchanged")

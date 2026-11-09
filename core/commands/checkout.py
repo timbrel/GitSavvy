@@ -4,16 +4,17 @@ import os
 from typing import Any
 
 import sublime
-from sublime_plugin import ListInputHandler, WindowCommand
+from sublime_plugin import ListInputHandler
 
-from . import intra_line_colorizer
+from .. import intra_line_colorizer
 from .branch import ask_for_name
 from .log import LogMixin
-from ..git_command import GitCommand, GitSavvyError
+from ..git_command import GitSavvyError
+from ..runtime import on_worker
 from ..git_mixins.branches import Branch
-from ..utils import uprint
+from ..utils import destructive, uprint
 from ..view import replace_view_content
-from ...common import util
+from ..interfaces import util as interface_util
 from GitSavvy.core.base_commands import ask_for_branch, GsWindowCommand
 from ..ui__quick_panel import noop, show_actions_panel
 
@@ -34,7 +35,7 @@ GitSavvy: Re-created branch '{0}', in case you want to undo, run:
 """
 
 
-class gs_checkout_branch(WindowCommand, GitCommand):
+class gs_checkout_branch(GsWindowCommand):
     """Check out a local branch, track a remote branch, or open its worktree."""
 
     _input_handler: CheckoutBranchInputHandler | None = None
@@ -111,7 +112,7 @@ class gs_checkout_branch(WindowCommand, GitCommand):
             f"Checked out `{display_name}`."
         )
         self.window.status_message(message)
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
 class gs_checkout_new_branch(GsWindowCommand):
@@ -176,7 +177,7 @@ class gs_checkout_new_branch(GsWindowCommand):
                 raise
 
         self.window.status_message("Created and checked out `{}` branch.".format(branch_name))
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
 class gs_checkout_remote_branch(GsWindowCommand):
@@ -196,10 +197,10 @@ class gs_checkout_remote_branch(GsWindowCommand):
         self.git("checkout", "-b", local_name, "--track", remote_branch)
         self.window.status_message(
             "Checked out `{}` as local branch `{}`.".format(remote_branch, local_name))
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
-class gs_checkout_current_file_at_commit(LogMixin, WindowCommand, GitCommand):
+class gs_checkout_current_file_at_commit(LogMixin, GsWindowCommand):
 
     """
     Reset the current active file to a given commit.
@@ -218,7 +219,7 @@ class gs_checkout_current_file_at_commit(LogMixin, WindowCommand, GitCommand):
                 'file_path': file_path
             })
 
-    @util.actions.destructive(description="discard uncommitted changes to file")
+    @destructive(description="discard uncommitted changes to file")
     def do_action(self, commit_hash, **kwargs):
         if commit_hash:
             self.checkout_ref(commit_hash, self.file_path)
@@ -228,23 +229,19 @@ class gs_checkout_current_file_at_commit(LogMixin, WindowCommand, GitCommand):
                     self.to_short_hash(commit_hash)
                 )
             )
-            util.view.refresh_gitsavvy_interfaces(self.window)
+            interface_util.refresh_gitsavvy_interfaces(self.window)
 
 
-class gs_show_file_diff(WindowCommand, GitCommand):
+class gs_show_file_diff(GsWindowCommand):
+    @on_worker
     def run(self, commit_hash, file_path):
-        self._commit_hash = commit_hash
-        self._file_path = file_path
-        sublime.set_timeout_async(self.run_async)
-
-    def run_async(self):
         text = self.git(
             "diff",
             "--no-color",
             "-R",
-            self._commit_hash,
+            commit_hash,
             '--',
-            self._file_path
+            file_path
         )
 
         view = self.window.create_output_panel("show_file_diff")

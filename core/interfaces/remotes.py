@@ -4,11 +4,11 @@ from itertools import chain
 import os
 from typing import TypedDict
 
-from sublime_plugin import WindowCommand
 
-from ...common import ui
-from ..commands import GsNavigate
-from ..git_command import GitCommand
+
+from . import dashboard_base as ui
+from ..commands.navigate import GsNavigateBase
+from GitSavvy.core.base_commands import GsWindowCommand
 from ..git_mixins.active_branch import Commit
 from ..git_mixins.remotes import ConfigEntry, RemoteInfo, RemoteInfoBlob
 from ..runtime import enqueue_on_worker
@@ -34,7 +34,7 @@ class RemotesViewState(TypedDict, total=False):
     show_help: bool
 
 
-class gs_show_remotes(WindowCommand, GitCommand):
+class gs_show_remotes(GsWindowCommand):
     """
     Open a remotes dashboard for the active Git repository.
     """
@@ -284,7 +284,7 @@ class gs_remotes_refresh(RemotesInterfaceCommand):
         self.interface.render()
 
 
-class gs_remotes_navigate_remote(GsNavigate):
+class gs_remotes_navigate_remote(GsNavigateBase):
 
     """
     Move cursor to the next (or previous) selectable remote in the dashboard.

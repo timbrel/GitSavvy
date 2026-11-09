@@ -7,20 +7,24 @@ import os
 import re
 
 import sublime
-from sublime_plugin import WindowCommand
 
-from ...common import ui, util
-from ..commands import GsNavigate, ref_undo
+
+from . import util as interface_util
+from . import dashboard_base as ui
+from ..commands import ref_undo
+from ..commands.navigate import GsNavigateBase
 from ..git_mixins.worktrees import WorktreeTarget
-from ..ui__worktrees import remove_worktree
+from ..commands.worktrees import remove_worktree
 from ..commands.log import LogMixin
-from ..commands import multi_selector
+from . import multi_selector
+from GitSavvy.core.base_commands import GsWindowCommand
 from ..git_command import GitCommand, GitSavvyError
 from ..ui_mixins.quick_panel import show_remote_panel, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core import app_state
 from GitSavvy.core.fns import chain, filter_, pairwise
-from GitSavvy.core.utils import flash, is_younger_than
+from GitSavvy.core.dates import is_younger_than
+from GitSavvy.core.utils import destructive, flash
 from GitSavvy.core.runtime import enqueue_on_worker, on_new_thread, on_worker
 from GitSavvy.core.types import FullHash, ShortHash
 from GitSavvy.github import ci_status
@@ -101,7 +105,7 @@ class BranchWithWorktree(Protocol):
     def worktree_path(self) -> str: ...
 
 
-class gs_show_branch(WindowCommand, GitCommand):
+class gs_show_branch(GsWindowCommand):
 
     """
     Open a branch dashboard for the active Git repository.
@@ -714,7 +718,7 @@ class gs_branches_create_new_worktree(CommandForSingleItem):
         worktree_path = self.create_new_worktree(self.selected_item.commit_hash)
 
         self.view.settings().set("git_savvy.update_view_in_a_blocking_manner", True)
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
 
         normalized_worktree_path = worktree_path.replace("\\", "/")
         displayed_path = self.nice_path(normalized_worktree_path)
@@ -791,7 +795,7 @@ class gs_branches_delete(BranchInterfaceCommand):
             for remote, branch_names in remote_map.items():
                 self.delete_remote_branches(remote, branch_names, force)
 
-    @util.actions.destructive(description="delete a remote branch")
+    @destructive(description="delete a remote branch")
     @on_worker
     def delete_remote_branches(self, remote, branch_names, force):
         es = "es" if len(branch_names) > 1 else ""
@@ -804,10 +808,10 @@ class gs_branches_delete(BranchInterfaceCommand):
             *branch_names
         )
         self.window.status_message(f"Deleted remote branch{es}.")
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
         self.view.run_command("gs_clear_multiselect")
 
-    @util.actions.destructive(description="delete local branches")
+    @destructive(description="delete local branches")
     @on_worker
     def delete_local_branches(self, branch_names: list[str], force: bool):
         self.window.status_message("Deleting local branches...")
@@ -823,10 +827,10 @@ class gs_branches_delete(BranchInterfaceCommand):
         else:
             record_deleted_branch_undos(self, branch_names, stdout, self.view.id())
         self.window.status_message("Deleted local branches.")
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
         self.view.run_command("gs_clear_multiselect")
 
-    @util.actions.destructive(description="delete a worktree")
+    @destructive(description="delete a worktree")
     @on_new_thread
     def delete_worktree(self, target: WorktreeTarget, force: bool) -> None:
         path = target.path
@@ -837,7 +841,7 @@ class gs_branches_delete(BranchInterfaceCommand):
         finally:
             self.interface.state["worktree_deletions_in_progress"].discard(path)
             self.view.settings().set("git_savvy.update_view_in_a_blocking_manner", True)
-            util.view.refresh_gitsavvy(self.view)
+            interface_util.refresh_gitsavvy(self.view)
 
 
 DELETED_BRANCH_RE = re.compile(r"^Deleted branch (.+?) \\(was ([0-9a-f]+)\\)\\.$", re.MULTILINE)
@@ -885,7 +889,7 @@ class gs_branches_rename(CommandForSingleItem):
             return
 
         self.move_worktree(current_path, new_path)
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
 
 
 class gs_branches_configure_tracking(CommandForSingleBranch):
@@ -907,7 +911,7 @@ class gs_branches_configure_tracking(CommandForSingleBranch):
 
     def on_branch_selection(self, local_branch, remote_branch):
         self.git("branch", "-u", remote_branch, local_branch)
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
 
 
 class gs_branches_push_selected(CommandForSingleBranch):
@@ -938,7 +942,7 @@ class gs_branches_push_all(BranchInterfaceCommand):
         self.window.status_message("Pushing all branches to `{}`...".format(remote))
         self.git("push", remote, "--all")
         self.window.status_message("Push successful.")
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
 
 
 class gs_branches_merge_selected(BranchInterfaceCommand):
@@ -957,7 +961,7 @@ class gs_branches_merge_selected(BranchInterfaceCommand):
             self.merge(branches)
             self.window.status_message("Merge complete.")
         finally:
-            util.view.refresh_gitsavvy(self.view)
+            interface_util.refresh_gitsavvy(self.view)
 
 
 class gs_branches_fetch_and_merge(BranchInterfaceCommand):
@@ -987,7 +991,7 @@ class gs_branches_fetch_and_merge(BranchInterfaceCommand):
             self.merge(branches_strings)
             self.window.status_message("Fetch and merge complete.")
         finally:
-            util.view.refresh_gitsavvy(self.view)
+            interface_util.refresh_gitsavvy(self.view)
 
 
 def active_branch_name(interface: BranchInterface) -> Optional[str]:
@@ -1061,7 +1065,7 @@ class gs_branches_refresh(BranchInterfaceCommand):
     """
 
     def run(self, edit):
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
 
 
 class gs_branches_toggle_remotes(BranchInterfaceCommand):
@@ -1120,10 +1124,10 @@ class gs_branches_edit_branch_description(CommandForSingleBranch):
             "branch.{}.description".format(branch_name),
             new_description.strip("\n")
         )
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
 
 
-class gs_branches_navigate_branch(GsNavigate):
+class gs_branches_navigate_branch(GsNavigateBase):
 
     """
     Move cursor to the next (or previous) selectable branch in the dashboard.
@@ -1137,7 +1141,7 @@ class gs_branches_navigate_branch(GsNavigate):
         )
 
 
-class gs_branches_navigate_to_active_branch(GsNavigate):
+class gs_branches_navigate_to_active_branch(GsNavigateBase):
 
     """
     Move cursor to the active branch.

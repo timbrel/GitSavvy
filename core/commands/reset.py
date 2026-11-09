@@ -1,9 +1,10 @@
 from .log import LogMixin
 from .reflog import RefLogMixin
-from ...common import util
+from ..interfaces import util as interface_util
 from ..ui_mixins.quick_panel import show_branch_panel
 from ..ui__quick_panel import show_quick_panel
 from GitSavvy.core.base_commands import GsWindowCommand
+from GitSavvy.core.utils import destructive
 
 
 __all__ = (
@@ -68,10 +69,10 @@ class ResetMixin(GsWindowCommand):
         def do_reset():
             self.update_store({"last_reset_mode_used": reset_mode})
             self.git("reset", *args)
-            util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+            interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
         if reset_mode == "--hard":
-            util.actions.destructive("perform a hard reset")(do_reset)()
+            destructive("perform a hard reset")(do_reset)()
         else:
             do_reset()
 

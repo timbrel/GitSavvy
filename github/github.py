@@ -12,7 +12,7 @@ from functools import lru_cache, partial
 from typing import Literal, NamedTuple, Sequence
 from webbrowser import open as open_in_browser
 
-from ..common import interwebs
+from ..core import interwebs
 from ..core.exceptions import FailedGithubRequest
 from ..core.settings import app_settings
 from ..core.utils import STARTUPINFO

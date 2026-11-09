@@ -1,7 +1,7 @@
 import sublime
-from sublime_plugin import TextCommand
 
-from ..git_command import GitCommand
+
+from GitSavvy.core.base_commands import GsTextCommand
 from ..utils import flash
 from GitSavvy.core.view import show_region
 
@@ -9,7 +9,7 @@ from GitSavvy.core.view import show_region
 from typing import Optional, Sequence
 
 
-class GsNavigate(TextCommand, GitCommand):
+class GsNavigateBase(GsTextCommand):
     """
     Move cursor to the next (or previous).
     """

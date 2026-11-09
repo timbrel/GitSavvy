@@ -1,13 +1,20 @@
 from __future__ import annotations
 
 import sublime
-from sublime_plugin import TextCommand, EventListener
+from sublime_plugin import EventListener
 
-from ..git_command import GitCommand, find_repo_path_for_view
+from GitSavvy.core.base_commands import GsTextCommand
+from ..git_command import find_repo_path_for_view
 from ..runtime import run_when_worker_is_idle, throttled
 from ..settings import app_settings
 from GitSavvy.core import store
 
+
+__all__ = (
+    "GsStatusBarEventListener",
+    "gs_update_status",
+    "gs_draw_status_bar"
+)
 
 STATUSBAR_KEY = "gitsavvy-repo-status"
 
@@ -20,7 +27,7 @@ class GsStatusBarEventListener(EventListener):
         view.run_command("gs_update_status")
 
 
-class gs_update_status(TextCommand, GitCommand):
+class gs_update_status(GsTextCommand):
     def run(self, edit):
         run_when_worker_is_idle(throttled(self.run_impl, self.view))
 
@@ -38,7 +45,7 @@ class gs_update_status(TextCommand, GitCommand):
                 pass
 
 
-class gs_draw_status_bar(TextCommand, GitCommand):
+class gs_draw_status_bar(GsTextCommand):
 
     """
     Update the short Git status and GitHub CI status in the Sublime status bar.

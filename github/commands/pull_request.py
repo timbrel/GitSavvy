@@ -4,13 +4,14 @@ import urllib
 
 from .. import github
 from .. import git_mixins
-from ...common import util
+from ...core.dates import fuzzy
+from ...core.interfaces import util as interface_util
 from ...core.commands.push import gs_push_to_branch_name
 from ...core.fns import filter_
 from ...core.ui_mixins.quick_panel import show_paginated_panel
 from ...core.ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.ui__quick_panel import show_quick_panel
-from ...core.view import replace_view_content
+from ...core.view import create_scratch_view, replace_view_content
 from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.runtime import on_worker, run_as_future
 
@@ -68,7 +69,7 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
                 "{number}: {title}".format(number=issue["number"], title=issue["title"]),
                 "Pull request created by {user}, {time_stamp}.".format(
                     user=issue["user"]["login"],
-                    time_stamp=util.dates.fuzzy(issue["created_at"],
+                    time_stamp=fuzzy(issue["created_at"],
                                                 date_format="%Y-%m-%dT%H:%M:%SZ")
                 )
             ],
@@ -158,7 +159,7 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
             if checkout:
                 self.window.run_command("gs_checkout_branch", {"branch": branch_name})
             else:
-                util.view.refresh_gitsavvy_interfaces(self.window)
+                interface_util.refresh_gitsavvy_interfaces(self.window)
             return
 
         url = self.best_remote_url_for_pr()
@@ -202,7 +203,7 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
         if checkout:
             self.window.run_command("gs_checkout_branch", {"branch": branch_name})
         else:
-            util.view.refresh_gitsavvy_interfaces(self.window)
+            interface_util.refresh_gitsavvy_interfaces(self.window)
 
     def best_remote_url_for_pr(self):
         clone_url = self.pr["head"]["repo"]["clone_url"]
@@ -212,7 +213,7 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
     def view_diff_for_pr(self):
         diff = github.get_pull_request_diff(self.pr["number"], self.base_remote)
 
-        diff_view = util.view.create_scratch_view(self.window, "pr_diff", {
+        diff_view = create_scratch_view(self.window, "pr_diff", {
             "title": "PR #{}".format(self.pr["number"]),
             "syntax": "Packages/GitSavvy/syntax/diff.sublime-syntax",
         })

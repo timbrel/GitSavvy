@@ -5,8 +5,8 @@ from .. import gitlab
 from .. import git_mixins
 from ...core.ui_mixins.quick_panel import show_paginated_panel
 from ...core.ui_mixins.input_panel import show_single_line_input_panel
-from ...core.view import replace_view_content
-from ...common import util
+from ...core.view import create_scratch_view, replace_view_content
+from ...core.dates import fuzzy
 from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.runtime import on_worker
 from GitSavvy.core.ui__quick_panel import show_quick_panel
@@ -52,7 +52,7 @@ class gs_gitlab_merge_request(GsWindowCommand, git_mixins.GitLabRemotesMixin):
                 "{number}: {title}".format(number=mr["iid"], title=mr["title"]),
                 "Merge request created by {user}, {time_stamp}.".format(
                     user=mr["author"]["username"],
-                    time_stamp=util.dates.fuzzy(mr["created_at"],
+                    time_stamp=fuzzy(mr["created_at"],
                                                 date_format="%Y-%m-%dT%H:%M:%S.%fZ")
                 )
             ],
@@ -116,7 +116,7 @@ class gs_gitlab_merge_request(GsWindowCommand, git_mixins.GitLabRemotesMixin):
         mr_changes = gitlab.get_merge_request_changes(
             self.base_remote, {'mr_id': self.mr['iid']})
 
-        diff_view = util.view.create_scratch_view(self.window, "mr_diff", {
+        diff_view = create_scratch_view(self.window, "mr_diff", {
             "title": "MR #{}".format(self.mr["iid"]),
             "syntax": "Packages/GitSavvy/syntax/diff.sublime-syntax",
         })

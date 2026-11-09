@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from unittesting import DeferrableTestCase
 
-from GitSavvy.common import interwebs
+from GitSavvy.core import interwebs
 from GitSavvy.tests.mockito import mock, unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized as p
 

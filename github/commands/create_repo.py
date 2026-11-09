@@ -1,7 +1,7 @@
 from functools import partial
 import os
 
-from GitSavvy.common import util
+from ...core.interfaces import util as interface_util
 from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.ui__quick_panel import show_quick_panel
@@ -60,6 +60,6 @@ class gs_github_create_repo(GsWindowCommand):
             url = urls[idx]
             self.git("remote", "add", name, url)
             self.window.status_message("The new remote was added successfully.")
-            util.view.refresh_gitsavvy_interfaces(self.window)
+            interface_util.refresh_gitsavvy_interfaces(self.window)
 
         show_single_line_input_panel("Add repo as", "origin", on_remote_name)

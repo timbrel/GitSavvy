@@ -3,7 +3,7 @@ from __future__ import annotations
 import sublime
 from unittesting import DeferrableTestCase
 
-from GitSavvy.common import global_events
+from GitSavvy.core import global_events
 from GitSavvy.tests.mockito import mock, unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized as p
 
@@ -53,6 +53,20 @@ class TestInterfaceFocusEvents(DeferrableTestCase):
         self.listener.on_activated(self.dashboard)
 
         verify(self.dashboard, times=1).run_command("gs_interface_refresh")
+
+    def test_closing_interface_edit_view_cleans_up_both_owners(self) -> None:
+        view = self.make_view(2, {
+            "git_savvy.interface": "rebase",
+            "git_savvy.edit_view": True,
+        })
+        when(view).run_command(...).thenReturn(None)
+        global_events.SEEN.add(view.id())
+
+        self.listener.on_close(view)
+
+        self.assertNotIn(view.id(), global_events.SEEN)
+        verify(view).run_command("gs_interface_close")
+        verify(view).run_command("gs_edit_view_close")
 
     def make_view(self, vid: int, settings: dict) -> sublime.View:
         view = mock()

@@ -4,17 +4,19 @@ from contextlib import contextmanager
 import os
 
 import sublime
-from sublime_plugin import EventListener, WindowCommand
+from sublime_plugin import EventListener
 
 from ..git_mixins.status import FileStatus
 from ..git_mixins.active_branch import format_and_limit
-from ..commands import GsNavigate
-from ...common import ui
+from ..commands.navigate import GsNavigateBase
+from . import dashboard_base as ui
+from GitSavvy.core.base_commands import GsWindowCommand
 from ..git_command import GitCommand, GitSavvyError
-from ...common import util
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.types import FullPath, ShortPath
 from GitSavvy.core.runtime import enqueue_on_worker
+from GitSavvy.core.utils import destructive
+from GitSavvy.core.view import guess_syntax_for_file
 from ..ui__quick_panel import noop, show_actions_panel
 
 
@@ -90,7 +92,7 @@ EXTRACT_FILENAME_RE = (
 ITEMS_IN_THE_RECENT_LIST = 5
 
 
-class gs_show_status(WindowCommand, GitCommand):
+class gs_show_status(GsWindowCommand):
 
     """
     Open a status view for the active git repository.
@@ -550,7 +552,7 @@ class gs_status_diff_inline(StatusInterfaceCommand):
         cached_files: list[FullPath]
     ) -> None:
         for fpath in non_cached_files:
-            syntax = util.file.guess_syntax_for_file(window, fpath)
+            syntax = guess_syntax_for_file(window, fpath)
             window.run_command("gs_inline_diff_open", {
                 "repo_path": self.repo_path,
                 "file_path": fpath,
@@ -559,7 +561,7 @@ class gs_status_diff_inline(StatusInterfaceCommand):
             })
 
         for fpath in cached_files:
-            syntax = util.file.guess_syntax_for_file(window, fpath)
+            syntax = guess_syntax_for_file(window, fpath)
             window.run_command("gs_inline_diff_open", {
                 "repo_path": self.repo_path,
                 "file_path": fpath,
@@ -720,7 +722,7 @@ class gs_status_discard_changes_to_file(StatusInterfaceCommand):
         # type: () -> Optional[List[str]]
         file_paths = self.get_selected_subjects('untracked')
 
-        @util.actions.destructive(description="discard one or more untracked files")
+        @destructive(description="discard one or more untracked files")
         def do_discard():
             self.discard_untracked_file(*file_paths)
             return file_paths
@@ -731,7 +733,7 @@ class gs_status_discard_changes_to_file(StatusInterfaceCommand):
 
     def discard_unstaged(self) -> list[ShortPath] | None:
 
-        @util.actions.destructive(description="discard one or more unstaged files")
+        @destructive(description="discard one or more unstaged files")
         def do_discard(file_paths: list[ShortPath]):
             try:
                 self.checkout_file(*file_paths)
@@ -825,7 +827,7 @@ class gs_status_discard_all_changes(StatusInterfaceCommand):
     Reset all unstaged files to HEAD.
     """
 
-    @util.actions.destructive(description="discard all unstaged changes, "
+    @destructive(description="discard all unstaged changes, "
                                           "and delete all untracked files")
     def run(self, edit):
         # type: (sublime.Edit) -> None
@@ -980,7 +982,7 @@ class gs_status_use_base_version(StatusInterfaceCommand):
         return False
 
 
-class gs_status_navigate_file(GsNavigate):
+class gs_status_navigate_file(GsNavigateBase):
 
     """
     Move cursor to the next (or previous) selectable item in the dashboard.
@@ -994,7 +996,7 @@ class gs_status_navigate_file(GsNavigate):
         )
 
 
-class gs_status_navigate_goto(GsNavigate):
+class gs_status_navigate_goto(GsNavigateBase):
 
     """
     Move cursor to the next (or previous) selectable file in the dashboard.

@@ -1,10 +1,12 @@
 from collections import namedtuple
-import sublime
-from sublime_plugin import WindowCommand
 
-from ..git_command import GitCommand
-from ...common import util
+from ..base_commands import GsWindowCommand
+from ..runtime import on_worker
+from ..interfaces import util as interface_util
 from ..ui__quick_panel import show_quick_panel
+
+
+__all__ = ("gs_quick_stage",)
 
 
 MenuOption = namedtuple("MenuOption", ["requires_action", "menu_text", "filename", "is_untracked"])
@@ -19,7 +21,7 @@ AMEND = "    git: amend from stage"
 FIXUP = "    git: fixup from stage"
 
 
-class GsQuickStageCommand(WindowCommand, GitCommand):
+class gs_quick_stage(GsWindowCommand):
 
     """
     Display a quick panel of unstaged files in the current git repository,
@@ -37,10 +39,8 @@ class GsQuickStageCommand(WindowCommand, GitCommand):
 
     """
 
+    @on_worker
     def run(self):
-        sublime.set_timeout_async(self.run_async)
-
-    def run_async(self):
         menu_options = self.get_menu_options()
         menu_entries = [f.menu_text for f in menu_options]
 
@@ -80,9 +80,9 @@ class GsQuickStageCommand(WindowCommand, GitCommand):
 
             self.window.status_message("Successfully added `{}`.".format(
                 scope_of_action))
-            util.view.refresh_gitsavvy(self.window.active_view())
+            interface_util.refresh_gitsavvy(self.window.active_view())
 
-            sublime.set_timeout_async(self.run_async, 0)
+            self.run()
 
         show_quick_panel(self.window, menu_entries, on_selection)
 

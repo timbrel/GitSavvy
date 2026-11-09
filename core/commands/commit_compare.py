@@ -1,6 +1,6 @@
 from sublime_plugin import WindowCommand
 
-from ..git_command import GitCommand
+from GitSavvy.core.base_commands import GsWindowCommand
 from ..ui_mixins.quick_panel import PanelActionMixin, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 
@@ -13,7 +13,7 @@ __all__ = (
 )
 
 
-class gs_compare_commit(WindowCommand, GitCommand):
+class gs_compare_commit(GsWindowCommand):
 
     """
     Show a view of all commits diff between branches.
@@ -39,7 +39,7 @@ class gs_compare_commit(WindowCommand, GitCommand):
         })
 
 
-class gs_compare_against_reference(WindowCommand, GitCommand):
+class gs_compare_against_reference(GsWindowCommand):
     def run(self, base_commit=None, target_commit=None, file_path=None, target_hints=None):
         self._file_path = file_path
         self._base_commit = base_commit
@@ -63,7 +63,7 @@ class gs_compare_against_reference(WindowCommand, GitCommand):
         })
 
 
-class gs_compare_against_branch(WindowCommand, GitCommand):
+class gs_compare_against_branch(GsWindowCommand):
     def run(self, base_commit=None, target_commit=None, file_path=None, target_hints=None):
         self._file_path = file_path
         self._base_commit = base_commit

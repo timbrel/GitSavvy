@@ -8,7 +8,8 @@ from collections import namedtuple
 from functools import partial, lru_cache
 from webbrowser import open as open_in_browser
 
-from ..common import interwebs, util
+from ..core import interwebs
+from ..core import debug
 from ..core.exceptions import FailedGitLabRequest
 from ..core.settings import app_settings
 
@@ -51,7 +52,7 @@ def remote_to_url(remote):
     elif remote.startswith("http"):
         return remote
     else:
-        util.debug.log_error('Cannot parse remote "%s" to url' % remote)
+        debug.log_error('Cannot parse remote "%s" to url' % remote)
         return None
 
 
@@ -69,7 +70,7 @@ def parse_remote(remote):
     match = re.match(r"https?://([a-zA-Z-\.0-9]+)/([a-zA-Z-\._0-9]+)/([a-zA-Z-\._0-9]+)/?", url)
 
     if not match:
-        util.debug.log_error('Invalid gitlab url: %s' % url)
+        debug.log_error('Invalid gitlab url: %s' % url)
         return None
 
     fqdn, owner, repo = match.groups()
@@ -179,7 +180,7 @@ def query_gitlab(api_url_template, gitlab_repo, url_params={}, query_params={}):
     fqdn, path = gitlab_api_url(api_url_template, gitlab_repo, url_params, query_params)
     kwargs = get_common_kwargs(gitlab_repo)
 
-    util.debug.add_to_log({
+    debug.add_to_log({
         "type": "debug",
         "error": 'sending gitlab request to {0}, path={1}, '
                  'kwargs: {2}'.format(fqdn, path, kwargs)

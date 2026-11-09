@@ -1,5 +1,5 @@
 import os
-from ...common import util
+from ..utils import safe_open
 
 from GitSavvy.core.git_command import mixin_base
 from GitSavvy.core.caches import cache_in_store_as
@@ -44,11 +44,11 @@ class IgnoreMixin(mixin_base):
 
         gitignore = self.to_full_path(".gitignore")
         if os.path.exists(gitignore):
-            with util.file.safe_open(gitignore, "r", encoding="utf-8") as fp:
+            with safe_open(gitignore, "r", encoding="utf-8") as fp:
                 ignore_lines = fp.read().splitlines()
         else:
             ignore_lines = []
 
         ignore_lines += [path_or_pattern, ""]
-        with util.file.safe_open(gitignore, "w", encoding="utf-8", newline=linesep) as fp:
+        with safe_open(gitignore, "w", encoding="utf-8", newline=linesep) as fp:
             fp.write("\n".join(ignore_lines))

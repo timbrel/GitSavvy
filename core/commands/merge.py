@@ -1,4 +1,4 @@
-from ...common import util
+from ..interfaces import util as interface_util
 from GitSavvy.core.base_commands import ask_for_branch, GsWindowCommand
 from GitSavvy.core.runtime import on_worker
 from GitSavvy.core.ui__quick_panel import show_noop_panel, show_quick_panel
@@ -28,7 +28,7 @@ class gs_merge(GsWindowCommand):
         try:
             self.git("merge", branch)
         finally:
-            util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+            interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
 class gs_merge_abort(GsWindowCommand):
@@ -40,7 +40,7 @@ class gs_merge_abort(GsWindowCommand):
     @on_worker
     def run(self):
         self.git("merge", "--abort")
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
 class gs_merge_continue(GsWindowCommand):
@@ -53,7 +53,7 @@ class gs_merge_continue(GsWindowCommand):
     @on_worker
     def run(self):
         self.git("merge", "--continue")
-        util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
 class gs_restart_merge_for_file(GsWindowCommand):
@@ -73,6 +73,6 @@ class gs_restart_merge_for_file(GsWindowCommand):
             fpath = paths[index]
             self.git("checkout", "-m", "--", fpath)
 
-            util.view.refresh_gitsavvy_interfaces(self.window)
+            interface_util.refresh_gitsavvy_interfaces(self.window)
 
         show_quick_panel(self.window, paths, on_done)

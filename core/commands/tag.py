@@ -7,7 +7,8 @@ from string import Formatter
 import sublime
 
 from . import ref_undo
-from ...common import util
+from .. import output_panel
+from ..interfaces import util as interface_util
 from ..fns import unique
 from ..git_command import GitSavvyError
 from ..git_mixins.tags import is_version_tag
@@ -111,7 +112,7 @@ def ask_for_tag_name(
 
             normalized_tag_name = normalize_tag_name(cmd, tag_name)
             if not normalized_tag_name:
-                util.log.display_panel(
+                output_panel.display_panel(
                     cmd.window,
                     "'{}' is not a valid tag name.".format(tag_name)
                 )
@@ -233,7 +234,7 @@ class gs_create_tag(GsWindowCommand):
             )
 
         self.window.status_message(TAG_CREATE_MESSAGE.format(tag_name))
-        util.view.refresh_gitsavvy_interfaces(self.window)
+        interface_util.refresh_gitsavvy_interfaces(self.window)
 
 
 class gs_smart_tag(GsWindowCommand):

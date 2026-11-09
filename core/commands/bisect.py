@@ -1,5 +1,5 @@
 from __future__ import annotations
-from ...common import util
+from ..interfaces import util as interface_util
 from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.runtime import on_worker
 
@@ -19,7 +19,7 @@ class gs_bisect_start(GsWindowCommand):
         try:
             self.git("bisect", "start", bad, *good, show_panel=True)
         finally:
-            util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+            interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
 class gs_bisect_good(GsWindowCommand):
@@ -30,7 +30,7 @@ class gs_bisect_good(GsWindowCommand):
                 self.git("bisect", "start")
             self.git("bisect", "good", commit, show_panel=True)
         finally:
-            util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+            interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
 class gs_bisect_bad(GsWindowCommand):
@@ -41,7 +41,7 @@ class gs_bisect_bad(GsWindowCommand):
                 self.git("bisect", "start")
             self.git("bisect", "bad", commit, show_panel=True)
         finally:
-            util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+            interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
 class gs_bisect_skip(GsWindowCommand):
@@ -50,7 +50,7 @@ class gs_bisect_skip(GsWindowCommand):
         try:
             self.git("bisect", "skip", commit, show_panel=True)
         finally:
-            util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+            interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
 
 class gs_bisect_reset(GsWindowCommand):
@@ -59,4 +59,4 @@ class gs_bisect_reset(GsWindowCommand):
         try:
             self.git("bisect", "reset", commit)
         finally:
-            util.view.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+            interface_util.refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)

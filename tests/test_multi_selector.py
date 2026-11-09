@@ -2,7 +2,7 @@ from unittesting import DeferrableTestCase
 
 import sublime
 
-from GitSavvy.core.commands import multi_selector
+from GitSavvy.core.interfaces import multi_selector
 
 
 class TestMultiselectMarkers(DeferrableTestCase):

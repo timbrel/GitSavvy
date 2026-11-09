@@ -7,13 +7,15 @@ from textwrap import indent
 from webbrowser import open as open_in_browser
 
 import sublime
-from sublime_plugin import WindowCommand
 
-from ..commands import GsNavigate, ref_undo
-from ...common import ui
+
+from ..commands import ref_undo
+from ..commands.navigate import GsNavigateBase
+from . import dashboard_base as ui
+from GitSavvy.core.base_commands import GsWindowCommand
 from ..git_command import GitCommand, GitSavvyError
 from ..git_mixins.tags import TagList
-from ...common import util
+from . import util as interface_util
 from GitSavvy.core import app_state
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.runtime import enqueue_on_worker, on_worker, run_on_new_thread
@@ -93,7 +95,7 @@ TAG_DELETE_MESSAGE = "Tag(s) deleted."
 SHORT_VERSION_TAG_RE = re.compile(r"^v\d+(?:\.\d+)?$")
 
 
-class gs_show_tags(WindowCommand, GitCommand):
+class gs_show_tags(GsWindowCommand):
 
     """
     Open a branch dashboard for the active Git repository.
@@ -431,7 +433,7 @@ class gs_tags_refresh(TagsInterfaceCommand):
         if reset_remotes:
             interface.state["remote_tags_info"] = {}
 
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
 
 
 class gs_tags_smart_tag(TagsInterfaceCommand):
@@ -468,7 +470,7 @@ class gs_tags_delete(TagsInterfaceCommand):
             flash(self.view, TAG_DELETE_MESSAGE)
             if remote_tags:
                 self.interface.state["remote_tags_info"] = {}
-            util.view.refresh_gitsavvy(self.view)
+            interface_util.refresh_gitsavvy(self.view)
 
     def delete_local(self):
         # type: () -> List[str]
@@ -603,7 +605,7 @@ class gs_tags_push(TagsInterfaceCommand):
 
         interface = self.interface
         interface.state["remote_tags_info"] = {}
-        util.view.refresh_gitsavvy(self.view)
+        interface_util.refresh_gitsavvy(self.view)
 
 
 TAG_ALREADY_EXISTS_ON_REMOTE_RE = re.compile(
@@ -704,7 +706,7 @@ class gs_tags_show_graph(TagsInterfaceCommand):
         })
 
 
-class gs_tags_navigate_tag(GsNavigate):
+class gs_tags_navigate_tag(GsNavigateBase):
 
     """
     Move cursor to the next (or previous) selectable tag in the dashboard.
@@ -718,7 +720,7 @@ class gs_tags_navigate_tag(GsNavigate):
         )
 
 
-class gs_tags_navigate_to_next_tag(GsNavigate):
+class gs_tags_navigate_to_next_tag(GsNavigateBase):
 
     """
     Move cursor to the next (or previous) selectable tag in the dashboard.

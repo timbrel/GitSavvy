@@ -8,12 +8,12 @@ from unittesting import DeferrableTestCase
 
 from GitSavvy.tests.mockito import mock, unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized as p
-from GitSavvy.core.commands.log_graph import _find_symbol
-from GitSavvy.core.commands.log_graph_renderer import (
+from GitSavvy.core.interfaces.log_graph import _find_symbol
+from GitSavvy.core.interfaces.log_graph_renderer import (
     make_worktree_branch_marker, gs_log_graph_refresh
 )
 from GitSavvy.core.git_mixins.worktrees import WorktreesMixin, main_worktree_path
-from GitSavvy.core.commands.log_graph_smart_copy import (
+from GitSavvy.core.interfaces.log_graph_smart_copy import (
     read_branches_in_region, read_commit_message, read_tags_in_region
 )
 

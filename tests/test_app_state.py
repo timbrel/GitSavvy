@@ -6,7 +6,7 @@ import tempfile
 from unittesting import DeferrableTestCase
 
 from GitSavvy import git_savvy
-from GitSavvy.common import ui
+from GitSavvy.core.interfaces import dashboard_base as ui
 from GitSavvy.core import app_state, store
 from GitSavvy.core.interfaces import branch, tags
 from GitSavvy.tests.mockito import mock, unstub, verify, when

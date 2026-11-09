@@ -20,7 +20,7 @@ class TestCheckoutBranch(DeferrableTestCase):
         when(self.command).current_state().thenReturn({"last_branches": [None, "main"]})
         when(self.command).git_throwing_silently(...).thenReturn("")
         when(self.window).status_message(...).thenReturn(None)
-        when(checkout.util.view).refresh_gitsavvy_interfaces(
+        when(checkout.interface_util).refresh_gitsavvy_interfaces(
             self.window, refresh_sidebar=True
         ).thenReturn(None)
 
@@ -84,7 +84,7 @@ class TestCheckoutBranch(DeferrableTestCase):
 
         verify(self.command).git_throwing_silently("checkout", None, "feature")
         verify(self.window).status_message("Checked out `feature`.")
-        verify(checkout.util.view).refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
+        verify(checkout.interface_util).refresh_gitsavvy_interfaces(self.window, refresh_sidebar=True)
 
     def test_enter_creates_a_local_branch_tracking_the_selected_remote(self) -> None:
         self._select(branch("feature/nested", remote="origin"))

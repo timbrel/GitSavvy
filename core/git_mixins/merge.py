@@ -9,7 +9,9 @@ from shutil import rmtree, copyfile
 import sublime
 
 from GitSavvy.core.git_command import mixin_base
-from ...common import util
+from .. import debug
+from ..utils import safe_open
+from ..interfaces import util as interface_util
 
 
 class MergeMixin(mixin_base):
@@ -51,11 +53,11 @@ class MergeMixin(mixin_base):
         merge_cmd_args = shlex.split(merge_cmd)
 
         try:
-            with util.file.safe_open(base_path, "wb") as base:
+            with safe_open(base_path, "wb") as base:
                 base.write(base_content)
-            with util.file.safe_open(ours_path, "wb") as ours:
+            with safe_open(ours_path, "wb") as ours:
                 ours.write(ours_content)
-            with util.file.safe_open(theirs_path, "wb") as theirs:
+            with safe_open(theirs_path, "wb") as theirs:
                 theirs.write(theirs_content)
             copyfile(merge_path, backup_path)
 
@@ -64,7 +66,7 @@ class MergeMixin(mixin_base):
                 startupinfo = subprocess.STARTUPINFO()
                 startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
 
-            util.debug.log_process(
+            debug.log_process(
                 merge_cmd_args, repo_path, os.environ, startupinfo
             )
 
@@ -97,7 +99,7 @@ class MergeMixin(mixin_base):
     def resolve_merge(self, path):
         self.git("add", path)
         sublime.set_timeout_async(
-            lambda: util.view.refresh_gitsavvy(sublime.active_window().active_view()))
+            lambda: interface_util.refresh_gitsavvy(sublime.active_window().active_view()))
 
     def get_configured_tool(self):
         return self.git("config", "merge.tool").strip()
