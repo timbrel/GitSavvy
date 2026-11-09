@@ -527,8 +527,7 @@ def record_results(repo_path: RepoPath, states: Dict[CacheKey, KnownState]) -> N
     }
     if not changes:
         return
-    results = Cache(maxsize=current.maxsize)
-    results.update(current)
+    results = current.copy()
     results.update(changes)
     store.update_state(repo_path, {"github_ci_results": results})
 
