@@ -97,7 +97,8 @@ class TestColorValue(DeferrableTestCase):
 
 
 class Window:
-    next_id = 1
+    # Stay clear of the ids of real windows, `ProjectSettings` caches by id.
+    next_id = 1_000_000
 
     def __init__(self, project_data: dict) -> None:
         self._project_data = project_data

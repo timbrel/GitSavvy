@@ -19,6 +19,8 @@ RemoteUrl: TypeAlias = str
 
 NOTSET = "<NOTSET>"
 UPSTREAM_NOT_SET = Upstream("", "", "", "")
+# Git's fallback length for abbreviated hashes
+DEFAULT_ABBREV = 7
 
 if TYPE_CHECKING:
     from GitSavvy.core.git_command import (BranchesMixin, StatusMixin, _GitCommand)
@@ -38,10 +40,28 @@ class RemoteInfoBlob(NamedTuple):
     integration_remote: str | None
 
 
+class PushDestination(NamedTuple):
+    url: RemoteUrl
+    refs: list[PushedRef]
+
+
+class PushedRef(NamedTuple):
+    # One of " " (fast-forward), "+" (forced update), "-" (deleted),
+    # "*" (new ref), "!" (rejected), "=" (up to date)
+    flag: str
+    src: str
+    dst: str
+    summary: str
+
+
 class RemoteInfo(NamedTuple):
     name: RemoteName
+    # The effective url with `url.<base>.insteadOf` applied, as `git remote -v`
+    # shows it.
     url: RemoteUrl
     config: list[ConfigEntry]
+    # The url as written in `remote.<name>.url`.
+    configured_url: RemoteUrl
 
 
 class RemotesMixin(mixin_base):
@@ -77,11 +97,12 @@ class RemotesMixin(mixin_base):
         return [
             RemoteInfo(
                 remote_name,
-                url,
-                config
+                rewrite_url(url, config_entries),
+                config,
+                url
             )
             for remote_name, config in remote_configs.items()
-            if (url := last(self.by_raw_key(config, "url"), None))
+            if (url := last(by_raw_key(config, "url"), None))
         ]
 
     def _extract_remote_configs(
@@ -104,7 +125,7 @@ class RemotesMixin(mixin_base):
             for line in self.git(
                 "config",
                 "--get-regexp",
-                r"^(remote\.|gitsavvy\.|.*\.pushdefault$)",
+                r"^(remote\.|gitsavvy\.|url\..*\.insteadof$|.*\.pushdefault$)",
                 throw_on_error=False
             ).splitlines()
             if line.strip()
@@ -117,14 +138,6 @@ class RemotesMixin(mixin_base):
             key, value = line, ""
 
         return ConfigEntry(key, value)
-
-    def by_raw_key(self, config_entries: list[ConfigEntry], raw_key: str) -> list[str]:
-        raw_key = raw_key.lower()
-        return [
-            value
-            for key, value in config_entries
-            if key.lower() == raw_key
-        ]
 
     def fetch(self, remote=None, refspec=None, prune=True, local_branch=None, remote_branch=None):
         # type: (str, str, bool, str, str) -> None
@@ -168,27 +181,33 @@ class RemotesMixin(mixin_base):
         )
 
     def push(
-            self,
-            remote=None,
-            branch=None,
-            force=False,
-            force_with_lease=False,
-            remote_branch=None,
-            set_upstream=False):
+        self,
+        remote: str | None = None,
+        branch: str | None = None,
+        force: bool = False,
+        force_with_lease: bool = False,
+        remote_branch: str | None = None,
+        set_upstream: bool = False
+    ) -> list[PushDestination]:
         """
         Push to the specified remote and branch if provided, otherwise
         perform default `git push`.
+
+        Return what Git reports for each push destination: its effective
+        url and the refs it updated.  The output panel still shows Git's
+        human-readable report, see `PushPorcelainFormatter`.
         """
-        # Do not return the output. It is always empty since the output
-        # of "git push" actually goes to stderr.
-        self.git(
+        output = self.git(
             "push",
+            "--porcelain",
             "--force" if force else None,
             "--force-with-lease" if force_with_lease else None,
             "--set-upstream" if set_upstream else None,
             remote,
-            branch if not remote_branch else "{}:{}".format(branch, remote_branch)
+            branch if not remote_branch else "{}:{}".format(branch, remote_branch),
+            stdout_formatter=PushPorcelainFormatter
         )
+        return parse_push_porcelain(output)
 
     def guess_integration_remote(
         self,
@@ -206,7 +225,7 @@ class RemotesMixin(mixin_base):
             if config_entries is None:
                 config_entries = self.read_config_entries()
             configured_remote_name = last(
-                self.by_raw_key(config_entries, "gitsavvy.ghremote"),
+                by_raw_key(config_entries, "gitsavvy.ghremote"),
                 None
             )
         if configured_remote_name in available_remotes:
@@ -238,7 +257,7 @@ class RemotesMixin(mixin_base):
 
         if config_entries is None:
             config_entries = self.read_config_entries()
-        get = partial(self.by_raw_key, config_entries)
+        get = partial(by_raw_key, config_entries)
 
         for key in chain(get("gitsavvy.pushdefault"), get("remote.pushdefault"), ["fork", "origin"]):
             if key in available_remotes:
@@ -286,3 +305,118 @@ class RemotesMixin(mixin_base):
                 if line.startswith("ref: refs/heads/"):
                     return line[16:].split()[0]
         return None
+
+
+def rewrite_url(url: RemoteUrl, config_entries: list[ConfigEntry]) -> RemoteUrl:
+    """Apply `url.<base>.insteadOf` like Git does: the longest prefix wins."""
+    base, prefix = "", ""
+    for key, value in config_entries:
+        lowered = key.lower()
+        if (
+            lowered.startswith("url.")
+            and lowered.endswith(".insteadof")
+            and url.startswith(value)
+            and len(value) > len(prefix)
+        ):
+            base, prefix = key[len("url."):-len(".insteadof")], value
+    return base + url[len(prefix):] if prefix else url
+
+
+def by_raw_key(config_entries: list[ConfigEntry], raw_key: str) -> list[str]:
+    raw_key = raw_key.lower()
+    return [
+        value
+        for key, value in config_entries
+        if key.lower() == raw_key
+    ]
+
+
+def parse_push_porcelain(output: str) -> list[PushDestination]:
+    """
+    Parse the output of `git push --porcelain`: a "To <url>" line per
+    destination, each followed by "<flag>\t<src>:<dst>\t<summary>" lines.
+    """
+    destinations: list[PushDestination] = []
+    for line in output.splitlines():
+        if line.startswith("To "):
+            destinations.append(PushDestination(line[3:], []))
+        elif destinations and (ref := parse_pushed_ref(line)):
+            destinations[-1].refs.append(ref)
+    return destinations
+
+
+class PushPorcelainFormatter:
+    """
+    Render the lines of `git push --porcelain` as a plain `git push`
+    reports them, line by line as they arrive: up-to-date refs are
+    omitted, "To <url>" is held back until its destination shows a ref,
+    and the closing "Done" becomes "Everything up-to-date" if all refs
+    of the destination were up to date.  Other lines pass through.
+
+    Git pads the summary column to fit the longest abbreviated hash of
+    all refs of a destination.  We only see the hashes of the refs so
+    far, and assume Git's default abbreviation if there is none yet.
+    """
+
+    def __init__(self) -> None:
+        self.refs: list[PushedRef] | None = None
+        self.header = ""
+        self.abbrev = 0
+
+    def __call__(self, line: str) -> str:
+        text = line.rstrip("\r\n")
+        if text.startswith("To "):
+            self.refs, self.header, self.abbrev = [], text + "\n", 0
+            return ""
+        if self.refs is None:
+            return line
+        if text == "Done":
+            refs, self.refs = self.refs, None
+            if all(ref.flag == "=" for ref in refs):
+                return "Everything up-to-date\n"
+            return ""
+        ref = parse_pushed_ref(text)
+        if not ref:
+            return line
+        self.refs.append(ref)
+        self.abbrev = max(self.abbrev, abbrev_length(ref.summary))
+        if ref.flag == "=":
+            return ""
+        header, self.header = self.header, ""
+        return header + format_pushed_ref(ref, self.abbrev or DEFAULT_ABBREV)
+
+
+def parse_pushed_ref(line: str) -> PushedRef | None:
+    """Parse a "<flag>\\t<src>:<dst>\\t<summary>" line of `git push --porcelain`."""
+    if line.count("\t") < 2:
+        return None
+    flag, refs, summary = line.split("\t", 2)
+    src, _, dst = refs.partition(":")
+    return PushedRef(flag, src, dst, summary)
+
+
+def format_pushed_ref(ref: PushedRef, abbrev: int) -> str:
+    """Format `ref` like Git's `print_ref_status()` does without --porcelain."""
+    summary, _, reason = ref.summary.partition(" (")
+    refs = (
+        "{} -> {}".format(short_ref_name(ref.src), short_ref_name(ref.dst))
+        if ref.src else
+        short_ref_name(ref.dst)
+    )
+    return " {} {:<{}} {}{}\n".format(
+        ref.flag, summary, 2 * abbrev + 3, refs, " (" + reason if reason else ""
+    )
+
+
+def abbrev_length(summary: str) -> int:
+    """Return the length of the abbreviated hashes in a summary like "a1b2..c3d4"."""
+    match = re.match(r"([0-9a-f]+)\.\.\.?([0-9a-f]+)", summary)
+    return max(len(match[1]), len(match[2])) if match else 0
+
+
+def short_ref_name(ref: str) -> str:
+    """Strip the prefixes Git's `prettify_refname()` strips."""
+    for prefix in ("refs/heads/", "refs/tags/", "refs/remotes/"):
+        if ref.startswith(prefix):
+            return ref[len(prefix):]
+    return ref

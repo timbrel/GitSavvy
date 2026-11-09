@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from unittesting import DeferrableTestCase
 
-from GitSavvy.core.git_mixins.branches import Branch
+from GitSavvy.core.git_mixins.branches import Branch, Upstream
 from GitSavvy.core.git_mixins.worktrees import Worktree
 from GitSavvy.core.interfaces.branch import BranchInterface
 from GitSavvy.core.types import FullHash, ShortHash
@@ -37,6 +37,39 @@ class TestBranchDashboard(DeferrableTestCase):
         self.assertIn("<ccccccc> (DETACHED)", output)
         self.assertIn("checked out at: /repo-detached", output)
 
+    def test_ci_results_follow_the_tracking_info(self) -> None:
+        interface = BranchRenderer.__new__(BranchRenderer)
+        interface.state = {
+            "descriptions": {"red": "a description"},
+            "github_ci_results": {
+                ("ok", FullHash("a" * 40)): "success",
+                ("red", FullHash("b" * 40)): "failure",
+                ("pending", FullHash("c" * 40)): "pending",
+                ("no-checks", FullHash("d" * 40)): "no_checks",
+                ("moved", FullHash("0" * 40)): "failure",
+            },
+            "worktree_deletions_in_progress": set()
+        }
+        branches = [
+            branch("ok", "a", upstream=True),
+            branch("red", "b", upstream=True),
+            branch("pending", "c", upstream=True),
+            branch("no-checks", "d", upstream=True),
+            branch("moved", "e", upstream=True),
+        ]
+
+        output = interface.render_branch_list(
+            branches, [], sort_by_recent=False, group_by_distance_to_head=False
+        )
+
+        self.assertEqual([
+            "    aaaaaaa ok now, (origin/ok) [ok]",
+            "    bbbbbbb red (origin/red) [red] - a description",
+            "    ccccccc pending (origin/pending) [pending]",
+            "    ddddddd no-checks (origin/no-checks)",
+            "    eeeeeee moved (origin/moved)",
+        ], output.splitlines())
+
 
 class BranchRenderer(BranchInterface):
     def to_short_hash(self, commit_hash: FullHash | ShortHash) -> ShortHash:
@@ -51,7 +84,8 @@ def branch(
     hash_char: str,
     *,
     active: bool = False,
-    worktree_path: str | None = None
+    worktree_path: str | None = None,
+    upstream: bool = False
 ) -> Branch:
     return Branch(
         name=name,
@@ -64,7 +98,7 @@ def branch(
         committerdate=0,
         human_committerdate="now",
         relative_committerdate="now",
-        upstream=None,
+        upstream=Upstream("origin", name, "origin/" + name, "") if upstream else None,
         distance_to_head=None,
         worktree_path=worktree_path
     )

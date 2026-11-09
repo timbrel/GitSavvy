@@ -3,11 +3,17 @@ from __future__ import annotations
 from unittesting import DeferrableTestCase
 
 from GitSavvy.tests.mockito import expect, unstub, verify, when
+from GitSavvy.tests.parameterized import parameterized as p
 from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core.git_mixins.remotes import (
     ConfigEntry,
+    PushDestination,
+    PushedRef,
+    PushPorcelainFormatter,
     RemoteInfo,
-    RemoteInfoBlob
+    RemoteInfoBlob,
+    parse_push_porcelain,
+    rewrite_url
 )
 
 
@@ -67,11 +73,11 @@ class TestRemoteConfigParsing(DeferrableTestCase):
                 RemoteInfo("origin", "https://github.com/packagecontrol/st_package_reviewer.git", [
                     ConfigEntry("url", "https://github.com/packagecontrol/st_package_reviewer.git"),
                     ConfigEntry("fetch", "+refs/heads/*:refs/remotes/origin/*"),
-                ]),
+                ], "https://github.com/packagecontrol/st_package_reviewer.git"),
                 RemoteInfo("kaste", "https://github.com/kaste/st_package_reviewer.git", [
                     ConfigEntry("url", "https://github.com/kaste/st_package_reviewer.git"),
                     ConfigEntry("fetch", "+refs/heads/*:refs/remotes/kaste/*"),
-                ]),
+                ], "https://github.com/kaste/st_package_reviewer.git"),
                 RemoteInfo(
                     "michaelblyons",
                     "https://github.com/michaelblyons/SublimeText-PC-Package-Reviewer.git",
@@ -85,7 +91,8 @@ class TestRemoteConfigParsing(DeferrableTestCase):
                         ConfigEntry("tagopt", "--no-tags"),
                         ConfigEntry("followremotehead", "never"),
                         ConfigEntry("fetch", "^refs/heads/main"),
-                    ]
+                    ],
+                    "https://github.com/michaelblyons/SublimeText-PC-Package-Reviewer.git"
                 ),
             ],
             push_remote="michaelblyons",
@@ -99,6 +106,57 @@ class TestRemoteConfigParsing(DeferrableTestCase):
                 "michaelblyons": "https://github.com/michaelblyons/SublimeText-PC-Package-Reviewer.git",
             }
         })
+
+    def test_get_remote_info_resolves_insteadof(self) -> None:
+        repo = GitCommand()
+        when(repo).git("config", "--get-regexp", ...).thenReturn(
+            "url.git@github.com:.insteadof gh:\n"
+            "remote.origin.url gh:kaste/GitSavvy\n"
+            "remote.other.url https://example.com/other.git\n"
+        )
+        when(repo).current_state().thenReturn({})
+        expect(repo).update_store(...)
+
+        remotes = repo.get_remote_info().remotes
+
+        self.assertEqual([
+            ("origin", "git@github.com:kaste/GitSavvy", "gh:kaste/GitSavvy"),
+            ("other", "https://example.com/other.git", "https://example.com/other.git"),
+        ], [(r.name, r.url, r.configured_url) for r in remotes])
+        verify(repo).update_store({
+            "remotes": {
+                "origin": "git@github.com:kaste/GitSavvy",
+                "other": "https://example.com/other.git",
+            }
+        })
+
+
+class TestRewriteUrl(DeferrableTestCase):
+    @p.expand([
+        ("rewrites the prefix", "gh:me/p", [
+            ("url.https://github.com/.insteadof", "gh:")
+        ], "https://github.com/me/p"),
+        ("longest prefix wins", "gh:me/p", [
+            ("url.https://a/.insteadof", "gh:"),
+            ("url.https://github.com/x/.insteadof", "gh:me/"),
+        ], "https://github.com/x/p"),
+        ("no matching prefix", "https://github.com/me/p", [
+            ("url.https://a/.insteadof", "gh:")
+        ], "https://github.com/me/p"),
+        ("prefix is case-sensitive", "GH:me/p", [
+            ("url.https://github.com/.insteadof", "gh:")
+        ], "GH:me/p"),
+        ("base keeps its case", "gh:me/p", [
+            ("url.https://GitHub.com/.insteadof", "gh:")
+        ], "https://GitHub.com/me/p"),
+        ("other config is ignored", "https://github.com/me/p", [
+            ("remote.origin.url", "https:")
+        ], "https://github.com/me/p"),
+    ])
+    def test_rewrite_url(self, _, url, entries, expected) -> None:
+        config_entries = [ConfigEntry(key, value) for key, value in entries]
+
+        self.assertEqual(expected, rewrite_url(url, config_entries))
 
 
 class TestGuessRemoteToPushTo(DeferrableTestCase):
@@ -177,3 +235,182 @@ class TestGuessRemoteToPushTo(DeferrableTestCase):
 
         self.assertEqual(repo.guess_remote_to_push_to(["origin", "michaelblyons"]), "michaelblyons")
         verify(repo, times=1).git("config", "--get-regexp", ...)
+
+
+# Captured from `git push --porcelain origin main :gone v1 main:main2`
+PUSH_OUTPUT = (
+    "To ../r.git\n"
+    "-\t:refs/heads/gone\t[deleted]\n"
+    " \trefs/heads/main:refs/heads/main\tdf749db..eade9cb\n"
+    "*\trefs/tags/v1:refs/tags/v1\t[new tag]\n"
+    "*\trefs/heads/main:refs/heads/main2\t[new branch]\n"
+    "Done\n"
+)
+
+
+class TestPush(DeferrableTestCase):
+    def tearDown(self) -> None:
+        unstub()
+
+    def test_returns_the_parsed_porcelain_report(self) -> None:
+        repo = GitCommand()
+        when(repo).git(...).thenReturn(PUSH_OUTPUT)
+
+        self.assertEqual(repo.push("origin", "main", remote_branch="main2"), [
+            PushDestination("../r.git", [
+                PushedRef("-", "", "refs/heads/gone", "[deleted]"),
+                PushedRef(" ", "refs/heads/main", "refs/heads/main", "df749db..eade9cb"),
+                PushedRef("*", "refs/tags/v1", "refs/tags/v1", "[new tag]"),
+                PushedRef("*", "refs/heads/main", "refs/heads/main2", "[new branch]"),
+            ])
+        ])
+        verify(repo).git(
+            "push", "--porcelain", None, None, None, "origin", "main:main2",
+            stdout_formatter=PushPorcelainFormatter
+        )
+
+    def test_parses_one_entry_per_destination(self) -> None:
+        output = (
+            "To https://example.com/a.git\n"
+            "=\trefs/heads/main:refs/heads/main\t[up to date]\n"
+            "Done\n"
+            "To https://example.com/b.git\n"
+            "!\trefs/heads/main:refs/heads/main\t[rejected] (non-fast-forward)\n"
+            "Done\n"
+        )
+
+        self.assertEqual(parse_push_porcelain(output), [
+            PushDestination("https://example.com/a.git", [
+                PushedRef("=", "refs/heads/main", "refs/heads/main", "[up to date]"),
+            ]),
+            PushDestination("https://example.com/b.git", [
+                PushedRef("!", "refs/heads/main", "refs/heads/main", "[rejected] (non-fast-forward)"),
+            ]),
+        ])
+
+    def test_ignores_lines_outside_of_destinations(self) -> None:
+        self.assertEqual(parse_push_porcelain(""), [])
+        self.assertEqual(parse_push_porcelain(" \trefs/heads/a:refs/heads/a\tx\n"), [])
+
+
+# The pairs are captured from Git 2.56: `git push --porcelain` stdout and
+# the stderr of the same push without `--porcelain`.
+class TestPushPorcelainFormatter(DeferrableTestCase):
+    @p.expand([
+        ("fast-forward", (
+            "To ../r1.git\n"
+            " \trefs/heads/main:refs/heads/main\teebd022..8f52cc8\n"
+            "Done\n"
+        ), (
+            "To ../r1.git\n"
+            "   eebd022..8f52cc8  main -> main\n"
+        )),
+        ("forced update moves the reason to the end", (
+            "To ../r1.git\n"
+            "+\trefs/heads/main:refs/heads/main\t8f52cc8...71c34ea (forced update)\n"
+            "Done\n"
+        ), (
+            "To ../r1.git\n"
+            " + 8f52cc8...71c34ea main -> main (forced update)\n"
+        )),
+        ("new refs, deletion and non-ref sources", (
+            "To ../r1.git\n"
+            "=\trefs/heads/b1:refs/heads/b1\t[up to date]\n"
+            "-\t:refs/heads/gone\t[deleted]\n"
+            " \trefs/heads/main:refs/heads/main\teebd022..8f52cc8\n"
+            "*\tHEAD:refs/heads/fh\t[new branch]\n"
+            "*\teebd022d0de51d32c6dba0c5ce819db3daa1d037:refs/heads/fs\t[new branch]\n"
+            "*\trefs/tags/v1:refs/tags/v1\t[new tag]\n"
+            "Done\n"
+        ), (
+            "To ../r1.git\n"
+            " - [deleted]         gone\n"
+            "   eebd022..8f52cc8  main -> main\n"
+            " * [new branch]      HEAD -> fh\n"
+            " * [new branch]      eebd022d0de51d32c6dba0c5ce819db3daa1d037 -> fs\n"
+            " * [new tag]         v1 -> v1\n"
+        )),
+        ("rejected", (
+            "To ../r1.git\n"
+            "!\trefs/heads/main:refs/heads/main\t[rejected] (non-fast-forward)\n"
+            "Done\n"
+        ), (
+            "To ../r1.git\n"
+            " ! [rejected]        main -> main (non-fast-forward)\n"
+        )),
+        ("remote rejected", (
+            "To ../r1.git\n"
+            "!\trefs/heads/main:refs/heads/main\t[remote rejected] (pre-receive hook declined)\n"
+            "Done\n"
+        ), (
+            "To ../r1.git\n"
+            " ! [remote rejected] main -> main (pre-receive hook declined)\n"
+        )),
+        ("up to date", (
+            "To ../r1.git\n"
+            "=\trefs/heads/main:refs/heads/main\t[up to date]\n"
+            "Done\n"
+        ), (
+            "Everything up-to-date\n"
+        )),
+        ("one block per push url", (
+            "To ../r1.git\n"
+            "=\trefs/heads/b1:refs/heads/b1\t[up to date]\n"
+            " \trefs/heads/main:refs/heads/main\teebd022..8f52cc8\n"
+            "Done\n"
+            "To ../r2.git\n"
+            "*\trefs/heads/main:refs/heads/main\t[new branch]\n"
+            "*\trefs/heads/b1:refs/heads/b1\t[new branch]\n"
+            "Done\n"
+        ), (
+            "To ../r1.git\n"
+            "   eebd022..8f52cc8  main -> main\n"
+            "To ../r2.git\n"
+            " * [new branch]      main -> main\n"
+            " * [new branch]      b1 -> b1\n"
+        )),
+        ("up to date per push url", (
+            "To ../r1.git\n"
+            "=\trefs/heads/main:refs/heads/main\t[up to date]\n"
+            "Done\n"
+            "To ../r2.git\n"
+            "=\trefs/heads/main:refs/heads/main\t[up to date]\n"
+            "Done\n"
+        ), (
+            "Everything up-to-date\n"
+            "Everything up-to-date\n"
+        )),
+        ("width follows the abbreviated hashes", (
+            "To ../r1.git\n"
+            " \trefs/heads/b1:refs/heads/b1\teebd022d0d..912905b14b\n"
+            " \trefs/heads/main:refs/heads/main\teebd022d0d..8f52cc898d\n"
+            "*\trefs/heads/main:refs/heads/nb\t[new branch]\n"
+            "Done\n"
+        ), (
+            "To ../r1.git\n"
+            "   eebd022d0d..912905b14b  b1 -> b1\n"
+            "   eebd022d0d..8f52cc898d  main -> main\n"
+            " * [new branch]            main -> nb\n"
+        )),
+        ("other lines pass through", (
+            "To ../r1.git\n"
+            "*\trefs/heads/su:refs/heads/su\t[new branch]\n"
+            "branch 'su' set up to track 'origin/su'.\n"
+            "Done\n"
+        ), (
+            "To ../r1.git\n"
+            " * [new branch]      su -> su\n"
+            "branch 'su' set up to track 'origin/su'.\n"
+        )),
+        ("lines outside of destinations pass through", (
+            "Done\n"
+            "*\trefs/heads/su:refs/heads/su\t[new branch]\n"
+        ), (
+            "Done\n"
+            "*\trefs/heads/su:refs/heads/su\t[new branch]\n"
+        )),
+    ])
+    def test_renders_the_human_readable_report(self, _, porcelain, expected) -> None:
+        format_line = PushPorcelainFormatter()
+        lines = porcelain.splitlines(keepends=True)
+        self.assertEqual("".join(map(format_line, lines)), expected)

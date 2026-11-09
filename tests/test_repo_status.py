@@ -7,90 +7,139 @@ from GitSavvy.tests.parameterized import parameterized as p
 from GitSavvy.core import git_mixins
 from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core.git_mixins import active_branch
+from GitSavvy.github import ci_status
 
 
 TestShortBranchStatusTestcases = [
     (
-        "## optimize-status-interface",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head optimize-status-interface",
         "optimize-status-interface"
     ),
     (
-        "## optimize-status-interface\x00",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head optimize-status-interface\x00",
         "optimize-status-interface"
     ),
     (
-        "## optimize-status-interface\x00?? foo.txt",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head optimize-status-interface\x00"
+        "? foo.txt",
         "optimize-status-interface*"
     ),
     (
-        "## optimize-status-interface...fork/branch-name [ahead 1]",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head optimize-status-interface\x00"
+        "# branch.upstream fork/branch-name\x00"
+        "# branch.ab +1 -0",
         "optimize-status-interface+1"
     ),
     (
-        "## optimize-status-interface...fork/branch-name [ahead 1]\x00?? foo.txt",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head optimize-status-interface\x00"
+        "# branch.upstream fork/branch-name\x00"
+        "# branch.ab +1 -0\x00"
+        "? foo.txt",
         "optimize-status-interface*+1"
     ),
     (
-        "## dev...origin/dev [behind 7]",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head dev\x00"
+        "# branch.upstream origin/dev\x00"
+        "# branch.ab +0 -7",
         "dev-7"
     ),
     (
-        "## dev...origin/dev [behind 7]\x00?? foo.txt",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head dev\x00"
+        "# branch.upstream origin/dev\x00"
+        "# branch.ab +0 -7\x00"
+        "? foo.txt",
         "dev*-7"
     ),
     (
-        "## optimize-status-interface...fork/branch-name [ahead 1, behind 2]",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head optimize-status-interface\x00"
+        "# branch.upstream fork/branch-name\x00"
+        "# branch.ab +1 -2",
         "optimize-status-interface+1-2"
     ),
     (
-        "## optimize-status-interface...fork/branch-name [ahead 1, behind 2]\x00M foo",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head optimize-status-interface\x00"
+        "# branch.upstream fork/branch-name\x00"
+        "# branch.ab +1 -2\x00"
+        "1 M. N... 100644 100644 100644 "
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa foo",
         "optimize-status-interface*+1-2"
     ),
     (
-        "## improve-diff-view...fork/improve-diff-view [gone]",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head improve-diff-view\x00"
+        "# branch.upstream fork/improve-diff-view",
         "improve-diff-view"
     ),
     (
-        "## improve-diff-view...fork/improve-diff-view [gone]\x00?? foo",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head improve-diff-view\x00"
+        "# branch.upstream fork/improve-diff-view\x00"
+        "? foo",
         "improve-diff-view*"
     ),
     (
-        "## HEAD (no branch)",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head (detached)",
         "DETACHED"
     ),
     (
-        "## HEAD (no branch)\x00?? foo",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head (detached)\x00"
+        "? foo",
         "DETACHED*"
     ),
     (
-        "## No commits yet on master",
+        "# branch.oid (initial)\x00"
+        "# branch.head master",
         "master"
     ),
     (
-        "## No commits yet on master\x00?? foo",
+        "# branch.oid (initial)\x00"
+        "# branch.head master\x00"
+        "? foo",
         "master*"
     ),
     (
-        "## No commits yet on master...origin/master [gone]",
+        "# branch.oid (initial)\x00"
+        "# branch.head master\x00"
+        "# branch.upstream origin/master",
         "master"
     ),
     (
-        "## No commits yet on master...origin/master [gone]\x00?? .travis.yml",
+        "# branch.oid (initial)\x00"
+        "# branch.head master\x00"
+        "# branch.upstream origin/master\x00"
+        "? .travis.yml",
         "master*"
     ),
-    # Previous versions of git instead emitted this before the initial commit
+    # Other unborn branch names
     (
-        "## Initial commit on zoom",
+        "# branch.oid (initial)\x00"
+        "# branch.head zoom",
         "zoom"
     ),
     (
-        "## Initial commit on master\x00?? foo",
+        "# branch.oid (initial)\x00"
+        "# branch.head master\x00"
+        "? foo",
         "master*"
     ),
 ]
 
 
 class TestShortBranchStatus(DeferrableTestCase):
+    def setUp(self):
+        when(ci_status).on_head_observed(...).thenReturn(None)
+
     def tearDown(self):
         unstub()
 
@@ -116,120 +165,171 @@ class TestShortBranchStatus(DeferrableTestCase):
 
 TestLongBranchStatusTestcases = [
     (
-        "## optimize-status-interface",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head optimize-status-interface",
         "On branch `optimize-status-interface`."
     ),
     (
-        "## optimize-status-interface\x00",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head optimize-status-interface\x00",
         "On branch `optimize-status-interface`."
     ),
     (
-        "## optimize-status-interface\x00?? foo.txt",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head optimize-status-interface\x00"
+        "? foo.txt",
         "On branch `optimize-status-interface`."
     ),
     (
-        "## optimize-status-interface...fork/branch-name",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head optimize-status-interface\x00"
+        "# branch.upstream fork/branch-name\x00"
+        "# branch.ab +0 -0",
         "On branch `optimize-status-interface` tracking `fork/branch-name`."
     ),
     (
-        "## optimize-status-interface...fork/branch-name [ahead 1]",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head optimize-status-interface\x00"
+        "# branch.upstream fork/branch-name\x00"
+        "# branch.ab +1 -0",
         dedent("""\
         On branch `optimize-status-interface` tracking `fork/branch-name`.
         You're ahead by 1.
         """.rstrip())
     ),
     (
-        "## optimize-status-interface...fork/branch-name [ahead 1]\x00?? foo.txt",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head optimize-status-interface\x00"
+        "# branch.upstream fork/branch-name\x00"
+        "# branch.ab +1 -0\x00"
+        "? foo.txt",
         dedent("""\
         On branch `optimize-status-interface` tracking `fork/branch-name`.
         You're ahead by 1.
         """.rstrip())
     ),
     (
-        "## dev...origin/dev [behind 7]",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head dev\x00"
+        "# branch.upstream origin/dev\x00"
+        "# branch.ab +0 -7",
         dedent("""\
         On branch `dev` tracking `origin/dev`.
         You're behind by 7.
         """.rstrip())
     ),
     (
-        "## dev...origin/dev [behind 7]\x00?? foo.txt",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head dev\x00"
+        "# branch.upstream origin/dev\x00"
+        "# branch.ab +0 -7\x00"
+        "? foo.txt",
         dedent("""\
         On branch `dev` tracking `origin/dev`.
         You're behind by 7.
         """.rstrip())
     ),
     (
-        "## optimize-status-interface...fork/branch-name [ahead 1, behind 2]",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head optimize-status-interface\x00"
+        "# branch.upstream fork/branch-name\x00"
+        "# branch.ab +1 -2",
         dedent("""\
         On branch `optimize-status-interface` tracking `fork/branch-name`.
         You're ahead by 1 and behind by 2.
         """.rstrip())
     ),
     (
-        "## optimize-status-interface...fork/branch-name [ahead 1, behind 2]\x00M foo",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head optimize-status-interface\x00"
+        "# branch.upstream fork/branch-name\x00"
+        "# branch.ab +1 -2\x00"
+        "1 M. N... 100644 100644 100644 "
+        "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa foo",
         dedent("""\
         On branch `optimize-status-interface` tracking `fork/branch-name`.
         You're ahead by 1 and behind by 2.
         """.rstrip())
     ),
     (
-        "## improve-diff-view...fork/improve-diff-view [gone]",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head improve-diff-view\x00"
+        "# branch.upstream fork/improve-diff-view",
         dedent("""\
         On branch `improve-diff-view` tracking `fork/improve-diff-view`.
         The remote branch is gone.
         """.rstrip())
     ),
     (
-        "## improve-diff-view...fork/improve-diff-view [gone]\x00?? foo",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head improve-diff-view\x00"
+        "# branch.upstream fork/improve-diff-view\x00"
+        "? foo",
         dedent("""\
         On branch `improve-diff-view` tracking `fork/improve-diff-view`.
         The remote branch is gone.
         """.rstrip())
     ),
     (
-        "## HEAD (no branch)",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head (detached)",
         "HEAD is in a detached state."
     ),
     (
-        "## HEAD (no branch)\x00?? foo",
+        "# branch.oid aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\x00"
+        "# branch.head (detached)\x00"
+        "? foo",
         "HEAD is in a detached state."
     ),
     (
-        "## No commits yet on master",
+        "# branch.oid (initial)\x00"
+        "# branch.head master",
         "On branch `master`."
     ),
     (
-        "## No commits yet on master\x00?? foo",
+        "# branch.oid (initial)\x00"
+        "# branch.head master\x00"
+        "? foo",
         "On branch `master`."
     ),
     (
-        "## No commits yet on master...origin/master [gone]",
+        "# branch.oid (initial)\x00"
+        "# branch.head master\x00"
+        "# branch.upstream origin/master",
         dedent("""\
         On branch `master` tracking `origin/master`.
         The remote branch is gone.
         """.rstrip())
     ),
     (
-        "## No commits yet on master...origin/master [gone]\x00?? .travis.yml",
+        "# branch.oid (initial)\x00"
+        "# branch.head master\x00"
+        "# branch.upstream origin/master\x00"
+        "? .travis.yml",
         dedent("""\
         On branch `master` tracking `origin/master`.
         The remote branch is gone.
         """.rstrip())
     ),
-    # Previous versions of git instead emitted this before the initial commit
+    # Other unborn branch names
     (
-        "## Initial commit on zoom",
+        "# branch.oid (initial)\x00"
+        "# branch.head zoom",
         "On branch `zoom`."
     ),
     (
-        "## Initial commit on master\x00?? foo",
+        "# branch.oid (initial)\x00"
+        "# branch.head master\x00"
+        "? foo",
         "On branch `master`."
     ),
 ]
 
 
 class TestLongBranchStatus(DeferrableTestCase):
+    def setUp(self):
+        when(ci_status).on_head_observed(...).thenReturn(None)
+
     def tearDown(self):
         unstub()
 

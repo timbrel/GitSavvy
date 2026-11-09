@@ -3,11 +3,13 @@ GitHub methods that are functionally separate from anything Sublime-related.
 """
 
 from __future__ import annotations
+import http.client
 import os
 import re
 import subprocess
+import time
 from functools import lru_cache, partial
-from typing import NamedTuple
+from typing import Literal, NamedTuple, Sequence
 from webbrowser import open as open_in_browser
 
 from ..common import interwebs
@@ -354,3 +356,307 @@ def create_repo(token: str, org: str | None, repo_name: str, private: bool = Fal
     validate_response(response, method="POST")
 
     return response.payload
+
+
+CI_REQUEST_TIMEOUT = 15.0  # [seconds]
+DEFAULT_THROTTLE_DELAY = 60.0  # [seconds]
+
+CI_STATUS_QUERY = """
+query CiStatus($owner: String!, $name: String!, $oid: GitObjectID!) {
+  repository(owner: $owner, name: $name) {
+    object(oid: $oid) {
+      ... on Commit {
+        oid
+        statusCheckRollup {
+          state
+          contexts { totalCount }
+        }
+      }
+    }
+  }
+}
+"""
+
+CI_STATUS_AND_PUSH_TIP_QUERY = """
+query CiStatus(
+  $owner: String!, $name: String!, $oid: GitObjectID!,
+  $pushOwner: String!, $pushName: String!, $pushRef: String!
+) {
+  repository(owner: $owner, name: $name) {
+    object(oid: $oid) {
+      ... on Commit {
+        oid
+        statusCheckRollup {
+          state
+          contexts { totalCount }
+        }
+      }
+    }
+  }
+  pushed: repository(owner: $pushOwner, name: $pushName) {
+    ref(qualifiedName: $pushRef) { target { oid } }
+  }
+}
+"""
+
+CI_ROLLUP_FRAGMENT = """
+fragment Rollup on Commit {
+  oid
+  statusCheckRollup {
+    state
+    contexts { totalCount }
+  }
+}
+"""
+
+CiState = Literal["success", "failure", "pending", "no_checks", "unknown"]
+
+
+class CiObservation(NamedTuple):
+    state: CiState
+    reason: str = ""
+    # Only meaningful for "unknown": whether a later attempt may succeed,
+    # and how long GitHub asked us to wait before trying again.
+    transient: bool = False
+    retry_after: float | None = None
+
+
+class PushTarget(NamedTuple):
+    owner: str
+    repo: str
+    ref: str
+
+
+def is_github_host(fqdn: str) -> bool:
+    """
+    Return whether `fqdn` is GitHub.com or an explicitly configured
+    GitHub Enterprise host.  Tokens in `api_tokens` alone do not
+    identify a host as GitHub as GitLab shares that setting.
+    """
+    fqdn = fqdn.lower()
+    if fqdn == "github.com":
+        return True
+    enterprise_hosts = app_settings.get("github_enterprise_hosts") or []
+    return fqdn in {host.lower() for host in enterprise_hosts if isinstance(host, str)}
+
+
+def query_ci_status(
+    repository: GitHubRepo,
+    oid: str,
+    push_target: PushTarget | None = None,
+    timeout: float = CI_REQUEST_TIMEOUT
+) -> CiObservation:
+    """
+    Observe the commit-check rollup of commit `oid` in `repository`.
+
+    If `push_target` is given, additionally verify in the same request
+    that the pushed ref points at `oid`.  Any failure to do so, or any
+    other unexpected response, is reported as "unknown", never as a CI
+    result.  Never raises.
+    """
+    if not repository.token:
+        return CiObservation("unknown", "no token")
+
+    variables = {"owner": repository.owner, "name": repository.repo, "oid": oid}
+    if push_target:
+        query = CI_STATUS_AND_PUSH_TIP_QUERY
+        variables.update({
+            "pushOwner": push_target.owner,
+            "pushName": push_target.repo,
+            "pushRef": push_target.ref,
+        })
+    else:
+        query = CI_STATUS_QUERY
+
+    try:
+        response = post_graphql(repository, query, variables, timeout)
+    except (OSError, http.client.HTTPException, ValueError) as e:
+        return transport_failure(e)
+
+    return interpret_ci_response(response, oid, verify_push_tip=push_target is not None)
+
+
+def query_ci_statuses(
+    repository: GitHubRepo,
+    oids: Sequence[str],
+    timeout: float = CI_REQUEST_TIMEOUT
+) -> dict[str, CiObservation]:
+    """
+    Observe the commit-check rollups of several commits in `repository`
+    with one request.
+
+    Every oid maps to an observation.  If the request as a whole failed,
+    all oids share the same "unknown" observation; a commit GitHub does
+    not know is "unknown" on its own.  Never raises.
+    """
+    oids = list(dict.fromkeys(oids))
+    if not oids:
+        return {}
+    if not repository.token:
+        return dict.fromkeys(oids, CiObservation("unknown", "no token"))
+
+    variables = {"owner": repository.owner, "name": repository.repo}
+    variables.update({"c{}".format(i): oid for i, oid in enumerate(oids)})
+    try:
+        response = post_graphql(repository, ci_statuses_query(len(oids)), variables, timeout)
+    except (OSError, http.client.HTTPException, ValueError) as e:
+        return dict.fromkeys(oids, transport_failure(e))
+
+    return interpret_ci_statuses_response(response, oids)
+
+
+def ci_statuses_query(count: int) -> str:
+    """
+    Return a query for `count` commits, aliased as `c0`, `c1`, ..., which
+    take their oids from the variables of the same names.
+    """
+    return (
+        "query CiStatuses($owner: String!, $name: String!"
+        + "".join(", $c{}: GitObjectID!".format(i) for i in range(count))
+        + ") {\n  repository(owner: $owner, name: $name) {\n"
+        + "".join("    c{0}: object(oid: $c{0}) {{ ...Rollup }}\n".format(i) for i in range(count))
+        + "  }\n}\n"
+        + CI_ROLLUP_FRAGMENT
+    )
+
+
+def post_graphql(
+    repository: GitHubRepo, query: str, variables: dict, timeout: float
+) -> interwebs.Response:
+    host, path = graphql_endpoint(repository)
+    return interwebs.post(
+        host, 443, path,
+        payload={"query": query, "variables": variables},
+        headers={
+            "Authorization": "bearer {}".format(repository.token),
+            "Accept": "application/json",
+        },
+        timeout=timeout
+    )
+
+
+def graphql_endpoint(repository: GitHubRepo) -> tuple[str, str]:
+    if repository.fqdn.lower() == "github.com":
+        return "api.github.com", "/graphql"
+    return repository.fqdn, "/api/graphql"
+
+
+def transport_failure(e: Exception) -> CiObservation:
+    return CiObservation("unknown", "transport error: {}".format(type(e).__name__), transient=True)
+
+
+def interpret_ci_response(
+    response: interwebs.Response, oid: str, verify_push_tip: bool
+) -> CiObservation:
+    failure = interpret_graphql_failure(response)
+    if failure:
+        return failure
+
+    data = response.payload.get("data")
+    if verify_push_tip:
+        tip = _dig(data, "pushed", "ref", "target", "oid")
+        if tip != oid:
+            return CiObservation("unknown", "pushed ref does not point at the commit")
+
+    return interpret_commit(_dig(data, "repository", "object"), oid)
+
+
+def interpret_ci_statuses_response(
+    response: interwebs.Response, oids: Sequence[str]
+) -> dict[str, CiObservation]:
+    failure = interpret_graphql_failure(response)
+    if failure:
+        return dict.fromkeys(oids, failure)
+
+    repository = _dig(response.payload, "data", "repository")
+    if not isinstance(repository, dict):
+        return dict.fromkeys(oids, CiObservation("unknown", "repository not found"))
+
+    return {
+        oid: interpret_commit(repository.get("c{}".format(i)), oid)
+        for i, oid in enumerate(oids)
+    }
+
+
+def interpret_graphql_failure(response: interwebs.Response) -> CiObservation | None:
+    """
+    Return why `response` carries no usable data, or `None` if it does.
+    Any GraphQL error, even next to partial data, fails the whole response.
+    """
+    status = response.status
+    payload = response.payload
+    if status in (403, 429):
+        retry_after = _retry_after(response, throttled=status == 429 or _mentions_rate_limit(payload))
+        if retry_after is not None:
+            return CiObservation("unknown", "rate limited", retry_after=retry_after)
+    if status in (401, 403):
+        return CiObservation("unknown", "access denied (HTTP {})".format(status))
+    if status >= 500:
+        return CiObservation("unknown", "server error (HTTP {})".format(status), transient=True)
+    if not 200 <= status <= 299 or not response.is_json or not isinstance(payload, dict):
+        return CiObservation("unknown", "unexpected response (HTTP {})".format(status))
+
+    errors = payload.get("errors")
+    if errors:
+        error_types = sorted({
+            str(error.get("type")) for error in errors if isinstance(error, dict)
+        }) if isinstance(errors, list) else []
+        if "RATE_LIMITED" in error_types:
+            return CiObservation(
+                "unknown", "rate limited", retry_after=_retry_after(response, throttled=True)
+            )
+        return CiObservation("unknown", "GraphQL errors: {}".format(", ".join(error_types)))
+    return None
+
+
+def interpret_commit(commit: object, oid: str) -> CiObservation:
+    if not isinstance(commit, dict) or commit.get("oid") != oid:
+        return CiObservation("unknown", "commit not found")
+
+    rollup = commit.get("statusCheckRollup", ...)
+    if rollup is None:
+        return CiObservation("no_checks")
+    count = _dig(rollup, "contexts", "totalCount")
+    if not isinstance(count, int) or isinstance(count, bool):
+        return CiObservation("unknown", "malformed rollup")
+    if count == 0:
+        return CiObservation("no_checks")
+
+    state = rollup.get("state")
+    if state == "SUCCESS":
+        return CiObservation("success")
+    if state in ("FAILURE", "ERROR"):
+        return CiObservation("failure")
+    if state in ("PENDING", "EXPECTED"):
+        return CiObservation("pending")
+    return CiObservation("unknown", "unexpected rollup state: {}".format(state))
+
+
+def _retry_after(response: interwebs.Response, throttled: bool) -> float | None:
+    headers = response.headers
+    retry_after = headers.get("retry-after")
+    if retry_after is not None:
+        try:
+            return max(0.0, float(retry_after))
+        except ValueError:
+            pass
+    if headers.get("x-ratelimit-remaining") == "0":
+        try:
+            return max(0.0, float(headers["x-ratelimit-reset"]) - time.time())
+        except (KeyError, ValueError):
+            pass
+        throttled = True
+    return DEFAULT_THROTTLE_DELAY if throttled else None
+
+
+def _mentions_rate_limit(payload: object) -> bool:
+    message = payload.get("message") if isinstance(payload, dict) else payload
+    return isinstance(message, str) and "rate limit" in message.lower()
+
+
+def _dig(value: object, *keys: str) -> object:
+    for key in keys:
+        if not isinstance(value, dict):
+            return None
+        value = value.get(key)
+    return value
