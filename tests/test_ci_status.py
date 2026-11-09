@@ -1050,6 +1050,40 @@ class TestBatchLookups(CiWatcherTestCase):
         self.assertIsNone(self.text(MAIN_KEY), "nothing to clear, nothing published")
         self.assertEqual({}, ci_status.batch_lookups)
 
+    @p.expand([("success",), ("failure",)])
+    def test_pending_branches_are_polled_until_resolved(self, result):
+        self.look_up()
+        self.answer(a="pending", b="success")
+
+        self.assertEqual([], self.requests)
+        self.assertNotIn((REPO, MAIN_KEY), ci_status.runs)
+        self.at(ci_status.POLL_INTERVAL)
+        self.assertEqual(1, len(self.requests))
+        self.assertIsNone(self.requests[0][1], "no pushed ref to verify")
+        self.respond("pending")
+        self.assertEqual("pending", self.result())
+
+        self.at(2 * ci_status.POLL_INTERVAL)
+        self.respond(result)
+        if result == "success":
+            self.at(3 * ci_status.POLL_INTERVAL)
+            self.respond(result)
+
+        self.assertEqual(result, self.result())
+        self.at(3 * ci_status.POLL_INTERVAL + ci_status.ACKNOWLEDGE_DURATION)
+        self.assertEqual({}, ci_status.runs)
+
+    def test_refresh_does_not_restart_pending_watch(self):
+        self.look_up()
+        self.answer(a="pending", b="success")
+        run = ci_status.runs[(REPO, KEY)]
+
+        self.look_up()
+        self.assertEqual([MAIN_KEY], self.batches[0].keys)
+        self.answer(b="success")
+
+        self.assertIs(run, ci_status.runs[(REPO, KEY)])
+
     def test_branches_at_the_same_commit_share_the_observation(self):
         self.look_up([KEY, ("copy", OID)])
         self.answer(a="pending")

@@ -16,7 +16,8 @@ animation and no acknowledgements, only a failure shows as `[red]`.
 
 `on_branches_observed` looks up all pushed local branches with one
 request whenever the branches dashboard refreshes.  Its results are
-published like those of passive lookups.
+published like those of passive lookups.  Pending results start a run
+so the dashboard updates when CI resolves without a manual refresh.
 
 All observations also publish the plain CI state, e.g. "success", at
 
@@ -318,10 +319,21 @@ def start_run(
     integration_url: str,
     discovery: Sequence[float]
 ) -> None:
-    global runs, lookups
     if not is_enabled():
         return
+    start_run_(repo_path, key, repository, push_target, integration_url, discovery)
 
+
+@must_run_on_ui
+def start_run_(
+    repo_path: RepoPath,
+    key: CacheKey,
+    repository: github.GitHubRepo,
+    push_target: Optional[github.PushTarget],
+    integration_url: str,
+    discovery: Sequence[float]
+) -> Run:
+    global runs, lookups
     remember_source(repo_path, repository, integration_url)
     # A push supersedes a passive lookup of the same key.
     lookups.pop((repo_path, key), None)
@@ -343,6 +355,7 @@ def start_run(
     dprint("CI status: watch {} at {}/{}".format(key, repository.owner, repository.repo))
     advance(run, started_at)
     ensure_ticking()
+    return run
 
 
 @must_run_on_ui
@@ -728,6 +741,7 @@ def on_batch_lookup_result(batch: BatchLookup, observations: Dict[str, github.Ci
     del batch_lookups[repo_path]
 
     states: Dict[CacheKey, KnownState] = {}
+    pending: List[Tuple[CacheKey, github.CiObservation]] = []
     unknown: List[str] = []
     for key in batch.keys:
         observation = observations.get(key[1])
@@ -737,6 +751,8 @@ def on_batch_lookup_result(batch: BatchLookup, observations: Dict[str, github.Ci
             unknown.append("{} ({})".format(key[0], observation.reason))
             continue
         states[key] = observation.state
+        if observation.state == "pending":
+            pending.append((key, observation))
 
     dprint("CI status: looked up {} branches{}".format(
         len(states), ", unknown: {}".format(", ".join(unknown)) if unknown else ""
@@ -748,6 +764,13 @@ def on_batch_lookup_result(batch: BatchLookup, observations: Dict[str, github.Ci
         if text or key in cache:
             publish(repo_path, key, text)
     record_results(repo_path, states)
+
+    for key, observation in pending:
+        run = start_run_(
+            repo_path, key, batch.repository, None,
+            known_sources[repo_path].remote_url, (POLL_INTERVAL,)
+        )
+        on_observation(run, observation)
 
 
 def passive_text(state: KnownState) -> str:
