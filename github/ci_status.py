@@ -16,7 +16,8 @@ animation and no acknowledgements, only a failure shows as `[red]`.
 
 `on_branches_observed` looks up all pushed local branches with one
 request whenever the branches dashboard refreshes.  Its results are
-published like those of passive lookups.
+published like those of passive lookups.  Pending results start a run
+so the dashboard updates when CI resolves without a manual refresh.
 
 All observations also publish the plain CI state, e.g. "success", at
 
@@ -54,11 +55,12 @@ from GitSavvy.core.fns import last
 from GitSavvy.core.git_mixins.remotes import by_raw_key
 from GitSavvy.core.runtime import enqueue_on_ui, must_run_on_ui, run_new_daemon_thread
 from GitSavvy.core.settings import app_settings
+from GitSavvy.core.types import FullHash
 from GitSavvy.core.ui__busy_spinner import BusyIndicators
 from GitSavvy.core.utils import eat_but_log_errors
 from GitSavvy.github import github
 
-from typing import Callable, Dict, List, Literal, NamedTuple, Optional, Sequence, Tuple, TYPE_CHECKING
+from typing import Callable, Literal, NamedTuple, Optional, Sequence, Tuple, TYPE_CHECKING
 if TYPE_CHECKING:
     from GitSavvy.core.git_command import GitCommand
     from GitSavvy.core.git_mixins.branches import Branch
@@ -92,7 +94,7 @@ SETTLE_DELAY = 2.0  # [seconds] HEAD must stay put before a passive lookup
 MAX_BATCH_SIZE = 50  # branches per dashboard lookup
 
 RepoPath = str
-CacheKey = Tuple[str, str]  # (branch name, full commit hash)
+CacheKey = Tuple[str, FullHash]  # (branch name, full commit hash)
 RunKey = Tuple[RepoPath, CacheKey]
 Source = Tuple[str, str, str]  # lowercased (host, owner, repo) of the queried repository
 Result = Literal["success", "failure"]
@@ -140,18 +142,18 @@ class Lookup:
 @dataclass(eq=False)
 class BatchLookup:
     repo_path: RepoPath
-    keys: List[CacheKey]
+    keys: list[CacheKey]
     repository: github.GitHubRepo = field(repr=False)  # carries the token
 
 
-runs: Dict[RunKey, Run] = {}
-lookups: Dict[RunKey, Lookup] = {}
-batch_lookups: Dict[RepoPath, BatchLookup] = {}
+runs: dict[RunKey, Run] = {}
+lookups: dict[RunKey, Lookup] = {}
+batch_lookups: dict[RepoPath, BatchLookup] = {}
 # The last HEAD `git status` observed per repository, or `None` if it was
 # not eligible for a lookup.  Written on the threads running `git status`.
-observed_heads: Dict[RepoPath, Optional[CacheKey]] = {}
+observed_heads: dict[RepoPath, Optional[CacheKey]] = {}
 observed_heads_lock = threading.Lock()
-known_sources: Dict[RepoPath, KnownSource] = {}
+known_sources: dict[RepoPath, KnownSource] = {}
 ticking = False
 unsubscribe_store: Optional[Callable[[], None]] = None
 settings: Optional[sublime.Settings] = None
@@ -161,9 +163,9 @@ was_enabled = True
 def on_successful_push(
     cmd: GitCommand,
     remote: str,
-    destinations: List[PushDestination],
+    destinations: list[PushDestination],
     source_branch: str,
-    source_sha: Optional[str]
+    source_sha: Optional[FullHash]
 ) -> None:
     """
     Start observing CI for `source_sha` after `git push` succeeded.
@@ -318,10 +320,21 @@ def start_run(
     integration_url: str,
     discovery: Sequence[float]
 ) -> None:
-    global runs, lookups
     if not is_enabled():
         return
+    start_run_(repo_path, key, repository, push_target, integration_url, discovery)
 
+
+@must_run_on_ui
+def start_run_(
+    repo_path: RepoPath,
+    key: CacheKey,
+    repository: github.GitHubRepo,
+    push_target: Optional[github.PushTarget],
+    integration_url: str,
+    discovery: Sequence[float]
+) -> Run:
+    global runs, lookups
     remember_source(repo_path, repository, integration_url)
     # A push supersedes a passive lookup of the same key.
     lookups.pop((repo_path, key), None)
@@ -343,6 +356,7 @@ def start_run(
     dprint("CI status: watch {} at {}/{}".format(key, repository.owner, repository.repo))
     advance(run, started_at)
     ensure_ticking()
+    return run
 
 
 @must_run_on_ui
@@ -514,7 +528,7 @@ def publish(repo_path: RepoPath, key: CacheKey, text: str) -> None:
 
 
 @must_run_on_ui
-def record_results(repo_path: RepoPath, states: Dict[CacheKey, KnownState]) -> None:
+def record_results(repo_path: RepoPath, states: dict[CacheKey, KnownState]) -> None:
     """
     Publish plain CI states.  The dashboard renders them on the worker,
     so publish a changed copy instead of mutating the published cache.
@@ -527,8 +541,7 @@ def record_results(repo_path: RepoPath, states: Dict[CacheKey, KnownState]) -> N
     }
     if not changes:
         return
-    results = Cache(maxsize=current.maxsize)
-    results.update(current)
+    results = current.copy()
     results.update(changes)
     store.update_state(repo_path, {"github_ci_results": results})
 
@@ -691,7 +704,7 @@ def on_lookup_result(lookup: Lookup, observation: github.CiObservation) -> None:
 @must_run_on_ui
 def start_batch_lookup(
     repo_path: RepoPath,
-    keys: List[CacheKey],
+    keys: list[CacheKey],
     repository: github.GitHubRepo,
     integration_url: str
 ) -> None:
@@ -721,15 +734,16 @@ def fetch_batch_lookup(batch: BatchLookup) -> None:
 
 
 @must_run_on_ui
-def on_batch_lookup_result(batch: BatchLookup, observations: Dict[str, github.CiObservation]) -> None:
+def on_batch_lookup_result(batch: BatchLookup, observations: dict[FullHash, github.CiObservation]) -> None:
     global batch_lookups, runs
     repo_path = batch.repo_path
     if batch_lookups.get(repo_path) is not batch:
         return
     del batch_lookups[repo_path]
 
-    states: Dict[CacheKey, KnownState] = {}
-    unknown: List[str] = []
+    states: dict[CacheKey, KnownState] = {}
+    pending: list[tuple[CacheKey, github.CiObservation]] = []
+    unknown: list[str] = []
     for key in batch.keys:
         observation = observations.get(key[1])
         if (repo_path, key) in runs or not observation:
@@ -738,6 +752,8 @@ def on_batch_lookup_result(batch: BatchLookup, observations: Dict[str, github.Ci
             unknown.append("{} ({})".format(key[0], observation.reason))
             continue
         states[key] = observation.state
+        if observation.state == "pending":
+            pending.append((key, observation))
 
     dprint("CI status: looked up {} branches{}".format(
         len(states), ", unknown: {}".format(", ".join(unknown)) if unknown else ""
@@ -749,6 +765,13 @@ def on_batch_lookup_result(batch: BatchLookup, observations: Dict[str, github.Ci
         if text or key in cache:
             publish(repo_path, key, text)
     record_results(repo_path, states)
+
+    for key, observation in pending:
+        run = start_run_(
+            repo_path, key, batch.repository, None,
+            known_sources[repo_path].remote_url, (POLL_INTERVAL,)
+        )
+        on_observation(run, observation)
 
 
 def passive_text(state: KnownState) -> str:
@@ -786,7 +809,7 @@ def passive_key(cmd: GitCommand, head: HeadState) -> Optional[CacheKey]:
     return (head.branch or DETACHED, head.commit_hash)
 
 
-def branch_keys(branches: Sequence[Branch]) -> List[CacheKey]:
+def branch_keys(branches: Sequence[Branch]) -> list[CacheKey]:
     """
     Return the keys of the local branches that look pushed, the most
     recently committed first, at most `MAX_BATCH_SIZE`.
@@ -807,7 +830,7 @@ def branch_keys(branches: Sequence[Branch]) -> List[CacheKey]:
 def integration_repository(
     remote_info: RemoteInfoBlob,
     verbose: bool = True
-) -> Optional[Tuple[github.GitHubRepo, str]]:
+) -> Optional[tuple[github.GitHubRepo, str]]:
     """
     Return the integration repository to query, and its remote url, if
     it is on a known GitHub host and we have a token for it.  With
@@ -834,7 +857,7 @@ def integration_repository(
     return repository, integration_url
 
 
-def single_branch_update(destinations: List[PushDestination]) -> Optional[Tuple[str, str]]:
+def single_branch_update(destinations: list[PushDestination]) -> Optional[tuple[str, str]]:
     """
     Return the push url and the qualified destination ref of a push that
     updated exactly one branch on exactly one destination, otherwise `None`.

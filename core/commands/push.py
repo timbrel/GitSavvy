@@ -9,6 +9,7 @@ from ..ui_mixins.quick_panel import show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.base_commands import GsWindowCommand
 from GitSavvy.core.runtime import enqueue_on_worker, run_on_new_thread
+from GitSavvy.core.types import FullHash
 from GitSavvy.core.utils import eat_but_log_errors
 from ..ui__quick_panel import noop, show_actions_panel
 
@@ -39,7 +40,7 @@ class PushMixin(GsWindowCommand):
         force_with_lease: bool = False,
         remote_branch: Optional[str] = None,
         set_upstream: bool = False,
-        local_branch_sha: Optional[str] = None
+        local_branch_sha: Optional[FullHash] = None
     ) -> None:
         """
         Perform `git push remote branch`.
@@ -77,7 +78,7 @@ class PushMixin(GsWindowCommand):
                 local_branch_sha or self.head_commit_of(branch)
             )
 
-    def head_commit_of(self, branch: str) -> Optional[str]:
+    def head_commit_of(self, branch: str) -> Optional[FullHash]:
         head = self.current_state().get("head")
         return head.commit_hash if head and head.branch == branch else None
 
@@ -217,7 +218,7 @@ class gs_push_to_branch_name(PushMixin):
         force: bool = False,
         force_with_lease: bool = False,
         remember_used_remote: bool = False,
-        local_branch_sha: Optional[str] = None
+        local_branch_sha: Optional[FullHash] = None
     ) -> None:
         if remember_used_remote:
             run_on_new_thread(self.git, "config", "--local", "gitsavvy.pushdefault", remote)
@@ -245,7 +246,7 @@ class gs_push_to_branch(PushMixin):
     }
 
     def run(
-        self, local_branch_name: str, remote_branch: str, local_branch_sha: Optional[str] = None
+        self, local_branch_name: str, remote_branch: str, local_branch_sha: Optional[FullHash] = None
     ) -> None:
         remote, branch_name = remote_branch.split("/", 1)
         enqueue_on_worker(

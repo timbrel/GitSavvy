@@ -2,13 +2,14 @@ from __future__ import annotations
 
 from unittesting import DeferrableTestCase
 
+from GitSavvy.core.types import FullHash
 from GitSavvy.github import github
 from GitSavvy.tests.mockito import any as ANY, unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized as p
 
 
-OID = "a" * 40
-OTHER_OID = "b" * 40
+OID = FullHash("a" * 40)
+OTHER_OID = FullHash("b" * 40)
 
 
 class TestGitHubCiStatusRequest(DeferrableTestCase):
