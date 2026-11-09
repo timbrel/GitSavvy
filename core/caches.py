@@ -21,6 +21,16 @@ class Cache(OrderedDict):
         self.maxsize = maxsize
         super().__init__()
 
+    def update(self, other=(), /, **kwargs) -> None:
+        if isinstance(other, Cache):
+            other = list(other.items()) if other is self else other.items()
+        super().update(other, **kwargs)
+
+    def copy(self) -> Cache:
+        result = Cache(maxsize=self.maxsize)
+        result.update(self)
+        return result
+
     def __getitem__(self, key):
         value = super().__getitem__(key)
         # py>3.8 is optimized such that `pop` and `popitem`
