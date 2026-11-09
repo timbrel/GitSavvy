@@ -53,9 +53,11 @@ When looking at a commit, `[h]` will appear in the top right corner when that co
 
 ## `github: open file in browser`
 
-This command is accessible via both the command palette and the status dashboard.  GitSavvy will attempt to determine the GitHub web URL for the file at the current hash, and open a browser with that URL.
+This command is accessible via the command palette and `[h]` in the status dashboard.  It opens the file on the current branch's upstream if that upstream belongs to the selected remote; otherwise it uses the remote's default branch.  Local edits and unpushed commits do not prevent opening the published file.  GitSavvy uses locally known remote-tracking refs, so fetch first if they are out of date.
 
-When run from within a file (not the status dashboard), any selected lines will also be preselected on GitHub in the browser.
+When opening with line selections (`preselect`), GitSavvy maps the selected lines to the published file, including shifts caused by local edits.  If the file or selected lines are not present there, it reports that instead of opening an unrelated location.  The URL uses the branch name; press `y` on GitHub to turn it into a permalink before sharing.
+
+In a historical file view, `[h]` opens that exact revision and preserves the selected lines.  If the revision has not been pushed to the selected remote, GitSavvy reports it as unpublished rather than substituting another revision.
 
 ## `github: open repo`
 

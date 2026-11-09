@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from difflib import SequenceMatcher
 from webbrowser import open as open_in_browser
 
 import sublime
@@ -19,10 +20,6 @@ __all__ = (
     "gs_github_open_repo",
     "gs_github_open_issues",
 )
-
-
-EARLIER_COMMIT_PROMPT = ("The remote chosen may not contain the commit. "
-                         "Open the file {} before?")
 
 
 class GsGithubFileUrlMixin(GsTextCommand, git_mixins.GithubRemotesMixin):
@@ -58,78 +55,77 @@ class GsGithubFileUrlMixin(GsTextCommand, git_mixins.GithubRemotesMixin):
         else:
             show_remote_panel(self.open_file_on_remote, allow_direct=True)
 
-    def open_file_on_remote(self, remote):
-        fpath = self.fpath
-        if isinstance(fpath, str):
-            fpath = [fpath]
-        remote_url = self.remotes[remote]
-
-        if self.view.settings().get("git_savvy.show_file_at_commit_view"):
-            # if it is a show_file_at_commit_view, get the hash from settings
-            commit_hash = self.view.settings().get("git_savvy.show_file_at_commit_view.commit")
-        elif len(fpath) > 1:
-            commit_hash = self.get_commit_hash_for_head()
+    def open_file_on_remote(self, remote: str) -> None:
+        paths = [self.fpath] if isinstance(self.fpath, str) else self.fpath
+        if not paths:
+            return
+        settings = self.view.settings()
+        historical = settings.get("git_savvy.show_file_at_commit_view", False)
+        if historical:
+            revision = commit = settings.get("git_savvy.show_file_at_commit_view.commit")
+            if not commit or remote not in self.remotes_containing_commit(commit):
+                flash(self.view, f"This revision has not been pushed to {remote} yet.")
+                return
         else:
-            commit_hash = self.git(
-                "rev-list",
-                "-1",
-                "HEAD",
-                "--",
-                fpath[0],
-                throw_on_error=False
-            ).strip() or self.get_commit_hash_for_head()
+            target = self.published_branch(remote)
+            if target is None:
+                return
+            revision, commit = target
 
-        base_hash = commit_hash
-
-        # check if the remote contains the commit hash
-        if remote not in self.remotes_containing_commit(commit_hash):
-            upstream = self.get_upstream_for_active_branch()
-            if upstream:
-                merge_base = self.git("merge-base", commit_hash, upstream.canonical_name).strip()
-                if merge_base and remote in self.remotes_containing_commit(merge_base):
-                    count = self.git(
-                        "rev-list", "--count", "{}..{}".format(merge_base, commit_hash)).strip()
-                    if not sublime.ok_cancel_dialog(EARLIER_COMMIT_PROMPT.format(
-                            count + (" commit" if count == "1" else " commits"))):
-                        return
-
-                    commit_hash = merge_base
-            else:
-                flash(self.view, "This revision has not been pushed upstream yet.")
+        published_paths = self.git(
+            "ls-tree", "-r", "-z", "--name-only", commit, "--", *paths
+        ).split("\0")
+        for path in paths:
+            if path not in published_paths:
+                flash(self.view, f"{path} does not exist at {revision} on {remote}.")
                 return
 
-        start_line = None
-        end_line = None
+        start_line = end_line = None
+        if self.preselect and len(paths) == 1 and self.view.sel():
+            selection = sublime.Region(self.view.sel()[0].begin(), self.view.sel()[-1].end())
+            start_line = self.view.rowcol(selection.begin())[0] + 1
+            end_line = self.view.rowcol(max(selection.begin(), selection.end() - 1))[0] + 1
+            if not historical:
+                content = self.view.substr(sublime.Region(0, self.view.size()))
+                published_content = self.get_file_content_at_commit(paths[0], commit)
+                lines = matching_lines(content, published_content, start_line, end_line)
+                if lines is None:
+                    flash(self.view, f"The selected lines are not published on {remote}/{revision}.")
+                    return
+                start_line, end_line = lines
 
-        if self.preselect and len(fpath) == 1:
-            selections = self.view.sel()
-            if len(selections) >= 1:
-                first_selection = selections[0]
-                last_selection = selections[-1]
-                # Git lines are 1-indexed; Sublime rows are 0-indexed.
-                start_line = self.view.rowcol(first_selection.begin())[0] + 1
-                end_line = self.view.rowcol(last_selection.end())[0] + 1
-
-                # forward line number if the opening commit is the merge base
-                if base_hash != commit_hash:
-                    diff = self.no_context_diff(base_hash, commit_hash, fpath[0])
-                    start_line = self.adjust_line_according_to_diff(diff, start_line)
-                    end_line = self.adjust_line_according_to_diff(diff, end_line)
-
-        urls = [
+        self.computed_urls([
             construct_github_file_url(
-                p,
-                remote_url,
-                commit_hash,
-                start_line=start_line,
-                end_line=end_line
+                path, self.remotes[remote], revision,
+                start_line=start_line, end_line=end_line
             )
-            for p in fpath
-        ]
-        self.computed_urls(urls)
+            for path in paths
+        ])
 
     def computed_urls(self, urls: list[str]) -> None:
         raise NotImplementedError
+
+    def published_branch(self, remote: str) -> tuple[str, str] | None:
+        """Choose a browser branch name and its locally known snapshot."""
+        upstream = self.get_upstream_for_active_branch()
+        if upstream and upstream.remote == remote and upstream.status != "gone":
+            branch = upstream.branch
+        else:
+            default = self.guess_default_branch(remote)
+            if not default:
+                flash(self.view, f"Could not determine the default branch of {remote}.")
+                return None
+            prefix = remote + "/"
+            branch = default[len(prefix):] if default.startswith(prefix) else default
+
+        commit = self.git(
+            "rev-parse", "--verify", "--quiet", f"refs/remotes/{remote}/{branch}^{{commit}}",
+            throw_on_error=False
+        ).strip()
+        if not commit:
+            flash(self.view, f"{remote}/{branch} is not available locally. Fetch {remote} first.")
+            return None
+        return branch, commit
 
 
 class gs_github_open_file_in_browser(GsGithubFileUrlMixin):
@@ -179,3 +175,15 @@ class gs_github_open_issues(GsTextCommand, git_mixins.GithubRemotesMixin):
 
     def run(self, edit):
         open_issues(self.get_integrated_remote_url())
+
+
+def matching_lines(
+    content: str, published_content: str, start: int, end: int
+) -> tuple[int, int] | None:
+    """Map a 1-based line range only when all its lines are unchanged."""
+    matcher = SequenceMatcher(None, content.splitlines(), published_content.splitlines(), autojunk=False)
+    for local_start, remote_start, length in matcher.get_matching_blocks():
+        if local_start <= start - 1 and end <= local_start + length:
+            offset = remote_start - local_start
+            return start + offset, end + offset
+    return None

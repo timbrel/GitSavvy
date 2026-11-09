@@ -10,6 +10,7 @@ import subprocess
 import time
 from functools import lru_cache, partial
 from typing import Literal, NamedTuple, Sequence
+from urllib.parse import quote
 from webbrowser import open as open_in_browser
 
 from ..core import interwebs
@@ -138,8 +139,8 @@ def construct_github_file_url(rel_path, remote_url, commit_hash, start_line=None
 
     return "{repo_url}/blob/{commit_hash}/{path}{lines}".format(
         repo_url=github_repo.url,
-        commit_hash=commit_hash,
-        path=rel_path,
+        commit_hash=quote(commit_hash, safe=""),
+        path=quote(rel_path, safe="/"),
         lines=line_numbers
     )
 
