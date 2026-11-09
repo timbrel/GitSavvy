@@ -48,8 +48,8 @@ class gs_github_create_repo(GsWindowCommand):
     }
 
     @on_worker
-    def run(self, token: str, name: str) -> None:
-        payload = github.create_user_repo(token, name)
+    def run(self, token: str, name: str, private: bool = False) -> None:
+        payload = github.create_user_repo(token, name, private=private)
         self.window.status_message("The repo was created successfully.")
         urls = [payload["clone_url"], payload["ssh_url"]]
 

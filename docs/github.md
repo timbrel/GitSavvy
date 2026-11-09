@@ -19,30 +19,11 @@ When interacting with a public repository, no configuration is required.  Howeve
 By default, GitSavvy will use the URL of `origin` to get its GitHub API URL.  If you would like to use a remote other than origin, run `github: set remote for integration` in the command palette.  You will be presented with a list of remotes.  Once one is selected, this remote will be used for all attempts at integration with GitHub.
 
 
-## `github: open file on remote`
+## `github: create repo` / `github: create private repo`
 
-This command is accessible via both the command palette and the status dashboard.  GitSavvy will attempt to determine the GitHub web URL for the file at the current hash, and open a browser with that URL.
+These command palette commands create a public or private repository on GitHub.com under the authenticated user's account.  Both require an API token configured as described in Setup above, with permission to create repositories.
 
-When run from within a file (not the status dashboard), any selected lines will also be preselected on GitHub in the browser.
-
-
-## `github: open issues`
-
-This command will open a new browser window, displaying the issues page for the integrated GitHub remote.
-
-
-## `github: open repo`
-
-This command will open a new browser window, displaying the landing page for the integrated GitHub remote.
-
-## `github: review pull request`
-
-This command will display all open pull requests for the integrated GitHub remote.  Once you have made a selection, you can either checkout the pull request as a detached HEAD, checkout the pull request as a local branch, create a branch but not check it out, view the diff of the pull request, or open the pull request in the browser.
-
-
-## `github: create pull request`
-
-This command will create a pull request in the browser on the integrated GitHub remote repo.
+Enter the new repository's name, then choose a local remote name (defaulting to `origin`) and its HTTPS or SSH URL.  GitSavvy adds the remote to your local repository; it does not push any commits automatically.
 
 ## `github: create fork`
 
@@ -51,6 +32,36 @@ This command will create a fork of the current GitHub remote repo in the configu
 ## `github: add fork as remote`
 
 Add a new remote from a list of repos on GitHub forking from the active repo.
+
+
+## `open commit in the browser`
+
+When looking at a commit, `[h]` will appear in the top right corner when that commit is also available on the upstream.
+
+## `github: open file in browser`
+
+This command is accessible via both the command palette and the status dashboard.  GitSavvy will attempt to determine the GitHub web URL for the file at the current hash, and open a browser with that URL.
+
+When run from within a file (not the status dashboard), any selected lines will also be preselected on GitHub in the browser.
+
+## `github: open repo`
+
+This command will open a new browser window, displaying the landing page for the integrated GitHub remote.
+
+## `github: open issues`
+
+This command will open a new browser window, displaying the issues page for the integrated GitHub remote.
+
+
+
+## `github: create pull request`
+
+This command will create a pull request in the browser on the integrated GitHub remote repo.
+
+## `github: review pull request`
+
+This command will display all open pull requests for the integrated GitHub remote.  Once you have made a selection, you can either checkout the pull request as a detached HEAD, checkout the pull request as a local branch, create a branch but not check it out, view the diff of the pull request, or open the pull request in the browser.
+
 
 
 ## `issues integration in commit view`

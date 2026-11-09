@@ -22,7 +22,6 @@ from ...common import util
 
 from GitSavvy.github import github
 from GitSavvy.github.git_mixins import GithubRemotesMixin
-from GitSavvy.common import interwebs
 
 
 __all__ = (
@@ -130,17 +129,15 @@ class gs_show_commit_refresh(TextCommand, GithubRemotesMixin, GitCommand):
         self.view.set_name(title)
 
     @cached_until_focus_switch
-    def annotate_with_github_link(self, commit):
-        # type: (str) -> None
+    def annotate_with_github_link(self, commit: str) -> None:
         try:
             remote_url = cached_until_focus_switch(self.get_integrated_remote_url)
         except ValueError:
             return
         github_repo = github.parse_remote(remote_url)
-        auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
         url = "{}/commit/{}".format(github_repo.url, commit)
         try:
-            response = interwebs.request_url("HEAD", url, auth=auth)
+            exists = github.commit_exists(commit, github_repo)
         except Exception:
             return
 
@@ -148,15 +145,14 @@ class gs_show_commit_refresh(TextCommand, GithubRemotesMixin, GitCommand):
             if self.view.settings().get("git_savvy.show_commit_view.commit") == commit:
                 self.update_annotation_link(url)
 
-        if 200 <= response.status < 300:
+        if exists:
             url_cache[commit] = url
             ensure_on_ui(sink, url)
         else:
             url_cache.pop(commit, None)
             ensure_on_ui(sink, None)
 
-    def update_annotation_link(self, url):
-        # type: (Optional[str]) -> None
+    def update_annotation_link(self, url: Optional[str]) -> None:
         key = "link_to_github"
         regions = [sublime.Region(0)]
         annotations = [
@@ -192,17 +188,16 @@ class gs_show_commit_open_on_github(TextCommand, GithubRemotesMixin, GitCommand)
             return
 
         github_repo = github.parse_remote(remote_url)
-        auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
 
         for commit in commits:
             url = "{}/commit/{}".format(github_repo.url, commit)
             try:
-                response = interwebs.request_url("HEAD", url, auth=auth)
+                exists = github.commit_exists(commit, github_repo)
             except Exception as exc:
                 flash(self.view, str(exc))
                 return
 
-            if 200 <= response.status < 300:
+            if exists:
                 open_in_browser(url)
             else:
                 flash(self.view, "commit {} not found on {}".format(commit, github_repo.url))

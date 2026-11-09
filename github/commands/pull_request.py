@@ -4,7 +4,6 @@ import urllib
 
 from .. import github
 from .. import git_mixins
-from ...common import interwebs
 from ...common import util
 from ...core.commands.push import gs_push_to_branch_name
 from ...core.fns import filter_
@@ -103,17 +102,28 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
             self.window.status_message(f"Timeout: could not fetch the PR details within {timeout} seconds.")
             return
 
-        owner = self.pr["head"]["repo"]["owner"]["login"]
+        if idx == 0:
+            self.checkout_detached()
+            return
+        elif idx == 3:
+            self.view_diff_for_pr()
+            return
+        elif idx == 4:
+            self.open_pr_in_browser()
+            return
+        elif idx == -1:
+            return
 
-        if owner == self.base_remote.owner:
+        head_repo = self.pr["head"]["repo"]
+        if head_repo is None:
+            branch_name = "pr-{}".format(self.pr["number"])
+        elif head_repo["owner"]["login"] == self.base_remote.owner:
             # don't add prefix for integrated remote
             branch_name = self.pr["head"]["ref"]
         else:
-            branch_name = "{}-{}".format(owner, self.pr["head"]["ref"])
+            branch_name = "{}-{}".format(head_repo["owner"]["login"], self.pr["head"]["ref"])
 
-        if idx == 0:
-            self.checkout_detached()
-        elif idx == 1:
+        if idx == 1:
             show_single_line_input_panel(
                 "Enter branch name for PR {}:".format(self.pr["number"]),
                 branch_name,
@@ -125,21 +135,30 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
                 branch_name,
                 lambda branch_name: self.create_branch_for_pr(branch_name, checkout=False)
             )
-        elif idx == 3:
-            self.view_diff_for_pr()
-        elif idx == 4:
-            self.open_pr_in_browser()
 
     def checkout_detached(self):
         self.window.status_message("Checking out PR...")
 
-        url = self.best_remote_url_for_pr()
-        ref = self.pr["head"]["ref"]
-        self.git("fetch", url, ref)
+        if self.pr["head"]["repo"] is None:
+            self.git("fetch", self.base_remote_name, "refs/pull/{}/head".format(self.pr["number"]))
+        else:
+            url = self.best_remote_url_for_pr()
+            ref = self.pr["head"]["ref"]
+            self.git("fetch", url, ref)
         self.window.run_command("gs_checkout_branch", {"branch": "FETCH_HEAD"})
 
     def create_branch_for_pr(self, branch_name, checkout=False, ask_set_upstream=True):
         if not branch_name:
+            return
+
+        if self.pr["head"]["repo"] is None:
+            self.window.status_message("Creating local branch for PR...")
+            self.git("fetch", self.base_remote_name, "refs/pull/{}/head".format(self.pr["number"]))
+            self.git("branch", "--no-track", branch_name, "FETCH_HEAD")
+            if checkout:
+                self.window.run_command("gs_checkout_branch", {"branch": branch_name})
+            else:
+                util.view.refresh_gitsavvy_interfaces(self.window)
             return
 
         url = self.best_remote_url_for_pr()
@@ -188,16 +207,16 @@ class gs_github_pull_request(GsWindowCommand, git_mixins.GithubRemotesMixin):
     def best_remote_url_for_pr(self):
         clone_url = self.pr["head"]["repo"]["clone_url"]
         ssh_url = self.pr["head"]["repo"]["ssh_url"]
-        return ssh_url if self.base_remote_url.startswith("git@") else clone_url
+        return ssh_url if self.base_remote_url.startswith(("git@", "ssh://")) else clone_url
 
     def view_diff_for_pr(self):
-        response = interwebs.get_url(self.pr["diff_url"])
+        diff = github.get_pull_request_diff(self.pr["number"], self.base_remote)
 
         diff_view = util.view.create_scratch_view(self.window, "pr_diff", {
             "title": "PR #{}".format(self.pr["number"]),
             "syntax": "Packages/GitSavvy/syntax/diff.sublime-syntax",
         })
-        replace_view_content(diff_view, response.payload.decode("utf-8"))
+        replace_view_content(diff_view, diff)
 
     def open_pr_in_browser(self):
         open_in_browser(self.pr["html_url"])

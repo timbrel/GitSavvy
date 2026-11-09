@@ -191,13 +191,13 @@ def github_api_url(
         query_params=interwebs.urlencode(kwargs))
 
 
-def validate_response(response, method="GET"):
+def validate_response(response, method="GET", *, expect_json=True):
     action = {"GET": 'querying', "POST": 'posting to'}[method]
 
     if response.status in [401, 403]:
         raise FailedGithubRequest(AUTH_ERROR_TEMPLATE.format(action=action))
 
-    if response.status < 200 or response.status > 299 or not response.is_json:
+    if response.status < 200 or response.status > 299 or (expect_json and not response.is_json):
         raise FailedGithubRequest(GITHUB_ERROR_TEMPLATE.format(
             action=action, payload=response.payload))
 
@@ -274,6 +274,35 @@ def get_pull_request(nr: str | int, github_repo: GitHubRepo):
     return get_from_github(f"/repos/{{owner}}/{{repo}}/pulls/{nr}", github_repo)
 
 
+def commit_exists(commit: str, github_repo: GitHubRepo) -> bool:
+    fqdn, path = github_api_url(f"/repos/{{owner}}/{{repo}}/commits/{commit}", github_repo)
+    auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
+    response = interwebs.request(
+        "HEAD", fqdn, 443, path, auth=auth,
+        headers={
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28"
+        })
+    # GitHub returns 422 for an unknown SHA, and 404 for a missing repository.
+    if response.status in (404, 422):
+        return False
+    validate_response(response, expect_json=False)
+    return True
+
+
+def get_pull_request_diff(nr: int, github_repo: GitHubRepo) -> str:
+    fqdn, path = github_api_url(f"/repos/{{owner}}/{{repo}}/pulls/{nr}", github_repo)
+    auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
+    response = interwebs.get(
+        fqdn, 443, path, auth=auth,
+        headers={
+            "Accept": "application/vnd.github.diff",
+            "X-GitHub-Api-Version": "2022-11-28"
+        })
+    validate_response(response, expect_json=False)
+    return response.payload.decode("utf-8")
+
+
 def get_from_github(api_url_template: str, github_repo: GitHubRepo):
     fqdn, path = github_api_url(api_url_template, github_repo)
     auth = (github_repo.token, "x-oauth-basic") if github_repo.token else None
@@ -311,15 +340,15 @@ def create_fork(github_repo: GitHubRepo, default_branch_only: bool = False):
     )
 
 
-def create_user_repo(token: str, repo_name: str) -> dict:
-    return create_repo(token, None, repo_name)
+def create_user_repo(token: str, repo_name: str, private: bool = False) -> dict:
+    return create_repo(token, None, repo_name, private=private)
 
 
-def create_repo(token: str, org: str | None, repo_name: str) -> dict:
+def create_repo(token: str, org: str | None, repo_name: str, private: bool = False) -> dict:
     host = "api.github.com"
     path = f"/orgs/{org}/repos" if org else "/user/repos"
     auth = (token, "x-oauth-basic")
-    payload = {"name": repo_name}
+    payload = {"name": repo_name, "private": private}
 
     response = interwebs.post(host, 443, path, auth=auth, payload=payload)
     validate_response(response, method="POST")
