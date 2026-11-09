@@ -23,8 +23,8 @@ from GitSavvy.tests.parameterized import parameterized as p
 
 
 REPO = "/fake/ci-repo"
-OID = "a" * 40
-OTHER_OID = "b" * 40
+OID = FullHash("a" * 40)
+OTHER_OID = FullHash("b" * 40)
 KEY = ("feature", OID)
 MAIN_KEY = ("main", OTHER_OID)
 UPSTREAM_URL = "git@github.com:upstream/project.git"

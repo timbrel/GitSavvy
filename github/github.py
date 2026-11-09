@@ -16,6 +16,7 @@ from webbrowser import open as open_in_browser
 from ..core import interwebs
 from ..core.exceptions import FailedGithubRequest
 from ..core.settings import app_settings
+from ..core.types import FullHash
 from ..core.utils import STARTUPINFO
 
 
@@ -443,7 +444,7 @@ def is_github_host(fqdn: str) -> bool:
 
 def query_ci_status(
     repository: GitHubRepo,
-    oid: str,
+    oid: FullHash,
     push_target: PushTarget | None = None,
     timeout: float = CI_REQUEST_TIMEOUT
 ) -> CiObservation:
@@ -479,9 +480,9 @@ def query_ci_status(
 
 def query_ci_statuses(
     repository: GitHubRepo,
-    oids: Sequence[str],
+    oids: Sequence[FullHash],
     timeout: float = CI_REQUEST_TIMEOUT
-) -> dict[str, CiObservation]:
+) -> dict[FullHash, CiObservation]:
     """
     Observe the commit-check rollups of several commits in `repository`
     with one request.
@@ -547,7 +548,7 @@ def transport_failure(e: Exception) -> CiObservation:
 
 
 def interpret_ci_response(
-    response: interwebs.Response, oid: str, verify_push_tip: bool
+    response: interwebs.Response, oid: FullHash, verify_push_tip: bool
 ) -> CiObservation:
     failure = interpret_graphql_failure(response)
     if failure:
@@ -563,8 +564,8 @@ def interpret_ci_response(
 
 
 def interpret_ci_statuses_response(
-    response: interwebs.Response, oids: Sequence[str]
-) -> dict[str, CiObservation]:
+    response: interwebs.Response, oids: Sequence[FullHash]
+) -> dict[FullHash, CiObservation]:
     failure = interpret_graphql_failure(response)
     if failure:
         return dict.fromkeys(oids, failure)
@@ -610,7 +611,7 @@ def interpret_graphql_failure(response: interwebs.Response) -> CiObservation | N
     return None
 
 
-def interpret_commit(commit: object, oid: str) -> CiObservation:
+def interpret_commit(commit: object, oid: FullHash) -> CiObservation:
     if not isinstance(commit, dict) or commit.get("oid") != oid:
         return CiObservation("unknown", "commit not found")
 

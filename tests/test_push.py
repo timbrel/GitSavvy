@@ -6,13 +6,14 @@ from GitSavvy.core.commands import push
 from GitSavvy.core.exceptions import GitSavvyError
 from GitSavvy.core.git_mixins.remotes import PushDestination, PushedRef
 from GitSavvy.core.git_mixins.status import HeadState
+from GitSavvy.core.types import FullHash
 from GitSavvy.github.commands.pull_request import gs_github_push_and_create_pull_request
 from GitSavvy.tests.mockito import mock, unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized as p
 
 
-OID = "a" * 40
-HEAD_OID = "c" * 40
+OID = FullHash("a" * 40)
+HEAD_OID = FullHash("c" * 40)
 PUSHED = [PushDestination("https://github.com/me/project", [
     PushedRef("*", "refs/heads/feature", "refs/heads/feature", "[new branch]")
 ])]
