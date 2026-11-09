@@ -39,7 +39,10 @@ UI_THREAD_NAME: str = threading.current_thread().name
 WORKER_THREAD_NAME: str | None = None
 savvy_executor = ThreadPoolExecutor(max_workers=1)
 auto_timeout = threading.local()
-_enqueued_tasks = utils.Counter()
+# Queued callbacks survive reloads. Resetting their counter would drive it
+# negative when they run, leaving idle callbacks spinning forever.
+if '_enqueued_tasks' not in globals():
+    _enqueued_tasks = utils.Counter()
 
 
 def determine_thread_names():
