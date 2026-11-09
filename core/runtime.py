@@ -18,7 +18,7 @@ from .exceptions import GitSavvyError
 from . import utils
 
 from typing import (
-    Any, Callable, Dict, Generator, Literal, Optional, Sequence, Tuple, TypeVar, Union,
+    Any, Callable, Dict, Generator, Hashable, Literal, Optional, Sequence, Tuple, TypeVar, Union,
     overload)
 
 from typing_extensions import Concatenate as Con, ParamSpec, TypeAlias
@@ -177,7 +177,7 @@ def _run_when_worker_is_idle(
         if _enqueued_tasks.count() == 0:
             action()
         else:
-            sublime.set_timeout_async(task)
+            _enqueue_on_worker(task)
 
     _enqueue_on_worker(task, after)
 
@@ -375,22 +375,39 @@ class gs_generic_text_cmd(sublime_plugin.TextCommand):
             RESULTS[token] = rv
 
 
-THROTTLED_CACHE = {}
+THROTTLED_CACHE: dict[Hashable, object] = {}
 THROTTLED_LOCK = threading.Lock()
 
 
-def throttled(fn, *args, **kwargs):
-    # type: (Callable[P, T], P.args, P.kwargs) -> Callable[[], None]
-    token = (fn,)
-    action = partial(fn, *args, **kwargs)
-    with THROTTLED_LOCK:
-        THROTTLED_CACHE[token] = action
+def throttled(fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> Callable[[], None]:
+    """Keep only the latest pending call per function definition, across instances and reloads."""
+    key = (fn.__module__, fn.__qualname__)
+    return throttled__(key=key, fn=fn, args=args, kwargs=kwargs)
 
-    def task():
+
+def throttled_by_key(
+    key: Hashable, fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs
+) -> Callable[[], None]:
+    """Keep the latest pending call per function definition and explicit target key."""
+    operation = (fn.__module__, fn.__qualname__)
+    return throttled__(key=(operation, key), fn=fn, args=args, kwargs=kwargs)
+
+
+def throttled__(
+    *, key: Hashable, fn: Callable[..., Any], args: tuple, kwargs: dict
+) -> Callable[[], None]:
+    token = object()
+    with THROTTLED_LOCK:
+        THROTTLED_CACHE[key] = token
+
+    def task() -> None:
         with THROTTLED_LOCK:
-            ok = THROTTLED_CACHE.get(token) == action
-        if ok:
-            action()
+            if THROTTLED_CACHE.get(key) is not token:
+                return
+            del THROTTLED_CACHE[key]
+        # Claim the request before executing: subsequent requests must survive,
+        # including ones scheduled by fn itself. Never hold the lock across fn.
+        fn(*args, **kwargs)
 
     return task
 

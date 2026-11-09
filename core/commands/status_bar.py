@@ -28,10 +28,10 @@ class GsStatusBarEventListener(EventListener):
 
 
 class gs_update_status(GsTextCommand):
-    def run(self, edit):
-        run_when_worker_is_idle(throttled(self.run_impl, self.view))
+    def run(self, edit) -> None:
+        run_when_worker_is_idle(throttled(self.run_impl))
 
-    def run_impl(self, view):
+    def run_impl(self) -> None:
         repo_path = self.find_repo_path()
         if repo_path:
             try:

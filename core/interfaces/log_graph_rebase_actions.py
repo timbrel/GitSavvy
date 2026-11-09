@@ -21,7 +21,7 @@ from GitSavvy.core.interfaces.log_graph_helper import (
 from GitSavvy.core.fns import filter_, unique
 from GitSavvy.core.git_command import GitCommand, GitSavvyError
 from GitSavvy.core.text_helper import TextRange, line_from_pt
-from GitSavvy.core.runtime import on_new_thread, run_on_new_thread, throttled
+from GitSavvy.core.runtime import on_new_thread, run_on_new_thread, throttled_by_key
 from GitSavvy.core.ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.ui__quick_panel import noop, show_actions_panel, SEPARATOR, show_quick_panel
 from GitSavvy.core.utils import flash, yes_no_switch, get_sublime_executable
@@ -853,7 +853,7 @@ class RebaseCommand(GitCommand):
 
 def auto_close_panel(window, after=800):
     # type: (sublime.Window, int) -> None
-    sublime.set_timeout(throttled(_close_panel, window), after)
+    sublime.set_timeout(throttled_by_key(window.id(), _close_panel, window), after)
 
 
 def _close_panel(window):

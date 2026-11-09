@@ -155,7 +155,7 @@ def flash_regions(view, regions, key="default"):
     view.add_regions(region_key, regions, **STYLE)  # type: ignore[arg-type]
 
     sublime.set_timeout(
-        runtime.throttled(erase_regions, view, region_key),
+        runtime.throttled_by_key((view.id(), region_key), erase_regions, view, region_key),
         int(DURATION * 1000)
     )
 
