@@ -20,7 +20,7 @@ import traceback
 
 import sublime
 
-from . import debug, output_panel
+from . import command_log, debug, output_panel
 from .settings import SettingsMixin
 from .utils import (
     try_kill_proc, paths_upwards, proc_has_been_aborted_by_user,
@@ -28,7 +28,7 @@ from .utils import (
 )
 from GitSavvy.core import store
 from GitSavvy.core.fns import consume, filter_, pairwise
-from GitSavvy.core.runtime import auto_timeout, enqueue_on_worker, run_as_future
+from GitSavvy.core.runtime import auto_timeout, enqueue_on_worker, it_runs_on_worker, run_as_future
 from GitSavvy.core.types import FullPath, ShortPath
 
 
@@ -259,9 +259,6 @@ def git_version_from_path(git_path):
         return MIN_GIT_VERSION
 
 
-DEFAULT_TIMEOUT = 120.0
-
-
 class _GitCommand(SettingsMixin):
 
     """
@@ -293,6 +290,11 @@ class _GitCommand(SettingsMixin):
         current working directory for the git process; otherwise,
         the `repo_path` value will be used.
 
+        An unspecified timeout waits indefinitely and allows a slow-command
+        status indicator for hidden Worker calls. Explicit `None` suppresses
+        that indicator; numeric timeouts retain their time limit. Dedicated
+        threads inherit the `None` exemption from `auto_timeout`.
+
         If `stdout_formatter` is provided, it is called to create a fresh,
         possibly stateful, formatter for each rendering of stdout.  That
         formatter receives each line of stdout, including its line ending,
@@ -308,9 +310,14 @@ class _GitCommand(SettingsMixin):
         if show_panel is None:
             show_panel = git_cmd in self.app_settings.get("show_panel_for")
 
+        show_spinner = (
+            timeout == NOT_SET
+            and getattr(auto_timeout, "value", NOT_SET) == NOT_SET
+            and not show_panel
+            and it_runs_on_worker()
+        )
         if timeout == NOT_SET:
-            # Visible commands can be aborted by the user instead of timing out.
-            timeout = None if show_panel else getattr(auto_timeout, "value", DEFAULT_TIMEOUT)
+            timeout = None if show_panel else getattr(auto_timeout, "value", None)
 
         log = None
         if show_panel:
@@ -330,6 +337,7 @@ class _GitCommand(SettingsMixin):
 
         stdout, stderr = None, None
         p = None
+        command_log_execution_id = None
         vars_for_replace = ChainMap(
             custom_environ or {},
             window.extract_variables(),
@@ -360,7 +368,13 @@ class _GitCommand(SettingsMixin):
                 **popen_kwargs
             )
 
+            command_log.prepare_panel(window)
+            command_log_execution_id = command_log.start_command(
+                working_dir, command_str, p, show_spinner=show_spinner
+            )
+
             if just_the_proc:
+                command_log.finish_when_process_exits(command_log_execution_id, p)
                 return p
 
             if log:
@@ -423,8 +437,10 @@ class _GitCommand(SettingsMixin):
             if not just_the_proc:
                 end = time.time()
                 debug.log_git(final_args, working_dir, stdin, stdout, stderr, end - start)
+                aborted = proc_has_been_aborted_by_user(p) if p else False
+                if command_log_execution_id is not None:
+                    command_log.finish_command(command_log_execution_id, aborted)
                 if log:
-                    aborted = proc_has_been_aborted_by_user(p) if p else False
                     output_panel.finish_abortable_command(panel, p)
                     output_panel.append_done_message(
                         panel,

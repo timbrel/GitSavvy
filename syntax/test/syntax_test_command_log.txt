@@ -1,0 +1,22 @@
+# SYNTAX TEST "Packages/GitSavvy/syntax/command_log.sublime-syntax"
+
+             -- C:\work\repo --
+#            ^^^^^^^^^^^^^^^^^^^ - constant.other.command-timing.git-savvy
+  (D) [ 63ms] $ git stash list
+# ^^^ - constant.other.command-timing.git-savvy
+#     ^^^^^^^ constant.other.command-timing.git-savvy
+#            ^^^^^^^^^^^^^^^^^ - constant.other.command-timing.git-savvy
+> (W) [ 1.2s] $ git fetch origin
+# ^^^ - constant.other.command-timing.git-savvy
+#     ^^^^^^^ constant.other.command-timing.git-savvy
+#            ^^^^^^^^^^^^^^^^^^ - constant.other.command-timing.git-savvy
+   ⋮
+#  ^ - constant.other.command-timing.git-savvy
+  (D) [xxxxx] $ git status
+# ^^^ - constant.other.command-timing.git-savvy
+#     ^^^^^^^ constant.other.command-timing.git-savvy
+#            ^^^^^^^^^^^^ - constant.other.command-timing.git-savvy
+> (D) [     ] $ git slow-command
+# ^^^ - constant.other.command-timing.git-savvy
+#     ^^^^^^^ constant.other.command-timing.git-savvy
+#            ^^^^^^^^^^^^^^^^^^^ - constant.other.command-timing.git-savvy

@@ -1,0 +1,18 @@
+{
+    "auto_indent": false,
+    "detect_indentation": false,
+    "draw_indent_guides": false,
+    "draw_white_space": "None",
+    "gutter": false,
+    "is_widget": true,
+    "indent_subsequent_lines": true,
+    "line_numbers": false,
+    "rulers": false,
+    "scroll_past_end": false,
+    "spell_check": false,
+    "tab_size": 16,
+    "translate_tabs_to_spaces": false,
+    "word_wrap": true,
+    "wrap_width": 0,
+    "wrap_width_style": "min"
+}

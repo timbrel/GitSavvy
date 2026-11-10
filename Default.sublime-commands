@@ -356,6 +356,10 @@
         "command": "gs_blame"
     },
     {
+        "caption": "GitSavvy: Show Command Log",
+        "command": "gs_show_command_log"
+    },
+    {
         "caption": "GitSavvy: reload modules (debug)",
         "command": "gs_reload_modules_debug"
     },

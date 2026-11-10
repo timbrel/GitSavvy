@@ -114,6 +114,7 @@ If you run into any issues not addressed here, please feel free to [open an issu
 
 ### Debug
 
+- [GitSavvy: Show Command Log](debug.md#gitsavvy-show-command-log)
 - [GitSavvy: reload modules (debug)](debug.md#gitsavvy-reload-modules-debug)
 - [GitSavvy: start logging](debug.md#gitsavvy-start-logging)
 - [GitSavvy: stop logging](debug.md#gitsavvy-stop-logging)
