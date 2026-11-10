@@ -40,6 +40,12 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
             return
 
         pt = view.window_to_text((event["x"], event["y"]))
+        if context_menu:
+            selected: list[list[int]] = settings.get("git_savvy.multi_selection", [])
+            if selected and not any(a <= pt < b for a, b in selected):
+                view.run_command("gs_clear_multiselect")
+                return
+
         target = self.target_at(pt)
         if context_menu and target is None:
             view.run_command("context_menu", {"event": event})

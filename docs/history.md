@@ -44,8 +44,9 @@ branches, and tags dashboards.
 
 Right-click a local branch name or commit hash to open its action menu.
 Right-click elsewhere opens Sublime Text's normal context menu. With saved
-multiselections, right-click clears them instead. Left-click and hold no longer
-opens an action menu.
+multiselections, right-click a selected commit hash for actions on those commits
+(such as squash); right-click elsewhere clears the multiselections instead.
+Left-click and hold no longer opens an action menu.
 
 **Checkout here** switches the current working directory; a commit hash is
 checked out detached. **Checkout in a worktree** creates a new worktree and

@@ -87,6 +87,21 @@ class TestGraphMouseGestures(DeferrableTestCase):
         self.assertEqual(list(self.view.sel()), [self.target])
         self.assertEqual(self.scheduled, [])
 
+    def test_right_click_elsewhere_only_clears_multiselect(self) -> None:
+        when(self.view).run_command("context_menu", ...).thenReturn(None)
+        for point in (0, 9, 15, 30):
+            self.view.settings().set("git_savvy.multi_selection", [[2, 9]])
+            when(self.view).window_to_text(...).thenReturn(point)
+            when(self.view).run_command("gs_clear_multiselect").thenAnswer(
+                lambda command: self.view.settings().erase("git_savvy.multi_selection")
+            )
+            self.command.run(None, self.event, context_menu=True)
+            self.assertIsNone(self.view.settings().get("git_savvy.multi_selection"))
+            self.assertEqual(self.menus, [])
+            self.assertEqual(self.scheduled, [])
+        verify(self.view, times=4).run_command("gs_clear_multiselect")
+        verify(self.view, times=0).run_command("context_menu", ...)
+
     def test_alt_click_uses_native_selection_without_label_anchor(self) -> None:
         for command, target_key in (
             (self.command, TARGET_KEY),
@@ -109,7 +124,7 @@ class TestGraphMouseBindings(DeferrableTestCase):
         bindings = sublime.decode_value(sublime.load_resource("Packages/GitSavvy/Default.sublime-mousemap"))
         for multi, dragging, expected in (
             (False, False, "gs_log_graph_mouse"),
-            (True, False, "gs_clear_multiselect"),
+            (True, False, "gs_log_graph_mouse"),
             (False, True, "gs_log_graph_branch_drag"),
             (True, True, "gs_log_graph_branch_drag")
         ):
@@ -305,14 +320,25 @@ class TestGraphCheckoutActions(DeferrableTestCase):
         when(window).active_view().thenReturn(view)
         when(window).run_command(...).thenReturn(None)
 
-        command.show_menu(2, sublime.Region(2, 9), "abcdef0")
+        when(window).focus_view(view).thenReturn(None)
+        when(view).window_to_text(...).thenReturn(2)
+        when(log_graph).colorize_dots(view).thenReturn(None)
+        when(log_graph).colorize_fixups(view).thenReturn(None)
+        when(view).run_command("gs_rebase_squash_commits", ...).thenReturn(None)
 
+        command.run(None, {"x": 2, "y": 0, "button": 2}, context_menu=True)
+
+        self.assertEqual(view.settings().get("git_savvy.multi_selection"), [[2, 9], [18, 25]])
         labels, on_done, _ = captured[0]
         self.assertEqual(["Diff 1234567..abcdef0", "-"], labels[:2])
         on_done(0)
         verify(window).run_command("gs_diff", {
             "base_commit": "1234567", "target_commit": "abcdef0",
             "in_cached_mode": False, "disable_stage": True
+        })
+        on_done(2)
+        verify(view).run_command("gs_rebase_squash_commits", {
+            "base_commit": "1234567", "commits": ["abcdef0"]
         })
 
     def test_cached_worktree_location_detaches_even_without_branch_worktreepath(self) -> None:

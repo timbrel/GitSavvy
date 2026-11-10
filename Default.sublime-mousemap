@@ -247,7 +247,6 @@
         "command": "noop",
         "context": [
             { "key": "setting.git_savvy.log_graph_view", "operand": true },
-            { "key": "git_savvy.has_multi_selection", "operand": false },
             { "key": "git_savvy.graph_branch_drag_active", "operand": false }
         ]
     },
