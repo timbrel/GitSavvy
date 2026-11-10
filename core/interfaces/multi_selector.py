@@ -250,6 +250,12 @@ class MultiSelectionContext(EventListener):
 
 
 def prepare_mouse_selection(view: sublime.View, event: dict | None) -> None:
+    """Consume click identity before the caller freezes its selection.
+
+    Keyboard toggles treat an unchanged clicked label as a caret so they can
+    advance. Mouse toggles retarget that label (or a caret) to the click point.
+    Explicit text selections are preserved in either case.
+    """
     mouse_target = view.settings().get("git_savvy.mouse_selected_target")
     automatic_selection = (
         mouse_target is not None
@@ -266,6 +272,28 @@ def prepare_mouse_selection(view: sublime.View, event: dict | None) -> None:
         view.sel().clear()
         view.sel().add(sublime.Region(pt))
     view.settings().erase("git_savvy.mouse_selected_target")
+
+
+def normalize_mouse_selection(view: sublime.View, anchor_key: str) -> None:
+    """Keep a held label included; expire click identity after selection moves."""
+    settings = view.settings()
+    coordinates = settings.get(anchor_key)
+    if coordinates is None:
+        clicked = settings.get("git_savvy.mouse_selected_target")
+        if clicked is not None and list(view.sel()) != [sublime.Region(*clicked)]:
+            settings.erase("git_savvy.mouse_selected_target")
+        return
+    if len(view.sel()) != 1:
+        settings.erase(anchor_key)
+        settings.erase("git_savvy.mouse_selected_target")
+        return
+    selection = view.sel()[0]
+    expanded = sublime.Region(*coordinates).cover(selection)
+    if selection.a > selection.b:
+        expanded = sublime.Region(expanded.end(), expanded.begin())
+    if selection != expanded:
+        view.sel().clear()
+        view.sel().add(expanded)
 
 
 def is_exactly_selected_chunk(diff: SplittedDiff, s: sublime.Region) -> bool:

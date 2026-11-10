@@ -3,6 +3,8 @@ from __future__ import annotations
 import sublime
 from sublime_plugin import EventListener, TextCommand
 
+from .multi_selector import normalize_mouse_selection
+
 
 __all__ = ("gs_dashboard_mouse", "GsDashboardMouseListener")
 
@@ -62,17 +64,10 @@ class gs_dashboard_mouse(TextCommand):
 
 class GsDashboardMouseListener(EventListener):
     def on_selection_modified(self, view: sublime.View) -> None:
-        coordinates = view.settings().get(TARGET_KEY)
-        if coordinates is None:
-            return
-        target = sublime.Region(*coordinates)
-        if len(view.sel()) != 1:
-            view.settings().erase(TARGET_KEY)
-            return
-        selection = view.sel()[0]
-        expanded = target.cover(selection)
-        if selection.a > selection.b:
-            expanded = sublime.Region(expanded.end(), expanded.begin())
-        if selection != expanded:
-            view.sel().clear()
-            view.sel().add(expanded)
+        settings = view.settings()
+        if settings.get(TARGET_KEY) is not None or any(
+            settings.get(key) for key in (
+                "git_savvy.status_view", "git_savvy.branch_view", "git_savvy.tags_view"
+            )
+        ):
+            normalize_mouse_selection(view, TARGET_KEY)

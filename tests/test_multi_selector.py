@@ -3,6 +3,8 @@ from unittesting import DeferrableTestCase
 import sublime
 
 from GitSavvy.core.interfaces import multi_selector
+from GitSavvy.core.interfaces.dashboard_mouse import GsDashboardMouseListener
+from GitSavvy.core.interfaces.log_graph_mouse import GsLogGraphMouseListener
 from GitSavvy.tests.mockito import unstub, verify, when
 
 
@@ -42,6 +44,26 @@ class TestMouseLabelMultiselect(DeferrableTestCase):
                     self.assertEqual(list(self.view.sel()), [sublime.Region(selection.b)])
                     unstub()
 
+    def test_keyboard_reselection_is_not_the_original_mouse_click(self) -> None:
+        for interface in ("graph", "branch", "tags", "status"):
+            with self.subTest(interface=interface):
+                command, navigation, args, wanted = self.prepare(interface, self.label)
+                listener = (
+                    GsLogGraphMouseListener() if interface == "graph"
+                    else GsDashboardMouseListener()
+                )
+                self.view.sel().clear()
+                self.view.sel().add(sublime.Region(self.label.b))
+                listener.on_selection_modified(self.view)
+                self.view.sel().clear()
+                self.view.sel().add(self.label)
+                listener.on_selection_modified(self.view)
+                command.run(None)
+                self.assertEqual(self.view.settings().get("git_savvy.multi_selection"), [wanted])
+                verify(self.view, times=0).run_command(navigation, *args)
+                self.assertEqual(list(self.view.sel()), [sublime.Region(self.label.b)])
+                unstub()
+
     def test_space_toggling_clicked_label_off_does_not_advance(self) -> None:
         for interface in ("graph", "branch", "tags", "status"):
             command, navigation, args, wanted = self.prepare(interface, self.label)
@@ -54,10 +76,14 @@ class TestMouseLabelMultiselect(DeferrableTestCase):
     def prepare(self, interface: str, selection: sublime.Region) -> tuple:
         settings = self.view.settings()
         settings.set("git_savvy.multi_selection", [])
-        settings.set("git_savvy.mouse_selected_target", [self.label.a, self.label.b])
         settings.set("git_savvy.interface", interface)
+        for kind, flag in (
+            ("graph", "log_graph"), ("branch", "branch"), ("tags", "tags"), ("status", "status")
+        ):
+            settings.set("git_savvy.{}_view".format(flag), interface == kind)
         self.view.sel().clear()
         self.view.sel().add(selection)
+        settings.set("git_savvy.mouse_selected_target", [self.label.a, self.label.b])
         if interface == "graph":
             command = multi_selector.gs_log_graph_multiselect(self.view)
             navigation = "gs_log_graph_navigate"

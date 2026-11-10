@@ -5,6 +5,7 @@ from sublime_plugin import EventListener, TextCommand
 
 from ..git_command import GitCommand
 from ..git_mixins.branches import Branch
+from .multi_selector import normalize_mouse_selection
 
 
 __all__ = ("gs_log_graph_mouse", "GsLogGraphMouseListener")
@@ -300,18 +301,12 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
 
 class GsLogGraphMouseListener(EventListener):
     def on_selection_modified(self, view: sublime.View) -> None:
+        from .log_graph_branch_drag import get_drag_state
+
         settings = view.settings()
-        coordinates = settings.get(TARGET_KEY)
-        if coordinates is None:
+        if not settings.get("git_savvy.log_graph_view") and settings.get(TARGET_KEY) is None:
             return
-        target = sublime.Region(*coordinates)
-        if len(view.sel()) != 1:
-            settings.erase(TARGET_KEY)
-            return
-        selection = view.sel()[0]
-        expanded = target.cover(selection)
-        if selection.a > selection.b:
-            expanded = sublime.Region(expanded.end(), expanded.begin())
-        if selection != expanded:
-            view.sel().clear()
-            view.sel().add(expanded)
+        # Armed drags still own native word-selection normalization. Moving
+        # within that gesture must not invalidate the clicked-label identity.
+        if get_drag_state(view) is None:
+            normalize_mouse_selection(view, TARGET_KEY)
