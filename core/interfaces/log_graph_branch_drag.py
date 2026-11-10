@@ -29,6 +29,7 @@ from .log_graph_mouse import TARGET_KEY
 from ..base_commands import GsTextCommand
 from ..git_mixins.branches import Branch
 from .log_graph_helper import COMMIT_LINE
+from .multi_selector import clear_multiselect
 from ..types import FullHash
 from ..view import replace_view_content
 
@@ -332,7 +333,9 @@ class BranchDrag:
         with updating(view):
             # A selected branch would otherwise start native text drag-and-drop.
             self.place_cursor(region.a)
-            view.settings().erase("git_savvy.mouse_selected_target")
+            # Saved selections use fixed offsets; preview edits would invalidate them.
+            # Call the helper, not the command which would cancel this drag.
+            clear_multiselect(view)
             replace_view_content(view, "|", region)
             self.track(SOURCE_KEY, sublime.Region(region.a, region.a + 1))
             self.place_cursor(region.a + 1)

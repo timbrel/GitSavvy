@@ -4,7 +4,7 @@ import sublime
 from unittesting import DeferrableTestCase
 
 from GitSavvy.core.commands import branch, checkout
-from GitSavvy.core.interfaces import log_graph, log_graph_branch_drag as drag
+from GitSavvy.core.interfaces import log_graph, log_graph_branch_drag as drag, multi_selector
 from GitSavvy.core.interfaces.log_graph import GsLogGraphCursorListener
 from GitSavvy.core.types import FullHash
 from GitSavvy.core.view import replace_view_content
@@ -72,12 +72,18 @@ class TestBranchDrag(DeferrableTestCase):
         ))
 
     def test_single_press_arms_and_hold_starts_drag(self) -> None:
+        saved = [[CONTENT.index("40e3d394"), CONTENT.index("40e3d394") + 8]]
+        self.view.settings().set("git_savvy.multi_selection", saved)
+        multi_selector.set_multiselect_markers(self.view, [sublime.Region(*saved[0])])
         self.press()
+        self.assertEqual(self.view.settings().get("git_savvy.multi_selection"), saved)
         self.assertEqual(self.state()["phase"], "armed")
         self.assertEqual(self.view.substr(self.view.sel()[0]), "throttling")
         self.scheduled[0]()
         self.assertEqual(self.state()["phase"], "dragging")
         self.assertIn("(|, origin/throttling)", self.text())
+        self.assertEqual(self.view.settings().get("git_savvy.multi_selection"), [])
+        self.assertEqual(self.view.get_regions(multi_selector.REGION_KEY), [])
         verify(drag.gs_log_graph_branch_drag, times=0).get_branches()
 
     def test_hold_starts_drag_when_branch_metadata_is_not_cached(self) -> None:
@@ -102,6 +108,8 @@ class TestBranchDrag(DeferrableTestCase):
         self.assertEqual(self.scheduled, [])
 
     def test_simple_click_only_selects_without_lookup_or_edits(self) -> None:
+        saved = [[CONTENT.index("40e3d394"), CONTENT.index("40e3d394") + 8]]
+        self.view.settings().set("git_savvy.multi_selection", saved)
         version = self.view.change_count()
         self.press()
         self.assertEqual(self.state()["phase"], "armed")
@@ -114,6 +122,7 @@ class TestBranchDrag(DeferrableTestCase):
             callback()
         self.assertEqual(self.view.change_count(), version)
         self.assertEqual(self.menus, [])
+        self.assertEqual(self.view.settings().get("git_savvy.multi_selection"), saved)
         verify(drag.gs_log_graph_branch_drag, times=0).get_branches()
 
     def test_press_selects_whole_branch_label(self) -> None:
