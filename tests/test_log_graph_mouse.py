@@ -160,8 +160,9 @@ class TestGraphLabelSelection(DeferrableTestCase):
         view.settings().set(TARGET_KEY, [target.a, target.b])
         command = gs_log_graph_mouse(view)
         when(command).target_at(11).thenReturn(target)
-        when(command).branch_at(11).thenReturn("topic")
-        when(command).branch_actions("topic").thenReturn([])
+        branch = mock({"name": "topic"})
+        when(command).branch_at(11).thenReturn(branch)
+        when(command).branch_actions(branch).thenReturn([])
         captured = []
         when(view).show_popup_menu(...).thenAnswer(lambda *args: captured.append(args))
 
@@ -202,6 +203,24 @@ class TestGraphLabelSelection(DeferrableTestCase):
 class TestGraphCheckoutActions(DeferrableTestCase):
     def tearDown(self) -> None:
         unstub()
+
+    def test_branch_menu_fetches_branches_once(self) -> None:
+        view = sublime.active_window().new_file()
+        view.set_scratch(True)
+        self.addCleanup(view.close)
+        view.run_command("append", {"characters": "* abcdef0 (feature) subject\n"})
+        target = sublime.Region(11, 18)
+        command = gs_log_graph_mouse(view)
+        when(view).find_by_selector(...).thenReturn([target])
+        when(view).show_popup_menu(...).thenReturn(None)
+        when(command).current_state().thenReturn({})
+        when(command).get_branches().thenReturn([mock({
+            "name": "feature", "is_remote": False, "active": False,
+            "upstream": None, "commit_hash": "abcdef0"
+        })])
+
+        self.assertTrue(command.show_menu(11, target, "abcdef0"))
+        verify(command, times=1).get_branches()
 
     def test_branch_without_upstream(self) -> None:
         menu = self.branch_menu(active=False, upstream=None)
@@ -402,13 +421,12 @@ class TestGraphCheckoutActions(DeferrableTestCase):
         })
         when(command).get_worktree_locations().thenRaise(AssertionError("Discovery in menu"))
         when(command).get_worktrees().thenRaise(AssertionError("Git query in menu"))
-        when(command).get_branches().thenReturn([
-            mock({
-                "name": "feature", "is_remote": False, "active": active,
-                "upstream": upstream, "worktree_path": None, "commit_hash": "abcdef0"
-            })
-        ])
-        return command.branch_actions("feature")
+        branch = mock({
+            "name": "feature", "is_remote": False, "active": active,
+            "upstream": upstream, "worktree_path": None, "commit_hash": "abcdef0"
+        })
+        when(command).get_branches().thenRaise(AssertionError("Redundant branch lookup"))
+        return command.branch_actions(branch)
 
     def check_worktree_checkout(self, start_point: str) -> None:
         command = worktrees.gs_checkout_in_worktree(mock())

@@ -4,6 +4,7 @@ import sublime
 from sublime_plugin import EventListener, TextCommand
 
 from ..git_command import GitCommand
+from ..git_mixins.branches import Branch
 
 
 __all__ = ("gs_log_graph_mouse", "GsLogGraphMouseListener")
@@ -96,12 +97,12 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
             actions = self.branch_actions(branch) + [
                 ("-", "", {}),
                 (
-                    "Rename '{}'".format(branch),
-                    "gs_rename_branch", {"branch": branch}
+                    "Rename '{}'".format(branch.name),
+                    "gs_rename_branch", {"branch": branch.name}
                 ),
                 (
-                    "Delete '{}'".format(branch),
-                    "gs_delete_branch", {"branch": branch, "undo_owner": view.id()}
+                    "Delete '{}'".format(branch.name),
+                    "gs_delete_branch", {"branch": branch.name, "undo_owner": view.id()}
                 )
             ]
         elif view.match_selector(target.a, "string.other.rebase-hint.git-savvy"):
@@ -186,8 +187,8 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
         view.show_popup_menu([label for label, _, _ in actions], on_done, pt)
         return True
 
-    def branch_actions(self, name: str) -> list[tuple[str, str, dict]]:
-        branch = next(b for b in self.get_branches() if not b.is_remote and b.name == name)
+    def branch_actions(self, branch: Branch) -> list[tuple[str, str, dict]]:
+        name = branch.name
         worktrees = self.current_state().get("worktree_locations", [])
         worktree = next((wt for wt in worktrees if wt.branch_name == name), None)
         checked_out = branch.active or worktree is not None
@@ -284,14 +285,14 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
             if region.begin() <= pt < region.end()
         ), None)
 
-    def branch_at(self, pt: int) -> str | None:
+    def branch_at(self, pt: int) -> Branch | None:
         for region in self.view.find_by_selector(
             "meta.graph.branch.git-savvy constant.other.git.branch"
         ):
             if region.begin() <= pt < region.end():
                 name = self.view.substr(region)
                 return next((
-                    branch.name for branch in self.get_branches()
+                    branch for branch in self.get_branches()
                     if not branch.is_remote and branch.name == name
                 ), None)
         return None
