@@ -63,6 +63,15 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
                     return
             view.run_command("context_menu", {"event": event})
             return
+        if target is not None and view.match_selector(
+            target.a, "meta.graph.branch.git-savvy constant.other.git.branch"
+        ):
+            from .log_graph_branch_drag import get_drag_state
+
+            view.run_command("gs_log_graph_branch_drag", {"event": event})
+            if get_drag_state(view) is not None:
+                return
+
         args: dict = {"event": event}
         if target is not None:
             settings.set(TARGET_KEY, [target.a, target.b])

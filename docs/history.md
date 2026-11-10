@@ -62,8 +62,8 @@ branch and unchecked branches with an upstream. Pulling an unchecked branch
 only fast-forwards it; divergent histories are rejected. Pull is not offered
 for branches checked out elsewhere; open their worktree to pull there.
 
-To move a local branch, double-click its name and hold the second press while
-moving to another commit. The source name becomes `|`; the destination previews
+To move a local branch, press its name and hold, or drag straight to another
+commit without waiting. The source name becomes `|`; the destination previews
 its new decoration. Release and choose **Move 'branch name' here** to confirm.
 Dismiss the menu to abort; releasing on the original commit also aborts.
 Remote-tracking branches and branches checked out in another worktree cannot be

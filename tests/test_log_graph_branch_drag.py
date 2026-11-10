@@ -4,7 +4,7 @@ import sublime
 from unittesting import DeferrableTestCase
 
 from GitSavvy.core.commands import branch, checkout
-from GitSavvy.core.interfaces import log_graph_branch_drag as drag
+from GitSavvy.core.interfaces import log_graph, log_graph_branch_drag as drag
 from GitSavvy.core.interfaces.log_graph import GsLogGraphCursorListener
 from GitSavvy.core.types import FullHash
 from GitSavvy.core.view import replace_view_content
@@ -29,6 +29,8 @@ class TestBranchDrag(DeferrableTestCase):
         self.view.settings().set("git_savvy.log_graph_view", True)
         # Keep unrelated graph rendering out of these mouse-command tests.
         when(GsLogGraphCursorListener).is_applicable(...).thenReturn(False)
+        when(log_graph).colorize_dots(self.view).thenReturn(None)
+        when(log_graph).colorize_fixups(self.view).thenReturn(None)
         self.branches = [
             mock({"name": "throttling", "is_remote": False, "active": False, "worktree_path": None,
                   "commit_hash": FullHash("718ab2b9" + "0" * 32)}),
@@ -54,6 +56,29 @@ class TestBranchDrag(DeferrableTestCase):
         self.view.close()
         unstub()
 
+    def test_single_press_binding_owns_release_not_double_click(self) -> None:
+        bindings = sublime.decode_value(sublime.load_resource("Packages/GitSavvy/Default.sublime-mousemap"))
+        binding = next(
+            b for b in bindings
+            if b["button"] == "button1" and b.get("modifiers", []) == []
+            and b.get("press_command") == "gs_log_graph_mouse"
+        )
+        self.assertEqual(binding["count"], 1)
+        self.assertEqual(binding["command"], "gs_log_graph_mouse")
+        self.assertEqual(binding["args"], {"release": True})
+        self.assertFalse(any(
+            b["button"] == "button1" and b.get("press_command") == "gs_log_graph_branch_drag"
+            for b in bindings
+        ))
+
+    def test_single_press_arms_and_hold_starts_drag(self) -> None:
+        self.press()
+        self.assertEqual(self.state()["phase"], "armed")
+        self.assertEqual(self.view.substr(self.view.sel()[0]), "throttling")
+        self.scheduled[0]()
+        self.assertEqual(self.state()["phase"], "dragging")
+        self.assertIn("(|, origin/throttling)", self.text())
+
     def test_hold_starts_drag_when_branch_metadata_is_not_cached(self) -> None:
         for cached in ({}, {"branches": []}):
             when(drag.gs_log_graph_branch_drag).current_state().thenReturn(cached)
@@ -65,24 +90,24 @@ class TestBranchDrag(DeferrableTestCase):
             self.assertIn("(|, origin/throttling)", self.text())
             self.cancel()
 
-    def test_uncached_non_draggable_branches_select_name_components(self) -> None:
+    def test_uncached_non_draggable_branches_keep_label_selected(self) -> None:
         when(drag.gs_log_graph_branch_drag).current_state().thenReturn({})
         self.branches[0].worktree_path = "/other/worktree"
-        for label, component in (("origin/throttling", "origin"), ("throttling", "throttling")):
+        for label in ("origin/throttling", "throttling"):
             self.start(label, activate=False)
             self.assertIsNone(self.state())
-            self.assertEqual(self.view.substr(self.view.sel()[0]), component)
+            self.assertEqual(self.view.substr(self.view.sel()[0]), label)
             self.assertEqual(self.text(), CONTENT)
         self.assertEqual(self.scheduled, [])
 
-    def test_simple_double_click_only_selects_without_lookup_or_edits(self) -> None:
+    def test_simple_click_only_selects_without_lookup_or_edits(self) -> None:
         version = self.view.change_count()
-        self.start(activate=False)
+        self.press()
         self.assertEqual(self.state()["phase"], "armed")
         self.assertEqual(self.text(), CONTENT)
         point = CONTENT.index("throttling")
         self.assertEqual(list(self.view.sel()), [sublime.Region(point, point + len("throttling"))])
-        self.view.run_command("gs_log_graph_branch_drag", {"action": "finish"})
+        self.view.run_command("gs_log_graph_mouse", {"event": {}, "release": True})
         self.assert_restored()
         for callback in self.scheduled[:]:
             callback()
@@ -90,12 +115,12 @@ class TestBranchDrag(DeferrableTestCase):
         self.assertEqual(self.menus, [])
         verify(drag.gs_log_graph_branch_drag, times=0).get_branches()
 
-    def test_double_click_selects_whole_branch_label(self) -> None:
+    def test_press_selects_whole_branch_label(self) -> None:
         replace_view_content(self.view, CONTENT.replace("throttling", "feature/foo-bar"))
         self.branches[0].name = "feature/foo-bar"
         version = self.view.change_count()
         for part in ("feature", "foo", "bar"):
-            self.start(part, activate=False)
+            self.press(part)
             self.assertEqual(self.view.substr(self.view.sel()[0]), "feature/foo-bar")
             point = self.text().index(part)
             self.view.sel().clear()
@@ -109,7 +134,7 @@ class TestBranchDrag(DeferrableTestCase):
         verify(drag.gs_log_graph_branch_drag, times=0).get_branches()
 
     def test_horizontal_movement_keeps_armed_label_selected(self) -> None:
-        self.start(activate=False)
+        self.press()
         point = self.text().index("Second commit") + len("Second")
         self.view.sel().clear()
         self.view.sel().add(sublime.Region(self.text().index("throttling"), point))
@@ -118,7 +143,7 @@ class TestBranchDrag(DeferrableTestCase):
         self.assertEqual(self.view.substr(self.view.sel()[0]), "throttling")
 
     def test_moving_to_another_line_activates_without_hold_timeout(self) -> None:
-        self.start(activate=False)
+        self.press()
         point = self.text().index("40e3d394")
         self.view.sel().clear()
         self.view.sel().add(sublime.Region(self.text().index("throttling"), point))
@@ -131,18 +156,19 @@ class TestBranchDrag(DeferrableTestCase):
 
     def test_remote_branch_and_commit_hash_do_not_start_dragging(self) -> None:
         for text in ("origin/throttling", "40e3d394"):
-            self.start(text)
+            self.press(text)
             self.assertIsNone(self.state())
+            self.assertEqual(self.view.substr(self.view.sel()[0]), text)
             self.assertEqual(self.text(), CONTENT)
 
-    def test_remote_double_click_selects_name_component(self) -> None:
+    def test_remote_press_keeps_whole_label_selected(self) -> None:
         point = CONTENT.index("origin/throttling") + len("origin/th")
         version = self.view.change_count()
         self.view.run_command("gs_log_graph_branch_drag", {
             "event": {"x": point, "y": 0, "button": 1}
         })
         self.view.run_command("gs_log_graph_branch_drag", {"action": "finish"})
-        self.assertEqual(self.view.substr(self.view.sel()[0]), "throttling")
+        self.assertEqual(self.view.substr(self.view.sel()[0]), "origin/throttling")
         self.assertIsNone(self.state())
         self.assertEqual(self.view.change_count(), version)
         self.assertEqual(self.scheduled, [])
@@ -238,7 +264,7 @@ class TestBranchDrag(DeferrableTestCase):
         for component in ("feature", "foo", "bar"):
             self.start(component)
             self.view.run_command("gs_log_graph_branch_drag", {"action": "finish"})
-            self.assertEqual(self.view.substr(self.view.sel()[0]), component)
+            self.assertEqual(self.view.substr(self.view.sel()[0]), "feature/foo-bar")
         self.assertIsNone(self.state())
         self.assertEqual(self.text(), content)
         self.assertEqual(self.view.change_count(), version)
@@ -436,6 +462,11 @@ class TestBranchDrag(DeferrableTestCase):
         drag.GsLogGraphBranchDragListener().on_selection_modified(self.view)
         self.assertEqual(len(self.scheduled), 1)
         return self.scheduled[0]
+
+    def press(self, text: str = "throttling") -> None:
+        self.view.run_command("gs_log_graph_mouse", {
+            "event": {"x": self.text().index(text), "y": 0, "button": 1}
+        })
 
     def start(self, text: str = "throttling", activate: bool = True) -> None:
         point = self.text().index(text)
