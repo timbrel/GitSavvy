@@ -250,14 +250,18 @@ class MultiSelectionContext(EventListener):
 
 
 def prepare_mouse_selection(view: sublime.View, event: dict | None) -> None:
-    if event is None:
-        return
     mouse_target = view.settings().get("git_savvy.mouse_selected_target")
     automatic_selection = (
         mouse_target is not None
         and list(view.sel()) == [sublime.Region(*mouse_target)]
     )
-    if automatic_selection or not any(not s.empty() for s in view.sel()):
+    if event is None:
+        if automatic_selection:
+            # A clicked label acts like a caret for Space's toggle-and-advance.
+            pt = view.sel()[0].b
+            view.sel().clear()
+            view.sel().add(sublime.Region(pt))
+    elif automatic_selection or not any(not s.empty() for s in view.sel()):
         pt = view.window_to_text((event["x"], event["y"]))
         view.sel().clear()
         view.sel().add(sublime.Region(pt))
