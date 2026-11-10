@@ -301,6 +301,10 @@ class GsLogGraphBranchDragListener(EventListener):
             cancel_branch_drag(view)
         elif command == "gs_log_graph_mouse" and not (args or {}).get("release"):
             cancel_branch_drag(view)
+        elif state and state.phase == "confirming" and command == "drag_select":
+            # Clicking outside the popup can start native selection before
+            # its dismissal callback arrives, bypassing our mouse binding.
+            cancel_branch_drag(view)
         return None
 
     def on_deactivated(self, view: sublime.View) -> None:

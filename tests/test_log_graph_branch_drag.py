@@ -407,6 +407,22 @@ class TestBranchDrag(DeferrableTestCase):
         self.cancel()
         self.assert_restored()
 
+    def test_native_click_outside_confirmation_cancels_drag(self) -> None:
+        self.start()
+        self.update("40e3d394")
+        self.view.run_command("gs_log_graph_branch_drag", {"action": "finish"})
+        on_done = self.menus[-1][1]
+        self.assertEqual(self.state()["phase"], "confirming")
+
+        # A click dismissing the popup can reach native selection directly,
+        # without our mouse binding or the popup's cancellation callback.
+        listener = drag.GsLogGraphBranchDragListener()
+        listener.on_text_command(self.view, "drag_select", {"event": {"x": 0, "y": 0}})
+        self.assertIsNone(self.state())
+        self.assert_restored()
+        on_done(-1)
+        self.assert_restored()
+
     def test_redraw_cancels_confirmation_and_preserves_new_buffer(self) -> None:
         self.start()
         self.update("40e3d394")
