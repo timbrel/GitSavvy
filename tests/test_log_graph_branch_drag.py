@@ -78,6 +78,7 @@ class TestBranchDrag(DeferrableTestCase):
         self.scheduled[0]()
         self.assertEqual(self.state()["phase"], "dragging")
         self.assertIn("(|, origin/throttling)", self.text())
+        verify(drag.gs_log_graph_branch_drag, times=0).get_branches()
 
     def test_hold_starts_drag_when_branch_metadata_is_not_cached(self) -> None:
         for cached in ({}, {"branches": []}):
@@ -151,6 +152,7 @@ class TestBranchDrag(DeferrableTestCase):
         self.assertEqual(self.state()["phase"], "dragging")
         self.assertEqual(self.state()["target"], "40e3d394")
         self.assertIn("(throttling) First commit", self.text())
+        verify(drag.gs_log_graph_branch_drag, times=0).get_branches()
         self.cancel()
         self.assert_restored()
 

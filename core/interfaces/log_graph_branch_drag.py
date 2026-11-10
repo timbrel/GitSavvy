@@ -139,7 +139,7 @@ class gs_log_graph_branch_drag(GsTextCommand):
             return
 
         window.focus_view(view)
-        branch = self.draggable_branch(region, use_cached_branches=True)
+        branch = self.draggable_branch(region)
         if not branch:
             with updating(view):
                 view.sel().clear()
@@ -213,10 +213,8 @@ class gs_log_graph_branch_drag(GsTextCommand):
         elif action == "confirm" and state.phase == "confirming" and token:
             drag.apply_move()
 
-    def draggable_branch(
-        self, region: sublime.Region, use_cached_branches: bool = False
-    ) -> Branch | None:
-        branches = self.current_state().get("branches", []) if use_cached_branches else []
+    def draggable_branch(self, region: sublime.Region) -> Branch | None:
+        branches = self.current_state().get("branches", [])
         if not branches:
             branches = self.get_branches()
         name = self.view.substr(region)
