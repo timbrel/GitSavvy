@@ -6,17 +6,134 @@ from unittesting import DeferrableTestCase
 
 from GitSavvy.core.commands import worktrees
 from GitSavvy.core.git_mixins.worktrees import WorktreeLocation
+from GitSavvy.core.interfaces import log_graph
+from GitSavvy.core.interfaces.dashboard_mouse import (
+    TARGET_KEY as DASHBOARD_TARGET_KEY, gs_dashboard_mouse
+)
 from GitSavvy.core.interfaces.log_graph_mouse import (
-    PRESS_KEY, TARGET_KEY, GsLogGraphMouseListener, gs_log_graph_mouse
+    TARGET_KEY, GsLogGraphMouseListener, gs_log_graph_mouse
 )
 from GitSavvy.tests.mockito import mock, unstub, verify, when
+
+
+class TestGraphMouseGestures(DeferrableTestCase):
+    def setUp(self) -> None:
+        self.view = sublime.active_window().new_file()
+        self.view.set_scratch(True)
+        self.view.run_command("append", {"characters": "* abcdef0 (feature/foo-bar) subject\n"})
+        self.view.settings().set("git_savvy.log_graph_view", True)
+        self.target = sublime.Region(11, 26)
+        self.event = {"x": 15, "y": 0, "button": 1}
+        self.command = gs_log_graph_mouse(self.view)
+        self.scheduled = []
+        when(sublime).set_timeout(...).thenAnswer(
+            lambda callback, *args: self.scheduled.append(callback)
+        )
+        when(log_graph.GsLogGraphCursorListener).is_applicable(...).thenReturn(False)
+        when(log_graph).colorize_dots(self.view).thenReturn(None)
+        when(log_graph).colorize_fixups(self.view).thenReturn(None)
+        when(self.view).window_to_text(...).thenReturn(15)
+        when(self.command).target_at(15).thenReturn(self.target)
+        when(self.view).run_command("drag_select", ...).thenReturn(None)
+        self.menus = []
+        when(self.command).show_menu(...).thenAnswer(lambda *args: self.menus.append(args) or True)
+
+    def tearDown(self) -> None:
+        unstub()
+        self.view.close()
+
+    def test_left_click_selects_label_without_opening_menu(self) -> None:
+        self.command.run(None, self.event)
+        self.assertEqual(list(self.view.sel()), [self.target])
+        for callback in self.scheduled:
+            callback()
+        self.assertEqual(self.menus, [])
+        verify(self.view).run_command("drag_select", {"event": self.event, "by": "words"})
+
+    def test_left_release_clears_selection_anchor(self) -> None:
+        self.command.run(None, self.event)
+        self.assertEqual(self.view.settings().get(TARGET_KEY), [11, 26])
+        when(self.view).run_command("gs_log_graph_branch_drag", ...).thenReturn(None)
+        self.command.run(None, self.event, release=True)
+        self.assertIsNone(self.view.settings().get(TARGET_KEY))
+        # Keep the clicked-label identity for a subsequent Space multiselect.
+        self.assertEqual(self.view.settings().get("git_savvy.mouse_selected_target"), [11, 26])
+
+    def test_right_click_selects_label_and_opens_menu_without_drag_tracking(self) -> None:
+        self.event["button"] = 2
+        self.command.run(None, self.event, context_menu=True)
+        self.assertEqual(list(self.view.sel()), [self.target])
+        self.assertEqual(self.scheduled, [])
+        self.assertEqual(len(self.menus), 1)
+        self.assertEqual(self.menus[0], (15, self.target, "abcdef0"))
+        verify(self.view, times=0).run_command("drag_select", ...)
+        self.assertIsNone(self.view.settings().get(TARGET_KEY))
+
+    def test_right_click_outside_label_opens_normal_context_menu(self) -> None:
+        when(self.command).target_at(15).thenReturn(None)
+        when(self.view).run_command("context_menu", {"event": self.event}).thenReturn(None)
+        selection = list(self.view.sel())
+        self.command.run(None, self.event, context_menu=True)
+        verify(self.view).run_command("context_menu", {"event": self.event})
+        self.assertEqual(list(self.view.sel()), selection)
+        self.assertEqual(self.scheduled, [])
+        self.assertEqual(self.menus, [])
+
+    def test_right_click_label_without_actions_opens_normal_context_menu(self) -> None:
+        when(self.command).show_menu(...).thenReturn(False)
+        when(self.view).run_command("context_menu", {"event": self.event}).thenReturn(None)
+        self.command.run(None, self.event, context_menu=True)
+        verify(self.view).run_command("context_menu", {"event": self.event})
+        self.assertEqual(list(self.view.sel()), [self.target])
+        self.assertEqual(self.scheduled, [])
+
+    def test_alt_click_uses_native_selection_without_label_anchor(self) -> None:
+        for command, target_key in (
+            (self.command, TARGET_KEY),
+            (gs_dashboard_mouse(self.view), DASHBOARD_TARGET_KEY)
+        ):
+            for by in ("characters", "words", "lines"):
+                self.view.settings().set(target_key, [11, 26])
+                self.view.settings().set("git_savvy.mouse_selected_target", [11, 26])
+                command.run(None, self.event, text_selection=by)
+                self.assertIsNone(self.view.settings().get(target_key))
+                self.assertIsNone(self.view.settings().get("git_savvy.mouse_selected_target"))
+        self.assertEqual(self.scheduled, [])
+        verify(self.view, times=2).run_command("drag_select", {"event": self.event})
+        for by in ("words", "lines"):
+            verify(self.view, times=2).run_command("drag_select", {"event": self.event, "by": by})
+
+
+class TestGraphMouseBindings(DeferrableTestCase):
+    def test_right_click_priority(self) -> None:
+        bindings = sublime.decode_value(sublime.load_resource("Packages/GitSavvy/Default.sublime-mousemap"))
+        for multi, dragging, expected in (
+            (False, False, "gs_log_graph_mouse"),
+            (True, False, "gs_clear_multiselect"),
+            (False, True, "gs_log_graph_branch_drag"),
+            (True, True, "gs_log_graph_branch_drag")
+        ):
+            contexts = {
+                "setting.git_savvy.log_graph_view": True,
+                "git_savvy.has_multi_selection": multi,
+                "git_savvy.graph_branch_drag_active": dragging
+            }
+            binding = next(
+                binding for binding in reversed(bindings)
+                if binding["button"] == "button2" and binding.get("modifiers", []) == []
+                and all(contexts.get(c["key"]) == c["operand"] for c in binding.get("context", []))
+            )
+            command = binding.get("press_command")
+            if command == "noop":
+                command = binding["command"]
+            self.assertEqual(command, expected)
 
 
 class TestGraphLabelSelection(DeferrableTestCase):
     def tearDown(self) -> None:
         unstub()
 
-    def test_dismissing_hold_menu_releases_selection_anchor(self) -> None:
+    def test_dismissing_action_menu_releases_selection_anchor(self) -> None:
         view = sublime.active_window().new_file()
         view.set_scratch(True)
         self.addCleanup(view.close)
@@ -25,7 +142,6 @@ class TestGraphLabelSelection(DeferrableTestCase):
         view.sel().clear()
         view.sel().add(target)
         view.settings().set("git_savvy.log_graph_view", True)
-        view.settings().set(PRESS_KEY, [1, 11, target.a, target.b])
         view.settings().set(TARGET_KEY, [target.a, target.b])
         command = gs_log_graph_mouse(view)
         when(command).target_at(11).thenReturn(target)
@@ -34,7 +150,7 @@ class TestGraphLabelSelection(DeferrableTestCase):
         captured = []
         when(view).show_popup_menu(...).thenAnswer(lambda *args: captured.append(args))
 
-        command.show_menu(1, 11, "abcdef0")
+        command.show_menu(11, target, "abcdef0")
         captured[0][1](-1)
         # The popup can swallow mouse-up, so no mouse release command follows.
         view.run_command("move", {"by": "lines", "forward": True})
@@ -54,13 +170,11 @@ class TestGraphLabelSelection(DeferrableTestCase):
                 (sublime.Region(15, 28), sublime.Region(7, 28)),
                 (sublime.Region(18, 0), sublime.Region(22, 0))
             ):
-                view.settings().set(PRESS_KEY, [1, 15, target.a, target.b])
                 view.settings().set("git_savvy.log_graph_mouse_target", [target.a, target.b])
                 view.sel().clear()
                 view.sel().add(selection)
                 listener.on_selection_modified(view)
                 self.assertEqual(list(view.sel()), [expected])
-                self.assertIsNone(view.settings().get(PRESS_KEY))
                 # Further native tracking must still include the original label.
                 view.sel().clear()
                 view.sel().add(selection)
@@ -70,7 +184,7 @@ class TestGraphLabelSelection(DeferrableTestCase):
             view.close()
 
 
-class TestLongPressCheckoutActions(DeferrableTestCase):
+class TestGraphCheckoutActions(DeferrableTestCase):
     def tearDown(self) -> None:
         unstub()
 
@@ -97,7 +211,10 @@ class TestLongPressCheckoutActions(DeferrableTestCase):
         self.assertEqual(("gs_fetch", {"remote": "origin", "refspec": "master"}), menu[4][1:])
 
     def test_available_branch_with_upstream(self) -> None:
-        menu = self.branch_menu(active=False, upstream=mock({"remote": "fork", "branch": "topic/nested", "canonical_name": "fork/topic/nested", "status": ""}))
+        menu = self.branch_menu(active=False, upstream=mock({
+            "remote": "fork", "branch": "topic/nested",
+            "canonical_name": "fork/topic/nested", "status": ""
+        }))
         self.assertEqual([
             "Checkout here", "Checkout in a worktree", "-", "Push",
             "Update feature from fork/topic/nested (ff-only)", "Fetch fork/topic/nested"
@@ -138,7 +255,6 @@ class TestLongPressCheckoutActions(DeferrableTestCase):
         view.sel().clear()
         view.sel().add(target)
         view.settings().set("git_savvy.log_graph_view", True)
-        view.settings().set(PRESS_KEY, [1, 2, 2, 9])
         command = gs_log_graph_mouse(view)
         when(command).target_at(2).thenReturn(target)
         when(command).branch_at(2).thenReturn(None)
@@ -153,7 +269,7 @@ class TestLongPressCheckoutActions(DeferrableTestCase):
         when(window).active_view().thenReturn(view)
         when(window).run_command(...).thenReturn(None)
 
-        command.show_menu(1, 2, "abcdef0")
+        command.show_menu(2, target, "abcdef0")
 
         labels, on_done, _ = captured[0]
         self.assertEqual([
@@ -173,7 +289,6 @@ class TestLongPressCheckoutActions(DeferrableTestCase):
         self.addCleanup(view.close)
         view.run_command("append", {"characters": "* abcdef0 newer\n* 1234567 older\n"})
         view.settings().set("git_savvy.log_graph_view", True)
-        view.settings().set(PRESS_KEY, [1, 2, 2, 9])
         view.settings().set("git_savvy.multi_selection", [[2, 9], [18, 25]])
         view.sel().clear()
         view.sel().add(sublime.Region(2, 9))
@@ -190,7 +305,7 @@ class TestLongPressCheckoutActions(DeferrableTestCase):
         when(window).active_view().thenReturn(view)
         when(window).run_command(...).thenReturn(None)
 
-        command.show_menu(1, 2, "abcdef0")
+        command.show_menu(2, sublime.Region(2, 9), "abcdef0")
 
         labels, on_done, _ = captured[0]
         self.assertEqual(["Diff 1234567..abcdef0", "-"], labels[:2])
@@ -214,7 +329,9 @@ class TestLongPressCheckoutActions(DeferrableTestCase):
 
     def test_branch_checked_out_elsewhere_offers_fetch_but_not_pull(self) -> None:
         menu = self.branch_menu(
-            active=False, upstream=mock({"remote": "origin", "branch": "master", "canonical_name": "origin/master"}), worktree_path="/repo/feature"
+            active=False, upstream=mock({
+                "remote": "origin", "branch": "master", "canonical_name": "origin/master"
+            }), worktree_path="/repo/feature"
         )
         self.assertEqual([
             "Open worktree in a new window", "Checkout in a new worktree", "-", "Push", "Fetch origin/master"

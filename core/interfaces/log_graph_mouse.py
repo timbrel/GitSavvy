@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from time import monotonic
-
 import sublime
 from sublime_plugin import EventListener, TextCommand
 
@@ -10,18 +8,18 @@ from ..git_command import GitCommand
 
 __all__ = ("gs_log_graph_mouse", "GsLogGraphMouseListener")
 
-PRESS_KEY = "git_savvy.log_graph_mouse_press"
 TARGET_KEY = "git_savvy.log_graph_mouse_target"
-HOLD_MS = 400
 
 
 class gs_log_graph_mouse(TextCommand, GitCommand):
-    def run(self, edit: sublime.Edit, event: dict, release: bool = False) -> None:
+    def run(
+        self, edit: sublime.Edit, event: dict, release: bool = False,
+        context_menu: bool = False, text_selection: str | None = None
+    ) -> None:
         from .log_graph import COMMIT_LINE, colorize_dots, colorize_fixups
 
         view = self.view
         settings = view.settings()
-        settings.erase(PRESS_KEY)
         settings.erase(TARGET_KEY)
         if release:
             view.run_command("gs_log_graph_branch_drag", {
@@ -33,21 +31,32 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
         if window is not None:
             window.focus_view(view)
 
+        if text_selection is not None:
+            settings.erase("git_savvy.mouse_selected_target")
+            selection_args: dict = {"event": event}
+            if text_selection != "characters":
+                selection_args["by"] = text_selection
+            view.run_command("drag_select", selection_args)
+            return
+
         pt = view.window_to_text((event["x"], event["y"]))
         target = self.target_at(pt)
+        if context_menu and target is None:
+            view.run_command("context_menu", {"event": event})
+            return
         view.sel().clear()
         view.sel().add(target if target is not None else sublime.Region(pt))
         settings.set("git_savvy.mouse_selected_target", [target.a, target.b] if target else None)
         colorize_dots(view)
         colorize_fixups(view)
-        match = COMMIT_LINE.search(view.substr(view.line(pt)))
-        if match and target is not None:
-            token = monotonic()
-            settings.set(PRESS_KEY, [token, pt, target.a, target.b])
-            commit_hash = match.group("commit_hash")
-            sublime.set_timeout(
-                lambda: self.show_menu(token, pt, commit_hash), HOLD_MS
-            )
+        if context_menu:
+            match = COMMIT_LINE.search(view.substr(view.line(pt)))
+            if match and target is not None:
+                commit_hash = match.group("commit_hash")
+                if self.show_menu(pt, target, commit_hash):
+                    return
+            view.run_command("context_menu", {"event": event})
+            return
         args: dict = {"event": event}
         if target is not None:
             settings.set(TARGET_KEY, [target.a, target.b])
@@ -59,32 +68,12 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
     def want_event(self) -> bool:
         return True
 
-    def show_menu(self, token: float, pt: int, commit_hash: str) -> None:
-        from .log_graph import extract_commit_hash
-
+    def show_menu(self, pt: int, target: sublime.Region, commit_hash: str) -> bool:
+        """Open actions for the clicked label; return False for the native menu."""
         view = self.view
-        if not view.is_valid():
-            return
-        press = view.settings().get(PRESS_KEY)
-        if press is None or press[:2] != [token, pt]:
-            return
-        view.settings().erase(PRESS_KEY)
         window = view.window()
-        # Activation may redraw the graph. Validate the target rather than
-        # rejecting a buffer change that leaves the pressed commit intact.
-        if (
-            window is None
-            or window.active_view() != view
-            or not view.settings().get("git_savvy.log_graph_view")
-            or extract_commit_hash(view.substr(view.line(pt))) != commit_hash
-            or len(view.sel()) != 1
-            or view.sel()[0] != sublime.Region(press[2], press[3])
-        ):
-            return
-
-        target = self.target_at(pt)
-        if target is None or target != sublime.Region(press[2], press[3]):
-            return
+        if window is None:
+            return False
 
         actions: list[tuple[str, str, dict]]
         branch = self.branch_at(pt)
@@ -103,9 +92,9 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
         elif view.match_selector(target.a, "string.other.rebase-hint.git-savvy"):
             actions = self.fixup_actions(pt, commit_hash)
             if not actions:
-                return
+                return False
         elif not view.match_selector(pt, "constant.numeric.graph.commit-hash.git-savvy"):
-            return
+            return False
         else:
             from .log_graph_helper import format_revision_list
 
@@ -180,6 +169,7 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
         # keep anchoring later keyboard selections to the pressed label.
         view.settings().erase(TARGET_KEY)
         view.show_popup_menu([label for label, _, _ in actions], on_done, pt)
+        return True
 
     def branch_actions(self, name: str) -> list[tuple[str, str, dict]]:
         branch = next(b for b in self.get_branches() if not b.is_remote and b.name == name)
@@ -300,12 +290,9 @@ class GsLogGraphMouseListener(EventListener):
             return
         target = sublime.Region(*coordinates)
         if len(view.sel()) != 1:
-            settings.erase(PRESS_KEY)
             settings.erase(TARGET_KEY)
             return
         selection = view.sel()[0]
-        if not target.contains(selection):
-            settings.erase(PRESS_KEY)
         expanded = target.cover(selection)
         if selection.a > selection.b:
             expanded = sublime.Region(expanded.end(), expanded.begin())

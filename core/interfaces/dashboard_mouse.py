@@ -10,7 +10,10 @@ TARGET_KEY = "git_savvy.dashboard_mouse_target"
 
 
 class gs_dashboard_mouse(TextCommand):
-    def run(self, edit: sublime.Edit, event: dict, release: bool = False) -> None:
+    def run(
+        self, edit: sublime.Edit, event: dict, release: bool = False,
+        text_selection: str | None = None
+    ) -> None:
         view = self.view
         view.settings().erase(TARGET_KEY)
         if release:
@@ -19,6 +22,14 @@ class gs_dashboard_mouse(TextCommand):
         window = view.window()
         if window is not None:
             window.focus_view(view)
+
+        if text_selection is not None:
+            view.settings().erase("git_savvy.mouse_selected_target")
+            selection_args: dict = {"event": event}
+            if text_selection != "characters":
+                selection_args["by"] = text_selection
+            view.run_command("drag_select", selection_args)
+            return
 
         pt = view.window_to_text((event["x"], event["y"]))
         if view.settings().get("git_savvy.branch_view"):

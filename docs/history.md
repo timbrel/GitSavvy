@@ -37,7 +37,16 @@ branch names, tags, and commit IDs.
 
 The `■` character is reserved for worktree markers in graph decorations.
 
-Press and hold a local branch name or commit hash to open its action menu.
+Left-click a branch name or commit hash to select the whole label. Use
+Alt+click and drag for normal text selection; Alt+double-click selects a word
+and Alt+triple-click selects a line. Alt-selection also works in the status,
+branches, and tags dashboards.
+
+Right-click a local branch name or commit hash to open its action menu.
+Right-click elsewhere opens Sublime Text's normal context menu. With saved
+multiselections, right-click clears them instead. Left-click and hold no longer
+opens an action menu.
+
 **Checkout here** switches the current working directory; a commit hash is
 checked out detached. **Checkout in a worktree** creates a new worktree and
 opens it in a new window. It attaches to an available branch, but stays

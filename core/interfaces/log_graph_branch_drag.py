@@ -25,7 +25,7 @@ from sublime_plugin import EventListener
 
 from ..commands.branch import gs_move_branch
 from ..commands.checkout import gs_checkout_new_branch, other_worktree
-from .log_graph_mouse import HOLD_MS, PRESS_KEY, TARGET_KEY
+from .log_graph_mouse import TARGET_KEY
 from ..base_commands import GsTextCommand
 from ..git_mixins.branches import Branch
 from .log_graph_helper import COMMIT_LINE
@@ -39,6 +39,7 @@ __all__ = (
 )
 
 
+HOLD_MS = 400
 SOURCE_KEY = "git_savvy.graph_branch_drag_source"
 PREVIEW_KEY = "git_savvy.graph_branch_drag_preview"
 DESTINATION_KEY = "git_savvy.graph_branch_drag_destination"
@@ -126,7 +127,6 @@ class gs_log_graph_branch_drag(GsTextCommand):
         window = view.window()
         assert window
 
-        view.settings().erase(PRESS_KEY)
         view.settings().erase(TARGET_KEY)
         point = view.window_to_text((event["x"], event["y"]))
         region = branch_region_at(view, point)

@@ -120,6 +120,139 @@
     },
     {
         "button": "button1",
+        "modifiers": ["alt"],
+        "count": 1,
+        "press_command": "gs_log_graph_mouse",
+        "press_args": { "text_selection": "characters" },
+        "context": [
+            { "key": "setting.git_savvy.log_graph_view", "operand": true }
+        ]
+    },
+    {
+        "button": "button1",
+        "modifiers": ["alt"],
+        "count": 2,
+        "press_command": "gs_log_graph_mouse",
+        "press_args": { "text_selection": "words" },
+        "context": [
+            { "key": "setting.git_savvy.log_graph_view", "operand": true }
+        ]
+    },
+    {
+        "button": "button1",
+        "modifiers": ["alt"],
+        "count": 3,
+        "press_command": "gs_log_graph_mouse",
+        "press_args": { "text_selection": "lines" },
+        "context": [
+            { "key": "setting.git_savvy.log_graph_view", "operand": true }
+        ]
+    },
+    {
+        "button": "button1",
+        "modifiers": ["alt"],
+        "count": 1,
+        "press_command": "gs_dashboard_mouse",
+        "press_args": { "text_selection": "characters" },
+        "context": [
+            { "key": "setting.git_savvy.status_view", "operand": true }
+        ]
+    },
+    {
+        "button": "button1",
+        "modifiers": ["alt"],
+        "count": 2,
+        "press_command": "gs_dashboard_mouse",
+        "press_args": { "text_selection": "words" },
+        "context": [
+            { "key": "setting.git_savvy.status_view", "operand": true }
+        ]
+    },
+    {
+        "button": "button1",
+        "modifiers": ["alt"],
+        "count": 3,
+        "press_command": "gs_dashboard_mouse",
+        "press_args": { "text_selection": "lines" },
+        "context": [
+            { "key": "setting.git_savvy.status_view", "operand": true }
+        ]
+    },
+    {
+        "button": "button1",
+        "modifiers": ["alt"],
+        "count": 1,
+        "press_command": "gs_dashboard_mouse",
+        "press_args": { "text_selection": "characters" },
+        "context": [
+            { "key": "setting.git_savvy.branch_view", "operand": true }
+        ]
+    },
+    {
+        "button": "button1",
+        "modifiers": ["alt"],
+        "count": 2,
+        "press_command": "gs_dashboard_mouse",
+        "press_args": { "text_selection": "words" },
+        "context": [
+            { "key": "setting.git_savvy.branch_view", "operand": true }
+        ]
+    },
+    {
+        "button": "button1",
+        "modifiers": ["alt"],
+        "count": 3,
+        "press_command": "gs_dashboard_mouse",
+        "press_args": { "text_selection": "lines" },
+        "context": [
+            { "key": "setting.git_savvy.branch_view", "operand": true }
+        ]
+    },
+    {
+        "button": "button1",
+        "modifiers": ["alt"],
+        "count": 1,
+        "press_command": "gs_dashboard_mouse",
+        "press_args": { "text_selection": "characters" },
+        "context": [
+            { "key": "setting.git_savvy.tags_view", "operand": true }
+        ]
+    },
+    {
+        "button": "button1",
+        "modifiers": ["alt"],
+        "count": 2,
+        "press_command": "gs_dashboard_mouse",
+        "press_args": { "text_selection": "words" },
+        "context": [
+            { "key": "setting.git_savvy.tags_view", "operand": true }
+        ]
+    },
+    {
+        "button": "button1",
+        "modifiers": ["alt"],
+        "count": 3,
+        "press_command": "gs_dashboard_mouse",
+        "press_args": { "text_selection": "lines" },
+        "context": [
+            { "key": "setting.git_savvy.tags_view", "operand": true }
+        ]
+    },
+    {
+        "button": "button2",
+        "modifiers": [],
+        "count": 1,
+        "press_command": "gs_log_graph_mouse",
+        "press_args": { "context_menu": true },
+        "command": "noop",
+        "context": [
+            { "key": "setting.git_savvy.log_graph_view", "operand": true },
+            { "key": "git_savvy.has_multi_selection", "operand": false },
+            { "key": "git_savvy.graph_branch_drag_active", "operand": false }
+        ]
+    },
+    {
+        "button": "button1",
         "modifiers": [],
         "count": 2,
         "press_command": "gs_log_graph_branch_drag",
