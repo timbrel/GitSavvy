@@ -203,8 +203,7 @@ class RewriteMixin(mixin_base):
                 shutil.rmtree(self._rebase_replay_dir)
 
     @property
-    def _rebase_replay_dir(self):
-        # type: () -> str
+    def _rebase_replay_dir(self) -> str:
         """
         A directory to store meta data for `rewrite_active_branch`
         """
@@ -212,6 +211,11 @@ class RewriteMixin(mixin_base):
 
     def rebase_rewritten(self):
         if self.in_rebase_merge():
+            path = os.path.join(self._rebase_merge_dir, "rewritten-list")
+            if os.path.isfile(path):
+                with open(path, "r") as f:
+                    return dict(line.split() for line in f if line.strip())
+            # Older merge backends used one file per rewritten commit.
             path = os.path.join(self._rebase_merge_dir, "rewritten")
             if not os.path.exists(path):
                 return dict()
