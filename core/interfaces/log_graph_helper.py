@@ -18,7 +18,7 @@ WORKTREE_MARKER = "■"
 GRAPH_HEIGHT = 5000
 COMMIT_LINE = re.compile(
     r"^[{graph_chars}]*(?P<dot>[{node_chars}])[{graph_chars}]* "
-    r"(?P<commit_hash>[a-f0-9]{{5,40}}) +"
+    r"(?P<commit_hash>[a-f0-9]{{5,64}}) +"
     r"(\((?P<decoration>.+?)\))?"
     .format(graph_chars=GRAPH_CHAR_OPTIONS, node_chars=COMMIT_NODE_CHARS)
 )

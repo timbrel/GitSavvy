@@ -67,11 +67,25 @@ class WorktreesMixin(mixin_base):
         This is not a replacement for Git's complete worktree inventory. Skip
         unreadable registrations and layouts whose checkout path is unknown.
         No lock/prune status or attached commit hashes are inferred. Reftable
-        HEADs are not supported by this loose-HEAD reader.
+        HEADs need Git's reader; use one inventory query for that backend.
         """
         common_dir = self.git_common_dir
         if os.path.isdir(os.path.join(common_dir, "reftable")):
-            return []
+            locations = []
+            for wt in self.get_worktrees():
+                path = wt.path
+                # Git can report the separate gitdir as the main checkout.
+                # Only recover that path when we're in the main checkout;
+                # otherwise omit it rather than offer actions on the gitdir.
+                if _paths_are_equal(path, common_dir):
+                    if not _paths_are_equal(self.git_dir, common_dir):
+                        continue
+                    path = self.repo_path
+                locations.append(WorktreeLocation(
+                    path, wt.branch_name, wt.commit_hash if wt.is_detached else None,
+                    _paths_are_equal(path, self.repo_path)
+                ))
+            return locations
         entries: list[tuple[str, str]] = []
         if _paths_are_equal(self.git_dir, common_dir):
             if not _paths_are_equal(self.repo_path, common_dir):
