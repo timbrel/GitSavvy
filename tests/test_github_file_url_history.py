@@ -23,7 +23,7 @@ class TestPublishedFileUrlHistory(DeferrableTestCase):
         self.addCleanup(self.view.close)
         self.command = gs_github_open_file_in_browser(self.view)
         when(self.command).git(...).thenAnswer(self.git)
-        when(self.command).guess_default_branch("origin").thenReturn("origin/main")
+        when(self.command).guess_default_branch("origin").thenReturn("main")
         # Only the commit graph matters. No checkout, config writes, or index needed.
         self.git("init", "--bare", "--initial-branch=topic")
         self.tree = self.git("mktree", stdin="").strip()

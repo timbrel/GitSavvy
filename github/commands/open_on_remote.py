@@ -118,9 +118,7 @@ class GsGithubFileUrlMixin(GsTextCommand, git_mixins.GithubRemotesMixin):
         if upstream and upstream.remote == remote and upstream.status != "gone":
             branch = upstream.branch
         else:
-            default = self.guess_default_branch(remote)
-            prefix = remote + "/"
-            branch = default[len(prefix):] if default and default.startswith(prefix) else default
+            branch = self.guess_default_branch(remote)
             if target := self.published_branch_from_history(remote, branch):
                 return target
             if not branch:

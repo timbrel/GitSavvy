@@ -55,13 +55,13 @@ class gs_github_configure_remote(WindowCommand, GithubRemotesMixin, GitCommand):
         branches = [b for b in self.get_branches() if b.remote == remote_name]
 
         a = (i for i, b in enumerate(branches) if b.name == currently_set_branch)
-        b = (i for i, b in enumerate(branches) if b.canonical_name == default_branch)
+        b = (i for i, b in enumerate(branches) if b.name == default_branch)
         selected = next(chain(a, b, [-1]))
 
         items = [
             sublime.QuickPanelItem(
                 b.canonical_name,
-                annotation="(default)" if b.canonical_name == default_branch else "")
+                annotation="(default)" if b.name == default_branch else "")
             for b in branches
         ] + [f"Refresh `{remote_name}`"]
 
@@ -82,7 +82,7 @@ class gs_github_configure_remote(WindowCommand, GithubRemotesMixin, GitCommand):
                 return
 
             branch = branches[idx]
-            if branch.canonical_name == default_branch:
+            if branch.name == default_branch:
                 hprint(
                     f"Skip forcing the integration branch to {branch.canonical_name} "
                     f"as that's the default.")

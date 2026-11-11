@@ -3,6 +3,7 @@ from collections import defaultdict
 from collections.abc import Sequence
 from functools import partial
 from itertools import chain
+import os
 import re
 
 from GitSavvy.core.fns import filter_, last
@@ -284,13 +285,20 @@ class RemotesMixin(mixin_base):
             for branch in self.branches_containing_commit(commit_hash, remote_only=True)
         ]))
 
-    def guess_default_branch(self, remote_name) -> str | None:
-        if contents := self._read_git_file("refs", "remotes", remote_name, "HEAD"):
-            # ref: refs/remotes/origin/master
-            for line in contents.splitlines():
-                line = line.strip()
-                if line.startswith("ref: refs/remotes/"):
-                    return line[18:]
+    def guess_default_branch(self, remote_name: str) -> str | None:
+        """Return the branch name without a remote prefix, e.g. `release/stable`."""
+        # Remote-tracking refs are shared by all worktrees.  Symbolic refs are
+        # never packed, so the files backend always has this file; reftable
+        # repositories have none and ask the remote.
+        path = os.path.join(self.git_common_dir, "refs", "remotes", remote_name, "HEAD")
+        prefix = f"ref: refs/remotes/{remote_name}/"
+        try:
+            with open(path, encoding="utf-8") as f:
+                contents = f.read().strip()
+        except (OSError, UnicodeError):
+            contents = ""
+        if contents.startswith(prefix):
+            return contents[len(prefix):]
 
         try:
             output = self.git(
