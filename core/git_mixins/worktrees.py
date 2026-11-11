@@ -220,22 +220,31 @@ class WorktreesMixin(mixin_base):
         ):
             return None
 
-        filename = os.path.basename(project_file)
-        if self.git("ls-files", "-z", "--", filename):
-            return None
-
         project_data = window.project_data()
         if project_data is None:
             return None
-        return filename, project_data
+        return os.path.basename(project_file), project_data
 
     def _copy_project_to_worktree(
         self, project: tuple[str, dict], worktree_path: str
     ) -> None:
-        _, source_data = project
+        source_filename, source_data = project
         filename = os.path.basename(os.path.normpath(worktree_path)) + ".sublime-project"
         destination = os.path.join(worktree_path, filename)
         if os.path.exists(destination):
+            return
+
+        source_status = self.git(
+            "ls-files", "-t", "-z", "--cached", "--others", "--exclude-standard", "--", source_filename
+        )
+        if source_status and not source_status.startswith("? "):
+            return  # Tracked project files belong to the target branch's checkout.
+
+        # Empty output means ignored; '?' means already visibly untracked.
+        if not source_status and not self.git(
+            "check-ignore", "--", filename,
+            working_dir=worktree_path, throw_on_error=False
+        ):
             return
 
         project_data = deepcopy(source_data)
