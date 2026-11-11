@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 
 from GitSavvy.core.fns import filter_
@@ -13,10 +15,9 @@ EXTRACT_BRANCH_NAME = re.compile(r'^[^[]+\[(.*?)(?:[\^\~]+[\d]*)*\]')
 class NearestBranchMixin(mixin_base):
     """ Provide reusable methods for detecting the nearest of a branch relatives """
 
-    def branch_relatives(self, branch):
-        # type: (str) -> List[str]
+    def branch_relatives(self, branch: str) -> List[str]:
         """ Get list of all relatives from ``git show-branch`` results """
-        output = self.git("show-branch", "--no-color")  # type: str
+        output: str = self.git("show-branch", "--no-color")
 
         try:
             prelude, body = re.split(r'^-+$', output, flags=re.M)
@@ -25,7 +26,7 @@ class NearestBranchMixin(mixin_base):
             # and omits the prelude and column indicator.
             lines = filter_(output.splitlines())
         else:
-            match = re.search(r'^(\s+)\*', prelude, re.M)
+            match = re.search(r'^( *)\*', prelude, re.M)
             if not match:
                 print("branch {} not found in header information".format(branch))
                 return []
@@ -37,7 +38,7 @@ class NearestBranchMixin(mixin_base):
                 if line[branch_column] != ' '
             )
 
-        relatives = []  # type: List[str]
+        relatives: List[str] = []
         for line in lines:
             match = EXTRACT_BRANCH_NAME.match(line)
             if match:
@@ -47,8 +48,7 @@ class NearestBranchMixin(mixin_base):
 
         return relatives
 
-    def nearest_branch(self, branch, default="master"):
-        # type: (Optional[str], str) -> str
+    def nearest_branch(self, branch: Optional[str], default: str = "master") -> str:
         """
         Find the nearest commit in current branch history that exists
         on a different branch and return that branch name.
