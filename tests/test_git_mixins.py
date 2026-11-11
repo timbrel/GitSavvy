@@ -543,6 +543,12 @@ class TestWorktreeProject(TestGitMixinsUsage):
             ]
         }
 
+    def test_project_lookup_does_not_query_git(self) -> None:
+        repo = WorktreeCreationTestRepo(self.repo_path, self.project_file, self.project_data, tracked=True)
+        when(repo).git(...).thenRaise(AssertionError("Project lookup must not query Git"))
+
+        self.assertEqual(repo._project_for_worktree(), ("repo.sublime-project", self.project_data))
+
     @p.expand(["worktree", "feature with spaces"])
     def test_copies_an_untracked_local_project(self, worktree_name: str) -> None:
         repo = WorktreeCreationTestRepo(
@@ -563,6 +569,36 @@ class TestWorktreeProject(TestGitMixinsUsage):
             ]
         })
         self.assertEqual(self.project_data["folders"][0]["path"], self.repo_path)
+
+    @p.expand([
+        ("create", False, False, True),
+        ("create", False, True, True),
+        ("create", True, False, False),
+        ("create", True, True, True),
+        ("open", False, False, True),
+        ("open", False, True, True),
+        ("open", True, False, False),
+        ("open", True, True, True)
+    ])
+    def test_copy_does_not_introduce_new_dirt(
+        self, action: str, source_ignored: bool, destination_ignored: bool, should_copy: bool
+    ) -> None:
+        repo = WorktreeCreationTestRepo(
+            self.repo_path, self.project_file, self.project_data,
+            source_ignored=source_ignored, destination_ignored=destination_ignored
+        )
+        worktree_path = os.path.join(self.tmp_dir, "renamed-worktree")
+
+        if action == "create":
+            repo.create_new_worktree("abc123", worktree_path)
+        else:
+            os.makedirs(worktree_path)
+            self._open_worktree(repo, worktree_path)
+
+        self.assertEqual(
+            os.path.exists(os.path.join(worktree_path, "renamed-worktree.sublime-project")),
+            should_copy
+        )
 
     def test_respects_the_copy_project_setting(self):
         repo = WorktreeCreationTestRepo(
@@ -693,7 +729,9 @@ class WorktreeCreationTestRepo(WorktreesMixin):
         *,
         tracked=False,
         checked_out_project=None,
-        copy_project=True
+        copy_project=True,
+        source_ignored=False,
+        destination_ignored=False
     ):
         self._repo_path = repo_path
         self._app_settings = {
@@ -702,6 +740,8 @@ class WorktreeCreationTestRepo(WorktreesMixin):
         self.window = WorktreeCreationTestWindow(project_file, project_data)
         self.tracked = tracked
         self.checked_out_project = checked_out_project
+        self.source_ignored = source_ignored
+        self.destination_ignored = destination_ignored
 
     @property
     def app_settings(self):
@@ -721,7 +761,18 @@ class WorktreeCreationTestRepo(WorktreesMixin):
                     file.write(self.checked_out_project)
             return ""
         if command == "ls-files":
-            return "tracked\0" if self.tracked else ""
+            filename = os.path.basename(self.window.project_file_name())
+            if args != ("-t", "-z", "--cached", "--others", "--exclude-standard", "--", filename):
+                raise AssertionError("Unexpected ls-files args: {}".format(args))
+            if self.tracked:
+                return "H " + filename + "\0"
+            return "" if self.source_ignored else "? " + filename + "\0"
+        if command == "check-ignore":
+            working_dir = kwargs["working_dir"]
+            filename = os.path.basename(os.path.normpath(working_dir)) + ".sublime-project"
+            if args != ("--", filename) or kwargs.get("throw_on_error") is not False:
+                raise AssertionError("Unexpected check-ignore call: {} {}".format(args, kwargs))
+            return filename + "\n" if self.destination_ignored else ""
         raise AssertionError("Unexpected git command: {} {}".format(command, args))
 
 
