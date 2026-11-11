@@ -306,6 +306,22 @@ class HistoryMixin(mixin_base):
             return resolved or None
         return resolved
 
+    def resolve_commit_refs(self, refs: Sequence[str]) -> dict[str, FullHash]:
+        """Resolve commit refs in one batch, omitting missing/non-commit refs."""
+        refs = list(dict.fromkeys(refs))
+        if not refs:
+            return {}
+        lines = self.git(
+            "cat-file", "--batch-check=%(objectname) %(objecttype)",
+            stdin="\n".join(refs) + "\n"
+        ).splitlines()
+        resolved = {}
+        for ref, line in zip(refs, lines):
+            oid, _, object_type = line.partition(" ")
+            if object_type == "commit":
+                resolved[ref] = FullHash(oid)
+        return resolved
+
     def resolve_commitish(self, ref: str) -> ShortHash:
         return self.resolve(ref, short=True)
 

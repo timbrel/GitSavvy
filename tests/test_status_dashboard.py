@@ -61,7 +61,6 @@ class TestStatusDashboard(DeferrableTestCase):
         when(os.path).exists(repo_path).thenReturn(True)
         when(GitCommand).get_repo_path().thenReturn(repo_path)
         when(GitCommand).in_merge().thenReturn(False)
-        when(GitCommand).in_cherry_pick().thenReturn(False)
         when(GitCommand).get_skipped_files().thenReturn([])
         when(GitCommand).git('status', ...).thenReturn(file_status)
         when(GitCommand).git('log', ...).thenReturn(

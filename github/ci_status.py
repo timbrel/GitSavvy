@@ -801,8 +801,8 @@ def passive_key(cmd: GitCommand, head: HeadState) -> Optional[CacheKey]:
     if (
         cmd.in_rebase()
         or cmd.in_merge()
-        or cmd.in_cherry_pick()
-        or cmd.in_revert()
+        or head.in_cherry_pick()
+        or head.in_revert()
         or cmd.in_bisect()
     ):
         return None

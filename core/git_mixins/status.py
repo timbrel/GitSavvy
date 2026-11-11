@@ -22,6 +22,14 @@ class HeadState(NamedTuple):
     ahead: Optional[str]
     behind: Optional[str]
     gone: bool
+    cherry_pick_head: Optional[FullHash] = None
+    revert_head: Optional[FullHash] = None
+
+    def in_cherry_pick(self) -> bool:
+        return self.cherry_pick_head is not None
+
+    def in_revert(self) -> bool:
+        return self.revert_head is not None
 
 
 class FileStatus(NamedTuple):
@@ -93,19 +101,22 @@ class StatusMixin(mixin_base):
         files = self._parse_status_for_file_statuses(lines)
         working_dir_status = self._group_status_entries(files)
 
-        branch_status = self._get_branch_status_components(lines)
-        current_branch = branch_status.branch
+        cherry_pick_head, revert_head = self.read_cherry_pick_and_revert_heads()
+        head = self._parse_head(lines)._replace(
+            cherry_pick_head=cherry_pick_head, revert_head=revert_head
+        )
+        current_branch = head.branch
         last_branches = self.current_state()["last_branches"]
         if current_branch and current_branch != last_branches[-1]:
             last_branches.append(current_branch)
         self.update_store({
             "status": working_dir_status,
-            "head": branch_status,
+            "head": head,
             "last_branches": last_branches,
-            "long_status": self._format_branch_status(branch_status, working_dir_status),
-            "short_status": self._format_branch_status_short(branch_status),
+            "long_status": self._format_branch_status(head, working_dir_status),
+            "short_status": self._format_branch_status_short(head),
         })
-        ci_status.on_head_observed(self, branch_status)  # type: ignore[arg-type]
+        ci_status.on_head_observed(self, head)  # type: ignore[arg-type]
         return working_dir_status
 
     def _get_status(self) -> List[str]:
@@ -169,7 +180,7 @@ class StatusMixin(mixin_base):
             merge_conflicts=conflicts,
         )
 
-    def _get_branch_status_components(self, lines: List[str]) -> HeadState:
+    def _parse_head(self, lines: List[str]) -> HeadState:
         header_lines = list(takewhile(lambda line: line.startswith("# "), lines))
         headers = dict(line[2:].split(" ", 1) for line in header_lines)
         oid = headers["branch.oid"]
@@ -195,26 +206,24 @@ class StatusMixin(mixin_base):
         )
 
     def _format_branch_status(
-        self, branch_status: HeadState, working_dir_status: WorkingDirState, delim: str = "\n           "
+        self, head: HeadState, working_dir_status: WorkingDirState, delim: str = "\n           "
     ) -> str:
-        detached, branch, _, remote, clean, ahead, behind, gone = branch_status
-
         secondary = []
 
-        if detached:
+        if head.detached:
             status = "HEAD is in a detached state."
 
         else:
-            tracking = " tracking `{}`".format(remote)
-            status = "On branch `{}`{}.".format(branch, tracking if remote else "")
+            tracking = " tracking `{}`".format(head.remote)
+            status = "On branch `{}`{}.".format(head.branch, tracking if head.remote else "")
 
-            if ahead and behind:
-                secondary.append("You're ahead by {} and behind by {}.".format(ahead, behind))
-            elif ahead:
-                secondary.append("You're ahead by {}.".format(ahead))
-            elif behind:
-                secondary.append("You're behind by {}.".format(behind))
-            elif gone:
+            if head.ahead and head.behind:
+                secondary.append("You're ahead by {} and behind by {}.".format(head.ahead, head.behind))
+            elif head.ahead:
+                secondary.append("You're ahead by {}.".format(head.ahead))
+            elif head.behind:
+                secondary.append("You're behind by {}.".format(head.behind))
+            elif head.gone:
                 secondary.append("The remote branch is gone.")
 
         if self.in_merge():
@@ -252,16 +261,16 @@ class StatusMixin(mixin_base):
                 else:
                     secondary.append("hint: Run `rebase --continue` to continue")
 
-        if self.in_cherry_pick():
-            secondary.append("Cherry-picking {}.".format(self.cherry_pick_head()))
-        if self.in_revert():
-            secondary.append("Reverting {}.".format(self.revert_head()))
+        if head.cherry_pick_head:
+            secondary.append("Cherry-picking {}.".format(self.to_short_hash(head.cherry_pick_head)))
+        if head.revert_head:
+            secondary.append("Reverting {}.".format(self.to_short_hash(head.revert_head)))
         if self.in_bisect():
             secondary.append("Bisecting from {} on.".format(self.bisect_start_commit()))
 
         return delim.join([status] + secondary) if secondary else status
 
-    def _format_branch_status_short(self, branch_status: HeadState) -> str:
+    def _format_branch_status_short(self, head: HeadState) -> str:
         if self.in_rebase():
             rebase_progress = self._rebase_progress()
             return "(no branch, rebasing {}{})".format(
@@ -269,30 +278,26 @@ class StatusMixin(mixin_base):
                 " {}".format(rebase_progress) if rebase_progress else ""
             )
 
-        detached, branch, _, remote, clean, ahead, behind, gone = branch_status
+        dirty = "" if head.clean else "*"
 
-        dirty = "" if clean else "*"
-
-        if detached:
+        if head.detached:
             return "DETACHED" + dirty
 
-        assert branch
-        output = branch + dirty
+        assert head.branch
+        output = head.branch + dirty
 
-        if ahead:
-            output += "+" + ahead
-        if behind:
-            output += "-" + behind
+        if head.ahead:
+            output += "+" + head.ahead
+        if head.behind:
+            output += "-" + head.behind
 
         merge_head = self.merge_head() if self.in_merge() else ""
         if merge_head:
             output += " (merging {})".format(merge_head)
-        cherry_pick_head = self.cherry_pick_head() if self.in_cherry_pick() else ""
-        if cherry_pick_head:
-            output += " (cherry-picking {})".format(cherry_pick_head)
-        revert_head = self.revert_head() if self.in_revert() else ""
-        if revert_head:
-            output += " (reverting {})".format(revert_head)
+        if head.cherry_pick_head:
+            output += " (cherry-picking {})".format(self.to_short_hash(head.cherry_pick_head))
+        if head.revert_head:
+            output += " (reverting {})".format(self.to_short_hash(head.revert_head))
         bisect_start = self.bisect_start_commit() if self.in_bisect() else ""
         if bisect_start:
             output += " (bisecting {})".format(bisect_start)
@@ -338,10 +343,10 @@ class StatusMixin(mixin_base):
     def rebase_onto_commit(self) -> FullHash | Literal[""]:
         return self._read_rebase_file("onto")
 
-    def rebase_stopped_at(self):
-        # type: () -> str
-        commit_hash = self._read_git_file("REBASE_HEAD")
-        if not commit_hash:
+    def rebase_stopped_at(self) -> str:
+        # REBASE_HEAD is not a loose file with reftable. The sequencer also
+        # records the stopped commit in its backend-independent state files.
+        if not self.rebase_conflict_at():
             return ""
 
         done = self._read_rebase_file("done")
@@ -362,8 +367,7 @@ class StatusMixin(mixin_base):
         else:
             return item
 
-    def _rebase_progress(self):
-        # type: () -> str
+    def _rebase_progress(self) -> str:
         cursor, total = self._read_rebase_file("msgnum"), self._read_rebase_file("end")
         if cursor and total:
             return "{}/{}".format(cursor, total)
@@ -400,21 +404,14 @@ class StatusMixin(mixin_base):
             commit_hash = f.read().strip()
         return self.to_short_hash(FullHash(commit_hash))
 
-    def in_cherry_pick(self):
-        # type: () -> bool
-        return os.path.exists(os.path.join(self.git_dir, "CHERRY_PICK_HEAD"))
-
-    def cherry_pick_head(self) -> ShortHash | Literal[""]:
-        commit_hash = self._read_git_file("CHERRY_PICK_HEAD")
-        return self.to_short_hash(FullHash(commit_hash)) if commit_hash else ""
-
-    def in_revert(self):
-        # type: () -> bool
-        return os.path.exists(os.path.join(self.git_dir, "REVERT_HEAD"))
-
-    def revert_head(self) -> ShortHash | Literal[""]:
-        commit_hash = self._read_git_file("REVERT_HEAD")
-        return self.to_short_hash(FullHash(commit_hash)) if commit_hash else ""
+    def read_cherry_pick_and_revert_heads(self) -> tuple[FullHash | None, FullHash | None]:
+        # These root refs move into reftable; MERGE_HEAD and BISECT_START do not.
+        refs = ["CHERRY_PICK_HEAD", "REVERT_HEAD"]
+        if os.path.isdir(os.path.join(self.git_common_dir, "reftable")):
+            heads = self.resolve_commit_refs(refs)
+        else:
+            heads = {ref: FullHash(value) for ref in refs if (value := self._read_git_file(ref))}
+        return heads.get("CHERRY_PICK_HEAD"), heads.get("REVERT_HEAD")
 
     def in_bisect(self) -> bool:
         return os.path.exists(os.path.join(self.git_dir, "BISECT_START"))

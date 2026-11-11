@@ -14,12 +14,14 @@ import os
 from pathlib import Path
 import subprocess
 import tempfile
+import threading
 import time
 
 import sublime
 from unittesting import DeferrableTestCase
 
 from GitSavvy.core import app_state, runtime
+from GitSavvy.core.interfaces import dashboard_base as ui, status_main_actions
 from GitSavvy.tests.mockito import unstub, when
 from GitSavvy.tests.parameterized import parameterized as p
 
@@ -358,6 +360,183 @@ class TestFutureRepositories(DeferrableTestCase):
         self.assert_scoped(from_patch, changed, "meta.commit-info.header.sha.git-savvy")
         self.assert_scoped(from_patch, original, "meta.commit-info.header.sha.git-savvy")
 
+    @p.expand([
+        (object_format, ref_format, layout, stop)
+        for object_format, ref_format in FORMATS
+        for layout in ("main", "linked")
+        for stop in ("edit", "merge-conflict", "apply-conflict")
+    ])
+    def test_rebase_metadata(self, object_format: str, ref_format: str, layout: str, stop: str):
+        self.create_repo(object_format, ref_format)
+        self.git("config", "core.abbrev", "64" if object_format == "sha256" else "40")
+        self.write_file("tracked.txt", "original\n")
+        self.git("add", ".")
+        self.git("commit", "-m", "Shared base")
+        self.git("checkout", "-b", "topic")
+        self.write_file("first.txt", "first change\n")
+        self.git("add", ".")
+        self.git("commit", "-m", "First replayed change")
+        first = self.git("rev-parse", "HEAD").strip()
+        self.write_file("tracked.txt", "topic version\n")
+        self.git("commit", "-am", "Second replayed change")
+        second = self.git("rev-parse", "HEAD").strip()
+        self.write_file("third.txt", "pending change\n")
+        self.git("add", ".")
+        self.git("commit", "-m", "Third replayed change")
+        original = self.git("rev-parse", "HEAD").strip()
+        self.git("checkout", "main")
+        self.write_file("tracked.txt", "main version\n")
+        self.git("commit", "-am", "Advance main")
+        onto = first if stop == "edit" else self.git("rev-parse", "HEAD").strip()
+        main_repo = self.repo
+        if layout == "linked":
+            linked = Path(self.temp.name) / "linked"
+            self.git("worktree", "add", str(linked), "topic")
+            self.repo = linked
+        else:
+            self.git("checkout", "topic")
+        git_dir = Path(self.git("rev-parse", "--absolute-git-dir").strip())
+        state_dir = git_dir / ("rebase-apply" if stop == "apply-conflict" else "rebase-merge")
+        yield from self.open_window()
+        if stop == "edit":
+            self.window.run_command("gs_graph", {"repo_path": str(self.repo)})
+            graph = yield from self.await_view("git_savvy.log_graph_view", second)
+            # This drives GitSavvy's real todo-file editor hook, not a substitute editor.
+            yield from self.run_threaded_command(graph, "gs_rebase_edit_commit", {"commit_hash": second})
+            self.assertTrue((state_dir / "stopped-sha").exists())
+        else:
+            self.git("rebase", "--apply" if stop == "apply-conflict" else "--merge", "main",
+                     expected_code=1)
+            self.assertIn("tracked.txt", self.git("diff", "--name-only", "--diff-filter=U"))
+        self.window.run_command("gs_show_status")
+        status = yield from self.await_view("git_savvy.status_view", "Rebasing `topic`")
+        self.assertIn("onto " + onto, self.contents(status))
+        if stop != "apply-conflict":
+            self.assertIn("(1/2)" if stop == "edit" else "(2/3)", self.contents(status))
+            self.assertIn("`{} {}".format("edit" if stop == "edit" else "pick", second),
+                          self.contents(status))
+        if stop == "edit":
+            self.assertIn("hint: Amend, edit, or run `rebase --continue`", self.contents(status))
+        else:
+            self.assertIn("hint: Resolve all conflicts and stage them", self.contents(status))
+        self.window.run_command("gs_show_rebase")
+        view = yield from self.await_view("git_savvy.rebase_view", "Third replayed change")
+        interface = ui.interfaces[view.id()]
+        self.assertEqual(str(git_dir), interface.git_dir)
+        self.assertEqual(str(main_repo / ".git"), interface.git_common_dir)
+        self.assertEqual("topic", interface.rebase_branch_name())
+        self.assertEqual(original, interface.rebase_orig_head())
+        self.assertEqual(onto, interface.rebase_onto_commit())
+        self.assertEqual(second, interface.rebase_conflict_at())
+        if stop != "edit":
+            rewritten = self.git("rev-parse", "HEAD").strip()
+            self.assertNotEqual(first, rewritten)
+            self.assertEqual({first: rewritten}, interface.rebase_rewritten())
+            self.assertIn("✔  " + rewritten, self.contents(view))
+            self.assertIn("! tracked.txt", self.contents(view))
+        if stop != "apply-conflict":
+            todo = self.window.open_file(str(state_dir / "git-rebase-todo"))
+            yield lambda: not todo.is_loading()
+            self.assertIn("pick " + original, self.contents(todo))
+            self.assertNotIn("pick " + first, self.contents(todo))
+            self.window.focus_view(view)
+        if layout == "linked":
+            self.assertFalse((main_repo / ".git" / state_dir.name).exists())
+            worktrees = interface.get_worktrees()
+            self.assertEqual(2, len(worktrees))
+            self.assertEqual(1, sum(wt.is_detached for wt in worktrees))
+        yield from self.run_threaded_command(
+            self.window, "gs_rebase_continue" if stop == "edit" else "gs_rebase_skip"
+        )
+        self.assertFalse(state_dir.exists())
+        self.window.run_command("gs_show_status")
+        finished = yield from self.await_view("git_savvy.status_view", "On branch `topic`")
+        self.assertNotIn("Rebasing", self.contents(finished))
+        self.assertFalse(interface.in_rebase())
+        self.assertEqual("refs/heads/topic", self.git("symbolic-ref", "HEAD").strip())
+        self.assertEqual("pending change\n", self.git("show", "HEAD:third.txt"))
+
+    @p.expand([
+        (object_format, ref_format, layout, operation)
+        for object_format, ref_format in FORMATS
+        for layout in ("main", "linked")
+        for operation in ("merge", "cherry-pick", "revert")
+    ])
+    def test_operation_refs(self, object_format: str, ref_format: str, layout: str, operation: str):
+        self.create_repo(object_format, ref_format)
+        self.git("config", "core.abbrev", "64" if object_format == "sha256" else "40")
+        self.write_file("tracked.txt", "original\n")
+        self.git("add", ".")
+        self.git("commit", "-m", "Shared base")
+        base = self.git("rev-parse", "HEAD").strip()
+        self.write_file("tracked.txt", "main change\n")
+        self.git("commit", "-am", "Main change")
+        to_revert = self.git("rev-parse", "HEAD").strip()
+        self.write_file("tracked.txt", "later main change\n")
+        self.git("commit", "-am", "Later main change")
+        self.git("checkout", "-b", "side", base)
+        self.write_file("tracked.txt", "side change\n")
+        self.git("commit", "-am", "Side change")
+        side = self.git("rev-parse", "HEAD").strip()
+        self.git("checkout", "main")
+        if layout == "linked":
+            linked = Path(self.temp.name) / "linked"
+            self.git("worktree", "add", "-b", "operation", str(linked))
+            self.repo = linked
+        target = to_revert if operation == "revert" else side
+        self.git(operation, "--no-edit", target, expected_code=1)
+        self.assertIn("tracked.txt", self.git("diff", "--name-only", "--diff-filter=U"))
+        yield from self.open_window()
+        self.window.run_command("gs_show_status")
+        status = yield from self.await_view("git_savvy.status_view", "MERGE CONFLICTS:")
+        label = {"merge": "Merging", "cherry-pick": "Cherry-picking", "revert": "Reverting"}[operation]
+        self.assertIn(label + " " + target, self.contents(status))
+        interface = ui.interfaces[status.id()]
+        head = interface.state["head"]
+        self.assertEqual(operation == "merge", interface.in_merge())
+        self.assertEqual(operation == "cherry-pick", head.in_cherry_pick())
+        self.assertEqual(operation == "revert", head.in_revert())
+        self.assertEqual(["tracked.txt"], interface.conflicting_files_())
+        panels = []
+        when(status_main_actions).show_quick_panel(...).thenAnswer(
+            lambda window, items, callback, **kwargs: panels.append((items, callback))
+        )
+        status.run_command("gs_status_action_menu")
+        self.assertEqual(1, len(panels))
+        items, choose = panels[0]
+        self.assertEqual(operation.capitalize() + " --abort", items[1])
+        choose(1)
+        yield from self.drain_worker()
+        self.window.run_command("gs_show_status")
+        finished = yield from self.await_view("git_savvy.status_view", "Your working directory is clean.")
+        self.assertNotIn(label + " " + target, self.contents(finished))
+        head = ui.interfaces[finished.id()].state["head"]
+        self.assertFalse(interface.in_merge())
+        self.assertFalse(head.in_cherry_pick())
+        self.assertFalse(head.in_revert())
+
+    @p.expand([
+        (object_format, ref_format, layout, selector)
+        for object_format, ref_format in FORMATS
+        for layout in ("main", "linked")
+        for selector in ("main@{1}", "HEAD@{0}")
+    ])
+    def test_reflog_decorations(self, object_format: str, ref_format: str, layout: str, selector: str):
+        self.create_repo(object_format, ref_format)
+        for n in range(3):
+            self.git("commit", "--allow-empty", "-m", "History step {}".format(n))
+        if layout == "linked":
+            linked = Path(self.temp.name) / "linked"
+            self.git("worktree", "add", "-b", "linked", str(linked))
+            self.repo = linked
+            self.git("commit", "--allow-empty", "-m", "Linked worktree only")
+        commit = self.git("rev-parse", selector).strip()
+        yield from self.open_window()
+        self.window.run_command("gs_graph", {"repo_path": str(self.repo), "branches": [selector]})
+        graph = yield from self.await_view("git_savvy.log_graph_view", commit[:12])
+        line = graph.substr(graph.line(graph.find(commit[:12], 0, sublime.LITERAL)))
+        self.assertIn(selector, line)
+
     def test_init_uses_preview_defaults(self):
         if os.environ.get("GITSAVVY_GIT3_PREVIEW") != "1":
             self.skipTest("Requires the isolated breaking-build image")
@@ -406,6 +585,15 @@ class TestFutureRepositories(DeferrableTestCase):
             flag, needle, [(v.name(), self.contents(v)) for v in self.window.views()]
         ))
 
+    def run_threaded_command(self, target, command: str, args=None):
+        # Panel completion precedes the command's follow-up callbacks. Wait for
+        # the actual spawned threads before inspecting state or closing views.
+        before = set(threading.enumerate())
+        target.run_command(command, args or {})
+        started = set(threading.enumerate()) - before
+        yield lambda: all(not thread.is_alive() for thread in started)
+        yield from self.drain_worker()
+
     def reject_dialog(self, message: str, *args, **kwargs) -> bool:
         self.dialogs.append(message)
         return False
@@ -418,19 +606,18 @@ class TestFutureRepositories(DeferrableTestCase):
     def close_window(self) -> None:
         for view in self.window.views():
             view.set_scratch(True)
-            view.close()
         self.window.run_command("close_window")
 
     def write_file(self, name: str, content: str) -> None:
         (self.repo / name).write_text(content, encoding="utf-8")
 
-    def git(self, *args: str) -> str:
+    def git(self, *args: str, expected_code: int = 0) -> str:
         result = subprocess.run(
             ["git", *args], cwd=str(self.repo), stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, encoding="utf-8", timeout=20
         )
-        if result.returncode:
-            self.fail("git {}: {}".format(" ".join(args), result.stderr))
+        self.assertEqual(expected_code, result.returncode,
+                         "git {}: {}".format(" ".join(args), result.stderr))
         return result.stdout
 
     def assert_scoped(self, view: sublime.View, text: str, selector: str) -> None:
