@@ -207,7 +207,7 @@ class TestCommandLog(DeferrableTestCase):
 
         self.assertIs(command_log._commands.commands[execution_id].proc, proc)
         stdout, _ = proc.communicate(b"command log observer test\n")
-        self.assertEqual(len(stdout.strip()), 40)
+        self.assertRegex(stdout.strip(), rb"^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
         yield lambda: not command_log._commands.commands[execution_id].is_running
 
     def test_handoff_waiter_records_abort_without_stealing_pipes(self):
