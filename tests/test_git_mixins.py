@@ -631,6 +631,33 @@ class TestWorktreeProject(TestGitMixinsUsage):
         self.assertEqual(path, os.path.join(self.tmp_dir, "repo-" + suffix))
         self.assertTrue(os.path.isdir(path))
 
+    @p.expand([(False, False), (False, True), (True, False), (True, True)])
+    def test_temporary_worktree_only_copies_ignored_destination(
+        self, source_ignored: bool, destination_ignored: bool
+    ) -> None:
+        repo = WorktreeCreationTestRepo(
+            self.repo_path, self.project_file, self.project_data,
+            source_ignored=source_ignored, destination_ignored=destination_ignored
+        )
+        worktree_path = self._external_worktree_path()
+        when(worktrees).open_worktree_in_new_window(worktree_path, then=None).thenReturn(None)
+
+        repo.open_worktree_in_new_window(worktree_path, copy_project_only_if_ignored=True)
+
+        self.assertEqual(
+            os.path.exists(os.path.join(worktree_path, "feature.sublime-project")),
+            destination_ignored
+        )
+        verify(worktrees).open_worktree_in_new_window(worktree_path, then=None)
+
+    def test_creation_can_skip_copying_the_project(self) -> None:
+        repo = WorktreeCreationTestRepo(self.repo_path, self.project_file, self.project_data)
+        worktree_path = os.path.join(self.tmp_dir, "temporary-merge")
+
+        repo.create_new_worktree("abc123", worktree_path, copy_project=False)
+
+        self.assertEqual(os.listdir(worktree_path), [])
+
     def test_respects_the_copy_project_setting(self):
         repo = WorktreeCreationTestRepo(
             self.repo_path, self.project_file, self.project_data,

@@ -40,6 +40,20 @@ class TestGraphWorktreeActions(DeferrableTestCase):
         menu["Open feature in a new window"]()
         verify(self.command).open_worktree_in_new_window(wt.path)
 
+    def test_merge_into_follows_push_and_rebase_only_on_checked_out_head(self) -> None:
+        info = {"commit": COMMIT, "local_branches": ["feature"], "HEAD": "feature"}
+        menu = self.menu(info, [])
+        self.assertEqual(list(menu)[:3], ["Push", "Rebase on...", "Merge into..."])
+        when(self.window).run_command("gs_merge_current_branch_into", {"source": "feature"}).thenReturn(None)
+        menu["Merge into..."]()
+        verify(self.window).run_command("gs_merge_current_branch_into", {"source": "feature"})
+        when(self.command).in_bisect().thenReturn(True)
+        self.assertNotIn("Merge into...", self.menu(info, []))
+        when(self.command).in_bisect().thenReturn(False)
+        for head in (COMMIT, "another"):
+            self.assertNotIn("Merge into...", self.menu({**info, "HEAD": head}, []))
+        self.assertNotIn("Merge into...", self.menu({"commit": COMMIT}, []))
+
     def test_create_worktree_uses_checkout_command(self) -> None:
         when(self.window).run_command("gs_checkout_in_worktree", {"start_point": COMMIT}).thenReturn(None)
 

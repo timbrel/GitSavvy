@@ -17,6 +17,7 @@ from .ignore import *
 from .init import *
 from .log import *
 from .merge import *
+from .merge_into import *
 from .mv import *
 from .next_hunk import *
 from .pull import *
