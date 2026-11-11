@@ -25,6 +25,11 @@ from GitSavvy.tests.parameterized import parameterized as p
 
 
 FORMATS = [("sha1", "files"), ("sha256", "files"), ("sha1", "reftable"), ("sha256", "reftable")]
+ABBREVIATIONS = [
+    (object_format, ref_format, abbreviation)
+    for object_format, ref_format in FORMATS
+    for abbreviation in ("default", "full")
+]
 
 
 class TestFutureRepositories(DeferrableTestCase):
@@ -202,6 +207,157 @@ class TestFutureRepositories(DeferrableTestCase):
         self.assertIn(expected_marker, self.contents(graph))
         self.assertEqual(1, self.contents(graph).count("■"))
 
+    @p.expand(FORMATS)
+    def test_blame_scopes_and_opens_full_hashes(self, object_format: str, ref_format: str):
+        commit = self.create_topic_commit(object_format, ref_format)
+        yield from self.open_window()
+        source = self.window.open_file(str(self.repo / "tracked.txt"))
+        yield lambda: not source.is_loading()
+        source.run_command("gs_blame")
+        blame = yield from self.await_view("git_savvy.blame_view", "changed line")
+        self.assert_scoped(blame, commit, "constant.numeric.commit-hash.git-savvy")
+
+        self.place_cursor(blame, "changed line")
+        blame.run_command("gs_blame_open_commit")
+        yield from self.assert_opens_topic_commit(commit)
+
+    @p.expand(FORMATS)
+    def test_status_scopes_and_opens_full_hashes(self, object_format: str, ref_format: str):
+        commit = self.create_topic_commit(object_format, ref_format)
+        yield from self.open_window()
+        self.window.run_command("gs_show_status")
+        status = yield from self.await_view("git_savvy.status_view", "Git 3 syntax change")
+        self.assert_scoped(status, commit, "constant.other.git-savvy.sha1")
+
+        self.place_cursor(status, commit)
+        status.run_command("gs_interface_show_commit")
+        yield from self.assert_opens_topic_commit(commit)
+
+    @p.expand(FORMATS)
+    def test_rebase_scopes_and_opens_full_hashes(self, object_format: str, ref_format: str):
+        commit = self.create_topic_commit(object_format, ref_format)
+        yield from self.open_window()
+        self.window.run_command("gs_show_rebase")
+        rebase = yield from self.await_view("git_savvy.rebase_view", "Git 3 syntax change")
+        self.assert_scoped(rebase, commit, "support.type.git-savvy.rebase.commit_hash")
+
+        self.place_cursor(rebase, commit)
+        rebase.run_command("gs_rebase_show_commit")
+        yield from self.assert_opens_topic_commit(commit)
+
+    @p.expand(FORMATS)
+    def test_branch_dashboard_scopes_full_hashes_and_checks_out(
+        self, object_format: str, ref_format: str
+    ):
+        commit = self.create_topic_commit(object_format, ref_format)
+        # The same commit is listed for `topic`, the linked worktree's
+        # branch, and the detached worktree.
+        self.git("worktree", "add", "-b", "linked", str(Path(self.temp.name) / "linked"))
+        self.git("worktree", "add", "--detach", str(Path(self.temp.name) / "detached"))
+        self.git("checkout", "main")
+        yield from self.open_window()
+        self.window.run_command("gs_show_branch")
+        branches = yield from self.await_view("git_savvy.branch_view", "DETACHED")
+        yield from self.drain_worker()
+        hashes = branches.find_by_selector("constant.other.git-savvy.branches.branch.sha1")
+        self.assertEqual(3, [branches.substr(r) for r in hashes].count(commit))
+
+        self.place_cursor(branches, " topic ")
+        branches.run_command("gs_branches_checkout")
+        yield from self.drain_worker()
+        self.assertEqual("refs/heads/topic", self.git("symbolic-ref", "HEAD").strip())
+
+    @p.expand(FORMATS)
+    def test_tags_scope_full_hashes(self, object_format: str, ref_format: str):
+        commit = self.create_topic_commit(object_format, ref_format)
+        self.git("tag", "v3-preview")
+        yield from self.open_window()
+        self.window.run_command("gs_show_tags")
+        tags = yield from self.await_view("git_savvy.tags_view", "v3-preview")
+        yield from self.drain_worker()
+        hashes = tags.find_by_selector("constant.other.git-savvy.tags.sha1")
+        self.assertEqual([commit], [tags.substr(r) for r in hashes])
+
+    @p.expand(FORMATS)
+    def test_output_panel_scopes_full_hashes(self, object_format: str, ref_format: str):
+        commit = self.create_topic_commit(object_format, ref_format)
+        yield from self.open_window()
+        self.window.run_command("gs_custom", {
+            "args": ["log", "-1", "--format=%H"], "output_to_panel": True
+        })
+        yield from self.drain_worker()
+        panel = self.window.find_output_panel("GitSavvy")
+        self.assertIsNotNone(panel)
+        self.assert_scoped(panel, commit, "constant.numeric.graph.commit-hash.git-savvy")
+
+    @p.expand(FORMATS)
+    def test_graph_abbreviates_hashes_by_default(self, object_format: str, ref_format: str):
+        self.create_repo(object_format, ref_format)
+        self.git("config", "--unset", "core.abbrev")
+        self.git("commit", "--allow-empty", "-m", "Git 3 short graph")
+        commit = self.git("rev-parse", "HEAD").strip()
+        yield from self.open_window()
+        self.window.run_command("gs_graph", {"repo_path": str(self.repo)})
+        graph = yield from self.await_view("git_savvy.log_graph_view", "Git 3 short graph")
+        hashes = graph.find_by_selector("constant.numeric.graph.commit-hash.git-savvy")
+        self.assertEqual(1, len(hashes))
+        displayed = graph.substr(hashes[0])
+        self.assertTrue(commit.startswith(displayed))
+        self.assertLess(len(displayed), len(commit))
+        self.assertGreaterEqual(len(displayed), 7)
+
+    @p.expand(ABBREVIATIONS)
+    def test_line_history_scopes_full_hashes(
+        self, object_format: str, ref_format: str, abbreviation: str
+    ):
+        original, changed = self.create_line_change(object_format, ref_format, abbreviation)
+        yield from self.open_window()
+        history = yield from self.open_line_history_of_first_line()
+        self.assert_scoped(history, changed, "meta.commit-info.header.sha.git-savvy")
+        self.assert_scoped(history, original, "meta.commit-info.header.sha.git-savvy")
+        self.assertEqual(2, len(history.find_by_selector("meta.commit-info.header.sha.git-savvy")))
+        self.assertEqual(2, len(history.find_by_selector("meta.diff.range.unified")))
+        self.assert_scoped(history, "+new line", "markup.inserted.diff")
+        self.assert_scoped(history, "-old line", "markup.deleted.diff")
+
+    @p.expand(ABBREVIATIONS)
+    def test_line_history_opens_a_commit_and_its_successor(
+        self, object_format: str, ref_format: str, abbreviation: str
+    ):
+        original, changed = self.create_line_change(object_format, ref_format, abbreviation)
+        yield from self.open_window()
+        history = yield from self.open_line_history_of_first_line()
+
+        self.place_cursor(history, "+old line")
+        history.run_command("gs_line_history_open_commit")
+        patch = yield from self.await_view("git_savvy.show_commit_view", "+old line")
+        self.assert_scoped(patch, original, "meta.commit-info.header.sha.git-savvy")
+
+        patch.run_command("gs_show_commit_open_next_commit")
+        patch = yield from self.await_view("git_savvy.show_commit_view", "+new line")
+        self.assert_scoped(patch, changed, "meta.commit-info.header.sha.git-savvy")
+        self.assert_scoped(patch, "+new line", "markup.inserted.diff")
+        # `index <from>..<to>` abbreviates blob IDs like commits.
+        self.assert_scoped(patch, self.blob_id(original, abbreviation),
+                           "constant.numeric.hex.from-commit.diff")
+        self.assert_scoped(patch, self.blob_id(changed, abbreviation),
+                           "constant.numeric.hex.to-commit.diff")
+
+    @p.expand(ABBREVIATIONS)
+    def test_line_history_from_a_patch(
+        self, object_format: str, ref_format: str, abbreviation: str
+    ):
+        original, changed = self.create_line_change(object_format, ref_format, abbreviation)
+        yield from self.open_window()
+        self.window.run_command("gs_show_commit", {"commit_hash": changed})
+        patch = yield from self.await_view("git_savvy.show_commit_view", "+new line")
+
+        self.place_cursor(patch, "+new line")
+        patch.run_command("gs_line_history")
+        from_patch = yield from self.await_view("git_savvy.line_history_view", "+old line")
+        self.assert_scoped(from_patch, changed, "meta.commit-info.header.sha.git-savvy")
+        self.assert_scoped(from_patch, original, "meta.commit-info.header.sha.git-savvy")
+
     def test_init_uses_preview_defaults(self):
         if os.environ.get("GITSAVVY_GIT3_PREVIEW") != "1":
             self.skipTest("Requires the isolated breaking-build image")
@@ -276,6 +432,67 @@ class TestFutureRepositories(DeferrableTestCase):
         if result.returncode:
             self.fail("git {}: {}".format(" ".join(args), result.stderr))
         return result.stdout
+
+    def assert_scoped(self, view: sublime.View, text: str, selector: str) -> None:
+        region = view.find(text, 0, sublime.LITERAL)
+        self.assertTrue(region, "Missing {!r} in {}".format(text, self.contents(view)))
+        for point in (region.begin(), region.end() - 1):
+            self.assertTrue(view.match_selector(point, selector),
+                            "{!r}: expected {}, got {}".format(text, selector, view.scope_name(point)))
+
+    def create_topic_commit(self, object_format: str, ref_format: str) -> str:
+        """Commit a change on `topic` and print every hash in full."""
+        self.create_repo(object_format, ref_format)
+        self.git("config", "core.abbrev", "64" if object_format == "sha256" else "40")
+        self.write_file("tracked.txt", "first line\n")
+        self.git("add", "tracked.txt")
+        self.git("commit", "-m", "Git 3 syntax base")
+        self.git("checkout", "-b", "topic")
+        self.write_file("tracked.txt", "changed line\n")
+        self.git("commit", "-am", "Git 3 syntax change")
+        return self.git("rev-parse", "HEAD").strip()
+
+    def assert_opens_topic_commit(self, commit: str):
+        patch = yield from self.await_view("git_savvy.show_commit_view", "+changed line")
+        self.assert_scoped(patch, commit, "meta.commit-info.header.sha.git-savvy")
+
+    def create_line_change(
+        self, object_format: str, ref_format: str, abbreviation: str
+    ) -> tuple[str, str]:
+        """Commit the first line twice; return (original, changed)."""
+        self.create_repo(object_format, ref_format)
+        if abbreviation == "default":
+            self.git("config", "--unset", "core.abbrev")
+        else:
+            self.git("config", "core.abbrev", "64" if object_format == "sha256" else "40")
+        self.write_file("tracked.txt", "old line\nstable line\n")
+        self.git("add", "tracked.txt")
+        self.git("commit", "-m", "Original selected line")
+        original = self.git("rev-parse", "HEAD").strip()
+        self.write_file("tracked.txt", "new line\nstable line\n")
+        self.git("commit", "-am", "Changed selected line")
+        changed = self.git("rev-parse", "HEAD").strip()
+        return original, changed
+
+    def open_line_history_of_first_line(self):
+        source = self.window.open_file(str(self.repo / "tracked.txt"))
+        yield lambda: not source.is_loading()
+        source.sel().clear()
+        source.sel().add(sublime.Region(0))
+        source.run_command("gs_line_history")
+        return (yield from self.await_view("git_savvy.line_history_view", "+old line"))
+
+    def blob_id(self, revision: str, abbreviation: str) -> str:
+        blob = self.git("rev-parse", revision + ":tracked.txt").strip()
+        if abbreviation == "full":
+            return blob
+        return self.git("rev-parse", "--short", blob).strip()
+
+    def place_cursor(self, view: sublime.View, text: str) -> None:
+        region = view.find(text, 0, sublime.LITERAL)
+        self.assertTrue(region, "Missing {!r} in {}".format(text, self.contents(view)))
+        view.sel().clear()
+        view.sel().add(sublime.Region(region.begin()))
 
     def contents(self, view: sublime.View) -> str:
         return view.substr(sublime.Region(0, view.size()))

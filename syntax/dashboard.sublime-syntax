@@ -35,7 +35,7 @@ contexts:
           comment: ahead or behind
           scope: keyword.other.git-savvy.summary-header.ahead-behind
 
-        - match: (?:(onto) ([0-9a-f]{7,40}))? (\((\d+)/(\d+)\))
+        - match: (?:(onto) ([0-9a-f]{7,64}))? (\((\d+)/(\d+)\))
           captures:
             2: constant.other.git-savvy.sha1
             3: keyword.other.git-savvy.todo-progress
@@ -50,7 +50,7 @@ contexts:
           captures:
             1: keyword.other.git-savvy.hint
 
-        - match: ^  (HEAD:)(?:\s+(([0-9a-f]{7,40}) (.+)))?
+        - match: ^  (HEAD:)(?:\s+(([0-9a-f]{7,64}) (.+)))?
           comment: head summary
           scope: comment.git-savvy.summary-header.head-summary
           captures:
@@ -72,7 +72,7 @@ contexts:
             1: punctuation.other.commit-decoration.git-savvy
             2: comment.git-savvy.summary-header.head-summary constant.other.git.branch.git-savvy
 
-        - match: ^\s{4,11}(([0-9a-f]{7,40}) \x{200b}(.+))
+        - match: ^\s{4,11}(([0-9a-f]{7,64}) \x{200b}(.+))
           comment: stand-alone decoration line
           scope: comment.git-savvy.summary-header.head-summary
           captures:
@@ -80,7 +80,7 @@ contexts:
             2: constant.other.git-savvy.sha1
             3: constant.other.git.branch.git-savvy
 
-        - match: ^\s{4,11}(([0-9a-f]{7,40}) (.+))?
+        - match: ^\s{4,11}(([0-9a-f]{7,64}) (.+))?
           comment: stand-alone commit line
           scope: comment.git-savvy.summary-header.head-summary
           captures:
