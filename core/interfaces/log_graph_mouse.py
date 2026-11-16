@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from itertools import starmap
+
 import sublime
 from sublime_plugin import EventListener, TextCommand
 
 from ..git_command import GitCommand
+from ..fns import unique
 from ..git_mixins.branches import Branch
 from .multi_selector import normalize_mouse_selection
 
@@ -116,9 +119,12 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
             from .log_graph_helper import format_revision_list
 
             selected_regions: list[list[int]] = view.settings().get("git_savvy.multi_selection", [])
-            selected_commits = list(dict.fromkeys(
-                view.substr(sublime.Region(a, b))
-                for a, b in sorted(selected_regions, reverse=True)
+            selected_commits = list(unique(
+                view.substr(r)
+                for r in sorted(
+                    starmap(sublime.Region, selected_regions),
+                    reverse=True
+                )
             ))
             if len(selected_commits) >= 2 and commit_hash in selected_commits:
                 diff_actions: list[tuple[str, str, dict]] = []
