@@ -1,11 +1,14 @@
 from textwrap import dedent
 
+import sublime
 from unittesting import DeferrableTestCase
+from GitSavvy.tests.mockito import unstub, when
 from GitSavvy.tests.parameterized import parameterized as p
 
+from GitSavvy.core.interfaces import log_graph_rebase_actions
 from GitSavvy.core.interfaces.log_graph_rebase_actions import (
     extract_commits, change_first_action, copy_commits, drop_commits, fixup_commits,
-    insert_commits, squash_commits, Commit
+    insert_commits, squash_commits, Commit, gs_rebase_edit_commit, gs_rebase_reword_commit
 )
 
 
@@ -330,3 +333,22 @@ class TestRebaseActions(DeferrableTestCase):
         actual = insert_commits(insert_at, commits, base_commit, input)
         self.maxDiff = None
         self.assertEqual(expected, actual)
+
+
+class TestQuickActionCommands(DeferrableTestCase):
+    def setUp(self) -> None:
+        self.view = sublime.active_window().new_file()
+        self.view.set_scratch(True)
+        self.addCleanup(self.view.close)
+        self.addCleanup(unstub)
+
+    @p.expand([("edit", gs_rebase_edit_commit), ("reword", gs_rebase_reword_commit)])
+    def test_action_rewrites_the_selected_pick(self, action, command_type):
+        command = command_type(self.view)
+        when(command).commit_is_ancestor_of_head("2222bbbb").thenReturn(True)
+        when(log_graph_rebase_actions).run_on_new_thread(...)
+        command.run(None, "2222bbbb")
+        self.assertEqual(
+            f"pick 1111aaaa first\n{action} 2222bbbb second\n",
+            command.action("2222bbbb", "pick 1111aaaa first\npick 2222bbbb second\n")
+        )
