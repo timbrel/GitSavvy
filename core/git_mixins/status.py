@@ -432,7 +432,7 @@ class StatusMixin(mixin_base):
     def read_cherry_pick_and_revert_heads(self) -> tuple[FullHash | None, FullHash | None]:
         # These root refs move into reftable; MERGE_HEAD and BISECT_START do not.
         refs = ["CHERRY_PICK_HEAD", "REVERT_HEAD"]
-        if os.path.isdir(os.path.join(self.git_common_dir, "reftable")):
+        if self.repo_uses_reftable:
             heads = self.resolve_commit_refs(refs)
         else:
             heads = {ref: FullHash(value) for ref in refs if (value := self._read_git_file(ref))}

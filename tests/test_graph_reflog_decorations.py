@@ -67,6 +67,22 @@ class TestGraphReflogDecorations(DeferrableTestCase):
         verify(self.command, times=2).to_short_hash(...)
         verify(self.command, times=0).git(...)
 
+    def test_reftable_decorations_use_quiet_queries_and_omit_failures(self) -> None:
+        os.makedirs(os.path.join(self.common_dir, "reftable"))
+        self.settings["git_savvy.log_graph_view.filters"] = "HEAD@{0} HEAD@{999999} HEAD@{0}"
+        when(self.command).git(
+            "rev-parse", "--verify", "--quiet", "HEAD@{0}^{commit}",
+            throw_on_error=False, show_panel_on_error=False
+        ).thenReturn("9" * 40 + "\n")
+        when(self.command).git(
+            "rev-parse", "--verify", "--quiet", "HEAD@{999999}^{commit}",
+            throw_on_error=False, show_panel_on_error=False
+        ).thenReturn("")
+        self.resolve_decorations(linked=True)
+        verify(self.command, times=1).to_short_hash("9" * 40)
+        verify(self.command, times=1).to_short_hash(...)
+        verify(self.command, times=2).git(...)
+
     def test_no_selectors_needs_no_git_query(self) -> None:
         self.resolve_decorations(linked=False)
         verify(self.command, times=0).to_short_hash(...)

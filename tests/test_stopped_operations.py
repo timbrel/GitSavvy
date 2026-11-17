@@ -8,6 +8,7 @@ from types import SimpleNamespace
 import sublime
 from unittesting import DeferrableTestCase
 
+from GitSavvy.core import cat_file
 from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core.git_mixins import status
 from GitSavvy.core.interfaces.status_main_actions import gs_status_action_menu
@@ -27,6 +28,8 @@ class TestStoppedOperations(DeferrableTestCase):
     def setUp(self) -> None:
         directory = tempfile.TemporaryDirectory(prefix="gitsavvy-operations-")
         self.addCleanup(directory.cleanup)
+        self.addCleanup(cat_file.start)
+        self.addCleanup(cat_file.shutdown)
         self.addCleanup(unstub)
         self.repo = os.path.join(directory.name, "repo")
         # Keep the test away from GitHub; it would only see a local repo anyway.

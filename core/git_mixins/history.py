@@ -7,7 +7,8 @@ import re
 from typing import Generic, Iterator, List, Literal, NamedTuple, Optional, overload, Sequence, TypeVar
 from typing_extensions import TypeAlias
 
-from ..exceptions import GitSavvyError
+from .. import cat_file
+from ..exceptions import AbortedGitCall, GitSavvyError
 from GitSavvy.core.dates import fuzzy
 from GitSavvy.core.fns import last, pairwise, take
 from GitSavvy.core.git_command import mixin_base
@@ -170,12 +171,14 @@ class HistoryMixin(mixin_base):
         return entries
 
     def resolve_reflog_refs(self, refs: Sequence[str]) -> dict[str, FullHash]:
-        """Resolve numeric HEAD and local-branch selectors from loose reflog files."""
+        """Resolve numeric reflog selectors, retaining direct reads for files repos."""
         selectors = [
             (match[1], int(match[2]), ref)
             for ref in refs
             if (match := re.fullmatch(r"(.+)@\{(\d+)\}", ref))
         ]
+        if selectors and cat_file.is_enabled_for(self):
+            return self.resolve_commit_refs([ref for _, _, ref in selectors])
 
         resolved: dict[str, FullHash] = {}
         for name, entries in groupby(sorted(selectors), key=lambda entry: entry[0]):
@@ -294,6 +297,23 @@ class HistoryMixin(mixin_base):
     ) -> FullHash | None: ...
 
     def resolve(self, commitish, *, short=False, on_error="show_panel"):
+        """Resolve a revision to an object ID; index expressions are unsupported."""
+        if (
+            commitish and not short
+            and "@{" not in commitish  # cat-file is known to die on out-of-range reflogs
+            and cat_file.is_enabled_for(self)
+        ):
+            try:
+                line, = cat_file.read_object_metadata(self, [commitish], show_panel_on_error=False)
+            except AbortedGitCall:
+                raise
+            except GitSavvyError:
+                pass
+            else:
+                oid, _, kind = line.partition(" ")
+                if kind in ("commit", "tree", "blob", "tag"):
+                    return FullHash(oid)
+
         resolved = self.git(
             "rev-parse",
             "--verify",
@@ -307,19 +327,28 @@ class HistoryMixin(mixin_base):
         return resolved
 
     def resolve_commit_refs(self, refs: Sequence[str]) -> dict[str, FullHash]:
-        """Resolve commit refs in one batch, omitting missing/non-commit refs."""
+        """Resolve commit refs, omitting missing/non-commit refs."""
         refs = list(dict.fromkeys(refs))
         if not refs:
             return {}
-        lines = self.git(
-            "cat-file", "--batch-check=%(objectname) %(objecttype)",
-            stdin="\n".join(refs) + "\n"
-        ).splitlines()
+
+        batch_refs = [ref for ref in refs if "@{" not in ref]
+        lines = cat_file.read_object_metadata(self, batch_refs) if batch_refs else []
         resolved = {}
-        for ref, line in zip(refs, lines):
+
+        for ref, line in zip(batch_refs, lines):
             oid, _, object_type = line.partition(" ")
             if object_type == "commit":
                 resolved[ref] = FullHash(oid)
+
+        for ref in refs:
+            if "@{" in ref:
+                oid = self.git(
+                    "rev-parse", "--verify", "--quiet", ref + "^{commit}",
+                    throw_on_error=False, show_panel_on_error=False
+                ).strip()
+                if oid:
+                    resolved[ref] = FullHash(oid)
         return resolved
 
     def resolve_commitish(self, ref: str) -> ShortHash:
