@@ -86,8 +86,9 @@ class WorktreesMixin(mixin_base):
                     _paths_are_equal(path, self.repo_path)
                 ))
             return locations
+        own_git_dir = _path_identity(self.git_dir)
         entries: list[tuple[str, str]] = []
-        if _paths_are_equal(self.git_dir, common_dir):
+        if own_git_dir == _path_identity(common_dir):
             if not _paths_are_equal(self.repo_path, common_dir):
                 entries.append((common_dir, self.repo_path))
         elif main_path := main_worktree_path(common_dir):
@@ -107,16 +108,13 @@ class WorktreesMixin(mixin_base):
         locations = []
         for git_dir, path in entries:
             head = read_worktree_file(os.path.join(git_dir, "HEAD"))
+            is_current = _path_identity(git_dir) == own_git_dir
             if head.startswith("ref: refs/heads/"):
                 branch = head[len("ref: refs/heads/"):]
                 if branch:
-                    locations.append(WorktreeLocation(
-                        path, branch, None, _paths_are_equal(git_dir, self.git_dir)
-                    ))
+                    locations.append(WorktreeLocation(path, branch, None, is_current))
             elif re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", head):
-                locations.append(WorktreeLocation(
-                    path, None, FullHash(head), _paths_are_equal(git_dir, self.git_dir)
-                ))
+                locations.append(WorktreeLocation(path, None, FullHash(head), is_current))
         return locations
 
     @cache_in_store_as("worktrees")
@@ -317,7 +315,8 @@ def _looks_malformed_non_z_field(field: str) -> bool:
 
 
 def _paths_are_equal(path_a: str, path_b: str) -> bool:
-    return (
-        os.path.normcase(os.path.realpath(path_a))
-        == os.path.normcase(os.path.realpath(path_b))
-    )
+    return _path_identity(path_a) == _path_identity(path_b)
+
+
+def _path_identity(path: str) -> str:
+    return os.path.normcase(os.path.realpath(path))
