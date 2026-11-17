@@ -11,6 +11,9 @@ from GitSavvy.github import ci_status
 from typing import Iterable, List, Literal, NamedTuple, Optional, TYPE_CHECKING, overload
 
 
+Operation = Literal["rebase", "merge", "cherry-pick", "revert", "bisect"]
+
+
 class HeadState(NamedTuple):
     """One status snapshot; commit_hash is None before the initial commit."""
 
@@ -22,14 +25,23 @@ class HeadState(NamedTuple):
     ahead: Optional[str]
     behind: Optional[str]
     gone: bool
-    cherry_pick_head: Optional[FullHash] = None
-    revert_head: Optional[FullHash] = None
+    # The operation in progress when the snapshot was taken.
+    operation: Optional[Operation] = None
+
+    def in_rebase(self) -> bool:
+        return self.operation == "rebase"
+
+    def in_merge(self) -> bool:
+        return self.operation == "merge"
 
     def in_cherry_pick(self) -> bool:
-        return self.cherry_pick_head is not None
+        return self.operation == "cherry-pick"
 
     def in_revert(self) -> bool:
-        return self.revert_head is not None
+        return self.operation == "revert"
+
+    def in_bisect(self) -> bool:
+        return self.operation == "bisect"
 
 
 class FileStatus(NamedTuple):
@@ -101,10 +113,11 @@ class StatusMixin(mixin_base):
         files = self._parse_status_for_file_statuses(lines)
         working_dir_status = self._group_status_entries(files)
 
-        cherry_pick_head, revert_head = self.read_cherry_pick_and_revert_heads()
-        head = self._parse_head(lines)._replace(
-            cherry_pick_head=cherry_pick_head, revert_head=revert_head
-        )
+        operation, commit = self._read_operation()
+        head = self._parse_head(lines)._replace(operation=operation)
+        # Only the status labels need the cherry-picked or reverted commit,
+        # so it is not part of HeadState.
+        operation_commit = self.to_short_hash(commit) if commit else ""
         current_branch = head.branch
         last_branches = self.current_state()["last_branches"]
         if current_branch and current_branch != last_branches[-1]:
@@ -113,8 +126,8 @@ class StatusMixin(mixin_base):
             "status": working_dir_status,
             "head": head,
             "last_branches": last_branches,
-            "long_status": self._format_branch_status(head, working_dir_status),
-            "short_status": self._format_branch_status_short(head),
+            "long_status": self._format_branch_status(head, working_dir_status, operation_commit),
+            "short_status": self._format_branch_status_short(head, operation_commit),
         })
         ci_status.on_head_observed(self, head)  # type: ignore[arg-type]
         return working_dir_status
@@ -206,7 +219,8 @@ class StatusMixin(mixin_base):
         )
 
     def _format_branch_status(
-        self, head: HeadState, working_dir_status: WorkingDirState, delim: str = "\n           "
+        self, head: HeadState, working_dir_status: WorkingDirState, operation_commit: str,
+        delim: str = "\n           "
     ) -> str:
         secondary = []
 
@@ -226,10 +240,7 @@ class StatusMixin(mixin_base):
             elif head.gone:
                 secondary.append("The remote branch is gone.")
 
-        if self.in_merge():
-            secondary.append("Merging {}.".format(self.merge_head()))
-
-        if self.in_rebase():
+        if head.in_rebase():
             onto = self.rebase_onto_commit()
             rebase_progress = self._rebase_progress()
             secondary.append(
@@ -260,18 +271,19 @@ class StatusMixin(mixin_base):
                     secondary.append("hint: Amend, edit, or run `rebase --continue` to continue")
                 else:
                     secondary.append("hint: Run `rebase --continue` to continue")
-
-        if head.cherry_pick_head:
-            secondary.append("Cherry-picking {}.".format(self.to_short_hash(head.cherry_pick_head)))
-        if head.revert_head:
-            secondary.append("Reverting {}.".format(self.to_short_hash(head.revert_head)))
-        if self.in_bisect():
+        elif head.in_merge():
+            secondary.append("Merging {}.".format(self.merge_head()))
+        elif head.in_cherry_pick():
+            secondary.append("Cherry-picking {}.".format(operation_commit))
+        elif head.in_revert():
+            secondary.append("Reverting {}.".format(operation_commit))
+        elif head.in_bisect():
             secondary.append("Bisecting from {} on.".format(self.bisect_start_commit()))
 
         return delim.join([status] + secondary) if secondary else status
 
-    def _format_branch_status_short(self, head: HeadState) -> str:
-        if self.in_rebase():
+    def _format_branch_status_short(self, head: HeadState, operation_commit: str) -> str:
+        if head.in_rebase():
             rebase_progress = self._rebase_progress()
             return "(no branch, rebasing {}{})".format(
                 self.rebase_branch_name(),
@@ -291,16 +303,15 @@ class StatusMixin(mixin_base):
         if head.behind:
             output += "-" + head.behind
 
-        merge_head = self.merge_head() if self.in_merge() else ""
-        if merge_head:
-            output += " (merging {})".format(merge_head)
-        if head.cherry_pick_head:
-            output += " (cherry-picking {})".format(self.to_short_hash(head.cherry_pick_head))
-        if head.revert_head:
-            output += " (reverting {})".format(self.to_short_hash(head.revert_head))
-        bisect_start = self.bisect_start_commit() if self.in_bisect() else ""
-        if bisect_start:
-            output += " (bisecting {})".format(bisect_start)
+        if head.in_merge():
+            output += " (merging {})".format(self.merge_head())
+        elif head.in_cherry_pick():
+            output += " (cherry-picking {})".format(operation_commit)
+        elif head.in_revert():
+            output += " (reverting {})".format(operation_commit)
+        elif head.in_bisect():
+            if bisect_start := self.bisect_start_commit():
+                output += " (bisecting {})".format(bisect_start)
 
         return output
 
@@ -403,6 +414,20 @@ class StatusMixin(mixin_base):
         with open(path, "r") as f:
             commit_hash = f.read().strip()
         return self.to_short_hash(FullHash(commit_hash))
+
+    def _read_operation(self) -> tuple[Operation | None, FullHash | None]:
+        if self.in_rebase():
+            return "rebase", None
+        if self.in_merge():
+            return "merge", None
+        cherry_pick_head, revert_head = self.read_cherry_pick_and_revert_heads()
+        if cherry_pick_head:
+            return "cherry-pick", cherry_pick_head
+        if revert_head:
+            return "revert", revert_head
+        if self.in_bisect():
+            return "bisect", None
+        return None, None
 
     def read_cherry_pick_and_revert_heads(self) -> tuple[FullHash | None, FullHash | None]:
         # These root refs move into reftable; MERGE_HEAD and BISECT_START do not.

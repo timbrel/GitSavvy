@@ -236,7 +236,7 @@ def on_head_observed(cmd: GitCommand, head: HeadState) -> None:
 
     with eat_but_log_errors():
         repo_path = cmd.repo_path
-        key = passive_key(cmd, head)
+        key = passive_key(head)
         with observed_heads_lock:
             if repo_path in observed_heads and observed_heads[repo_path] == key:
                 return
@@ -793,17 +793,17 @@ def forget_observed_heads(repo_path: Optional[RepoPath] = None) -> None:
             observed_heads.pop(repo_path, None)
 
 
-def passive_key(cmd: GitCommand, head: HeadState) -> Optional[CacheKey]:
+def passive_key(head: HeadState) -> Optional[CacheKey]:
     if not head.commit_hash:
         return None
     if not head.detached and (not head.branch or not head.remote or head.ahead):
         return None
     if (
-        cmd.in_rebase()
-        or cmd.in_merge()
+        head.in_rebase()
+        or head.in_merge()
         or head.in_cherry_pick()
         or head.in_revert()
-        or cmd.in_bisect()
+        or head.in_bisect()
     ):
         return None
     return (head.branch or DETACHED, head.commit_hash)

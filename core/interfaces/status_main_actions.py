@@ -46,7 +46,7 @@ class gs_status_action_menu(StatusInterfaceCommand):
         # Offer what the dashboard shows, not what a new query might say.
         state = self.interface.state
         head = state.get("head")
-        if self.in_rebase():
+        if head and head.in_rebase():
             actions += [
                 ("Rebase --continue", self.rebase_continue),
                 ("Rebase --abort", self.rebase_abort),
@@ -64,7 +64,7 @@ class gs_status_action_menu(StatusInterfaceCommand):
                 ("Revert --abort", self.revert_abort),
                 ("Revert --skip", self.revert_skip),
             ]
-        elif self.in_merge():
+        elif head and head.in_merge():
             actions += [
                 ("Merge --continue", self.merge_continue),
                 ("Merge --abort", self.merge_abort),
