@@ -84,17 +84,16 @@ class TagsMixin(mixin_base):
             remote,
             timeout=20.0,
         )
-        porcelain_entries = stdout.splitlines()
+        porcelain_entries = [line.split("\t", 1) for line in stdout.splitlines() if line]
         peeled: dict[TagName, FullHash] = {
-            entry[51:-3]: FullHash(entry[:40])
-            for entry in porcelain_entries
-            if entry.endswith("^{}")
+            ref[len("refs/tags/"):-len("^{}")]: FullHash(sha)
+            for sha, ref in porcelain_entries
+            if ref.endswith("^{}")
         }
         entries = (
-            TagDetails(FullHash(entry[:40]), tag_name, "", "", peeled.get(tag_name))
-            for entry in reversed(porcelain_entries)
-            if entry
-            if (tag_name := entry[51:])
+            TagDetails(FullHash(sha), tag_name, "", "", peeled.get(tag_name))
+            for sha, ref in reversed(porcelain_entries)
+            if (tag_name := ref[len("refs/tags/"):])
             if not tag_name.endswith("^{}")
         )
         return self.handle_semver_tags(entries)

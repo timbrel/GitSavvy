@@ -16,6 +16,8 @@ from GitSavvy.core.interfaces.tags import (
 
 
 class TestTagsShowGraph(DeferrableTestCase):
+    hash_length = 40
+
     def setUp(self):
         self.addCleanup(unstub)
         self.view = sublime.active_window().new_file()
@@ -38,9 +40,9 @@ class TestTagsShowGraph(DeferrableTestCase):
         when(self.command).get_short_hash_length().thenReturn(7)
         when(self.command).git(...).thenRaise(AssertionError("Unexpected Git query"))
         remote_tags = RemoteTagsRepo(
-            f"{'1' * 40}\trefs/tags/v1.2.3\n"
-            f"{'2' * 40}\trefs/tags/v1.2.3^{{}}\n"
-            f"{'3' * 40}\trefs/tags/v1.2.4\n"
+            f"{'1' * self.hash_length}\trefs/tags/v1.2.3\n"
+            f"{'2' * self.hash_length}\trefs/tags/v1.2.3^{{}}\n"
+            f"{'3' * self.hash_length}\trefs/tags/v1.2.4\n"
         ).get_remote_tags("origin")
         self.command.interface = mock({"state": {
             "remotes": {"origin": "unused"},
@@ -73,6 +75,10 @@ class TestTagsShowGraph(DeferrableTestCase):
         verify(self.window, times=0).run_command(...)
 
 
+class TestTagsShowGraphSha256(TestTagsShowGraph):
+    hash_length = 64
+
+
 class RemoteTagsRepo(TagsMixin):
     def __init__(self, stdout):
         self.stdout = stdout
@@ -96,17 +102,18 @@ class TestTags(unittest.TestCase):
         self.assertFalse(is_version_tag("v1"))
         self.assertFalse(is_version_tag("private"))
 
-    def test_get_remote_tags_skips_peeled_annotated_tags(self):
-        tag_list = RemoteTagsRepo("""\
-1111111111111111111111111111111111111111\trefs/tags/v1.2.3
-2222222222222222222222222222222222222222\trefs/tags/v1.2.3^{}
-3333333333333333333333333333333333333333\trefs/tags/v1.2.4
-""").get_remote_tags("origin")
+    @p.expand([(40,), (64,)])
+    def test_get_remote_tags_skips_peeled_annotated_tags(self, hash_length):
+        tag_list = RemoteTagsRepo(
+            f"{'1' * hash_length}\trefs/tags/v1.2.3\n"
+            f"{'2' * hash_length}\trefs/tags/v1.2.3^{{}}\n"
+            f"{'3' * hash_length}\trefs/tags/v1.2.4\n"
+        ).get_remote_tags("origin")
         self.assertEqual([tag.tag for tag in tag_list.versions], ["v1.2.4", "v1.2.3"])
         lightweight, annotated = tag_list.versions
-        self.assertEqual(annotated.sha, "1" * 40)
-        self.assertEqual(annotated.peeled, "2" * 40)
-        self.assertEqual(lightweight.sha, "3" * 40)
+        self.assertEqual(annotated.sha, "1" * hash_length)
+        self.assertEqual(annotated.peeled, "2" * hash_length)
+        self.assertEqual(lightweight.sha, "3" * hash_length)
         self.assertIsNone(lightweight.peeled)
 
     def test_handle_tags_prefers_semver(self):
