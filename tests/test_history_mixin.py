@@ -1,4 +1,7 @@
+from __future__ import annotations
+
 import os
+import tempfile
 
 from unittesting import DeferrableTestCase
 from GitSavvy.tests.mockito import unstub, when, verify
@@ -29,6 +32,65 @@ examples = [
     ("from working dir to commit", None, "def", ["-R", "def"]),
     ("from working dir to HEAD", None, "HEAD", ["-R", "HEAD"]),
 ]
+
+
+class TestResolveReflogRefs(DeferrableTestCase):
+    def setUp(self) -> None:
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.addCleanup(unstub)
+        self.repo_path = directory.name
+        self.git_dir = os.path.join(self.repo_path, ".git")
+        self.command = HistoryMixin()
+        when(self.command).get_repo_path().thenReturn(self.repo_path)
+        when(self.command).git(...).thenRaise(AssertionError("Unexpected Git query"))
+
+    def test_returns_full_hashes_keyed_by_original_selectors(self) -> None:
+        self.write_reflog("HEAD", ["a" * 40, "b" * 40])
+        self.write_reflog("refs/heads/topic/nested", ["c" * 40, "d" * 40])
+        self.assertEqual(self.command.resolve_reflog_refs([
+            "HEAD@{1}", "topic/nested@{0}", "refs/heads/topic/nested@{1}",
+            "HEAD@{0}", "HEAD@{1}", "missing@{0}", "HEAD@{2}",
+        ]), {
+            "HEAD@{0}": "b" * 40,
+            "HEAD@{1}": "a" * 40,
+            "topic/nested@{0}": "d" * 40,
+            "refs/heads/topic/nested@{1}": "c" * 40,
+        })
+        verify(self.command, times=0).git(...)
+
+    def test_empty_and_missing_reflogs_are_omitted(self) -> None:
+        self.write_reflog("HEAD", [])
+        self.assertEqual(self.command.resolve_reflog_refs(["HEAD@{0}", "missing@{0}"]), {})
+
+    def test_unreadable_reflog_does_not_hide_valid_selectors(self) -> None:
+        os.makedirs(os.path.join(self.git_dir, "logs", "HEAD"))
+        self.write_reflog("refs/heads/main", ["a" * 40])
+        self.assertEqual(self.command.resolve_reflog_refs(["HEAD@{0}", "main@{0}"]), {
+            "main@{0}": "a" * 40,
+        })
+
+    def test_reflog_changes_are_not_cached(self) -> None:
+        self.write_reflog("HEAD", ["a" * 40])
+        self.assertEqual(self.command.resolve_reflog_refs(["HEAD@{0}"]), {"HEAD@{0}": "a" * 40})
+        self.write_reflog("HEAD", ["a" * 40, "b" * 40])
+        self.assertEqual(self.command.resolve_reflog_refs(["HEAD@{0}"]), {"HEAD@{0}": "b" * 40})
+
+    @p.expand([
+        ([],),
+        (["main", "HEAD", "HEAD@{-1}", "HEAD@{yesterday}", "main@{0}suffix"],),
+    ])
+    def test_no_numeric_selectors_needs_no_repository_lookup(self, refs) -> None:
+        self.assertEqual(self.command.resolve_reflog_refs(refs), {})
+        verify(self.command, times=0).get_repo_path()
+        verify(self.command, times=0).git(...)
+
+    def write_reflog(self, ref: str, hashes: list[str]) -> None:
+        path = os.path.join(self.git_dir, "logs", ref)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            for commit in hashes:
+                f.write(f"{'0' * 40} {commit} Tester <test@example.com> 1700000000 +0000\tcommit: test\n")
 
 
 class TestDescribeGraphLine(DeferrableTestCase):

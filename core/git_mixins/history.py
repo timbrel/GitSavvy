@@ -1,8 +1,9 @@
 from __future__ import annotations
 from dataclasses import dataclass
 import email.utils
-from itertools import chain
+from itertools import chain, groupby
 import os
+import re
 from typing import Generic, Iterator, List, Literal, NamedTuple, Optional, overload, Sequence, TypeVar
 from typing_extensions import TypeAlias
 
@@ -167,6 +168,36 @@ class HistoryMixin(mixin_base):
                 short_hash, long_hash, summary, reflog_name, reflog_selector, author, datetime))
 
         return entries
+
+    def resolve_reflog_refs(self, refs: Sequence[str]) -> dict[str, FullHash]:
+        """Resolve numeric HEAD and local-branch selectors from loose reflog files."""
+        selectors = [
+            (match[1], int(match[2]), ref)
+            for ref in refs
+            if (match := re.fullmatch(r"(.+)@\{(\d+)\}", ref))
+        ]
+
+        resolved: dict[str, FullHash] = {}
+        for name, entries in groupby(sorted(selectors), key=lambda entry: entry[0]):
+            # HEAD belongs to this checkout; local branches are shared by all worktrees.
+            if name == "HEAD":
+                path = os.path.join(self.git_dir, "logs", "HEAD")
+            else:
+                branch = name[len("refs/heads/"):] if name.startswith("refs/heads/") else name
+                path = os.path.join(self.git_common_dir, "logs", "refs", "heads", branch)
+
+            try:
+                with open(path, encoding="utf-8", errors="replace") as f:
+                    lines = f.read().splitlines()
+            except OSError:
+                continue
+
+            for _, index, ref in entries:
+                if index < len(lines):
+                    fields = lines[-1 - index].split(maxsplit=2)
+                    resolved[ref] = FullHash(fields[1])
+
+        return resolved
 
     def reflog_generator(self, limit=6000, skip=None):
         skip = 0

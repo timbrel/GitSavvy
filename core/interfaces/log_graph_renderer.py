@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import Counter, deque
 from functools import lru_cache, partial
-from itertools import chain, groupby, islice
+from itertools import chain, islice
 from queue import Empty
 import re
 import shlex
@@ -632,19 +632,8 @@ class gs_log_graph_refresh(GsTextCommand):
             ))
             requested_refs = re.findall(r"\S+@{\d+}", additional_args)
             return {
-                commit_hash: ref
-
-                for branch_name, refs in groupby(
-                    sorted(requested_refs),
-                    key=lambda ref: ref.split("@")[0]
-                )
-                if (wanted_refs := list(refs))
-
-                for n, commit_hash in enumerate(reversed([
-                    self.to_short_hash(FullHash(line.split(maxsplit=2)[1]))
-                    for line in self._read_git_file("logs", "refs", "heads", branch_name).splitlines()
-                ]))
-                if (ref := f"{branch_name}@{{{n}}}") in wanted_refs
+                self.to_short_hash(commit_hash): ref
+                for ref, commit_hash in self.resolve_reflog_refs(requested_refs).items()
             }
 
         ASCII_ART_LENGHT_LIMIT = 48
