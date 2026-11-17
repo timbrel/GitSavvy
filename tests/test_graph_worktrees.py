@@ -45,7 +45,8 @@ class TestGraphWorktreeHeads(DeferrableTestCase):
         self.addCleanup(unstub)
         self.common_dir = os.path.join(directory.name, ".git")
         self.command = mock({
-            "git_common_dir": self.common_dir, "git_dir": self.common_dir, "repo_path": directory.name
+            "git_common_dir": self.common_dir, "git_dir": self.common_dir, "repo_path": directory.name,
+            "repo_uses_reftable": False,
         })
         when(self.command).update_store(...).thenReturn(None)
         when(self.command).get_worktree_locations().thenAnswer(
@@ -144,8 +145,11 @@ class TestGraphWorktreeHeads(DeferrableTestCase):
         self.assertEqual((set(), set()), self.markers())
 
     def test_reftable_does_not_invent_loose_head_information(self) -> None:
+        # The loose HEAD from setUp must be ignored; the empty stack has none.
         os.mkdir(os.path.join(self.common_dir, "reftable"))
+        self.command.repo_uses_reftable = True
         self.assertEqual([], self.command.get_worktree_locations())
+        verify(self.command, times=0).get_worktrees()
 
     def test_scan_failure_still_allows_the_other_main_checkout(self) -> None:
         self.command.git_dir = self.linked_dir("current")
