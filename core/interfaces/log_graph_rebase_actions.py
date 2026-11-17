@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from contextlib import contextmanager
 from functools import lru_cache, partial
 from itertools import chain
@@ -905,7 +907,7 @@ class AwaitTodoListView(sublime_plugin.EventListener):
 
 
 class GsRebaseQuickActionBase(GsTextCommand, RebaseCommand):
-    action = None  # type: QuickAction
+    action: Callable[[str, str], str] | None = None
     autosquash = False
     rebase_merges = True
     update_refs = True
@@ -1056,7 +1058,9 @@ def insert_commits(insert_at: str, commits: List[str], _base_commit: str, buffer
 
 
 class gs_rebase_edit_commit(GsRebaseQuickActionBase):
-    action = partial(change_first_action, "edit")
+    def run(self, edit: sublime.Edit, commit_hash: str) -> None:
+        self.action = partial(change_first_action, "edit")
+        super().run(edit, commit_hash)
 
 
 class gs_rebase_drop_commits(GsRebaseQuickActionBase):
@@ -1066,7 +1070,9 @@ class gs_rebase_drop_commits(GsRebaseQuickActionBase):
 
 
 class gs_rebase_reword_commit(GsRebaseQuickActionBase):
-    action = partial(change_first_action, "reword")
+    def run(self, edit: sublime.Edit, commit_hash: str) -> None:
+        self.action = partial(change_first_action, "reword")
+        super().run(edit, commit_hash)
 
 
 class gs_rebase_apply_fixup(GsRebaseQuickActionBase):
