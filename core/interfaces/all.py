@@ -12,6 +12,7 @@ from .log_graph import *  # noqa: F401, F403
 from .log_graph_branch_drag import *  # noqa: F401, F403
 from .log_graph_main_actions import *  # noqa: F401, F403
 from .log_graph_mouse import *  # noqa: F401, F403
+from .log_graph_panels import *  # noqa: F401, F403
 from .log_graph_rebase_actions import *  # noqa: F401, F403
 from .log_graph_renderer import *  # noqa: F401, F403
 from .log_graph_smart_copy import *  # noqa: F401, F403
