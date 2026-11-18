@@ -6,6 +6,7 @@ from unittesting import DeferrableTestCase
 from GitSavvy.tests.mockito import spy2, unstub, verify
 from GitSavvy.tests.parameterized import parameterized as p
 from GitSavvy.core.interfaces.log_graph import SELECTED_ITEM_SCOPE
+from GitSavvy.core.interfaces.log_graph_prelude import PreludeControls, RefToggle, Toggle
 from GitSavvy.core.interfaces.log_graph_renderer import draw_prelude, prelude
 
 
@@ -28,13 +29,69 @@ class TestGraphPrelude(DeferrableTestCase):
     def test_all_label_and_branches(self, enabled: bool, branches: list[str], expected: str) -> None:
         self.settings.set("git_savvy.log_graph_view.all_branches", enabled)
         self.settings.set("git_savvy.log_graph_view.branches", branches)
-        self.assertEqual(prelude(self.view), f"\n  REPO: /repo\n  {expected}\n\n")
+        self.assertEqual(prelude(self.view).text, f"\n  REPO: /repo\n  {expected}\n\n")
+
+    @p.expand([
+        (None, [], "\n"),
+        ("/répo/📁", [], "\n  REPO: /répo/📁\n"),
+        ("/repo", ["src/δ.py"], "\n  FILE: src/δ.py\n")
+    ])
+    def test_layout_contains_text_and_exact_toggle_regions(self, repo, paths, prefix) -> None:
+        self.settings.set("git_savvy.repo_path", repo)
+        self.settings.set("git_savvy.log_graph_view.paths", paths)
+        self.settings.set("git_savvy.log_graph_view.apply_filters", True)
+        self.settings.set("git_savvy.log_graph_view.filters", "all")
+        self.settings.set("git_savvy.log_graph_view.branch_choices", [
+            "refs/heads/δ", "refs/tags/δ", "7d00d223^!"
+        ])
+        self.settings.set("git_savvy.log_graph_view.branches", ["refs/tags/δ"])
+
+        header = prelude(self.view)
+
+        self.assertEqual(header.text, prefix + "  all  δ δ 7d00d223^!\n  all\n\n")
+        self.assertEqual(header.controls.all, Toggle(sublime.Region(len(prefix) + 2, len(prefix) + 5), False))
+        self.assertEqual(
+            [(t.ref, header.text[t.region.a:t.region.b], t.selected) for t in header.controls.refs],
+            [("refs/heads/δ", "δ", False), ("refs/tags/δ", "δ", True), ("7d00d223^!", "7d00d223^!", False)]
+        )
+
+    def test_drawing_uses_the_layout_snapshot_without_syntax_or_model_lookups(self) -> None:
+        self.settings.set("git_savvy.log_graph_view.branches", ["refs/heads/topic"])
+        header = prelude(self.view)
+
+        self.view.assign_syntax("Packages/Text/Plain text.tmLanguage")
+        self.settings.set("git_savvy.log_graph_view.branches", ["refs/heads/other"])
+        self.settings.set("git_savvy.log_graph_view.all_branches", True)
+        draw_prelude(self.view, header)
+
+        self.assertEqual(self.view.substr(sublime.Region(0, self.view.size())), header.text)
+        self.assertEqual(self.view.get_regions("gs_log_graph.branches"), [header.controls.refs[0].region])
+        self.assertEqual(self.view.get_regions("gs_log_graph.all"), [])
+        self.assertEqual(
+            PreludeControls.from_dict(self.settings.get("git_savvy.log_graph_view.prelude_controls")),
+            header.controls
+        )
+
+    @p.expand([(False, False), (True, False), (False, True), (True, True)])
+    def test_all_toggle_is_absent_only_in_overview(self, enabled: bool, overview: bool) -> None:
+        self.settings.set("git_savvy.log_graph_view.all_branches", enabled)
+        self.settings.set("git_savvy.log_graph_view.overview", overview)
+
+        header = prelude(self.view)
+
+        if overview:
+            self.assertIsNone(header.controls.all)
+        else:
+            assert header.controls.all is not None
+            toggle = header.controls.all
+            self.assertEqual(toggle.selected, enabled)
+            self.assertEqual(header.text[toggle.region.a:toggle.region.b], "all")
 
     def test_active_filters_are_on_their_own_line(self) -> None:
         self.settings.set("git_savvy.log_graph_view.all_branches", True)
         self.settings.set("git_savvy.log_graph_view.apply_filters", True)
         self.settings.set("git_savvy.log_graph_view.filters", "--author=someone")
-        self.assertEqual(prelude(self.view), "\n  REPO: /repo\n  all\n  --author=someone\n\n")
+        self.assertEqual(prelude(self.view).text, "\n  REPO: /repo\n  all\n  --author=someone\n\n")
 
     def test_multiline_pickaxe_stays_in_the_prelude(self) -> None:
         self.settings.set("git_savvy.log_graph_view.apply_filters", True)
@@ -96,8 +153,11 @@ class TestGraphPrelude(DeferrableTestCase):
 
         regions = self.view.get_regions("gs_log_graph.branches")
         self.assertEqual([self.view.substr(r) for r in regions], ["HEAD", "topic", "origin/main", "2.62.2"])
-        self.assertEqual(self.view.get_regions("gs_log_graph.prelude_refs"), regions)
-        self.assertEqual(self.settings.get("git_savvy.log_graph_view.prelude_refs"), refs)
+        self.assertEqual(prelude_ref_regions(self.view), regions)
+        controls = PreludeControls.from_dict(self.settings.get("git_savvy.log_graph_view.prelude_controls"))
+        self.assertEqual(controls.refs, [
+            RefToggle(region, True, ref) for ref, region in zip(refs, regions)
+        ])
         verify(self.view).add_regions(
             "gs_log_graph.branches", regions, scope=SELECTED_ITEM_SCOPE, flags=sublime.RegionFlags.NO_UNDO
         )
@@ -109,9 +169,9 @@ class TestGraphPrelude(DeferrableTestCase):
         self.settings.set("git_savvy.log_graph_view.branches", refs)
         draw_prelude(self.view, prelude(self.view))
 
-        self.assertEqual(prelude(self.view), "\n  REPO: /repo\n  all  topic origin/master 2.62.2\n\n")
+        self.assertEqual(prelude(self.view).text, "\n  REPO: /repo\n  all  topic origin/master 2.62.2\n\n")
         self.assertEqual(self.view.get_regions("gs_log_graph.branches"), [])
-        regions = self.view.get_regions("gs_log_graph.prelude_refs")
+        regions = prelude_ref_regions(self.view)
         self.assertEqual([self.view.substr(r) for r in regions], ["topic", "origin/master", "2.62.2"])
         for region in regions:
             self.assertTrue(self.view.match_selector(region.begin(), "comment.prelude.git_savvy.graph"))
@@ -125,14 +185,14 @@ class TestGraphPrelude(DeferrableTestCase):
         self.settings.set("git_savvy.log_graph_view.branches", ["refs/tags/v1"])
         draw_prelude(self.view, prelude(self.view))
         self.assertEqual([self.view.substr(r) for r in self.view.get_regions("gs_log_graph.branches")], ["v1"])
-        self.assertEqual(self.settings.get("git_savvy.log_graph_view.prelude_refs"), refs)
+        controls = PreludeControls.from_dict(self.settings.get("git_savvy.log_graph_view.prelude_controls"))
+        self.assertEqual([toggle.ref for toggle in controls.refs], refs)
         self.assertEqual(self.view.get_regions("gs_log_graph.all"), [])
 
         self.settings.set("git_savvy.log_graph_view.overview", True)
         draw_prelude(self.view, prelude(self.view))
         self.assertEqual(self.view.get_regions("gs_log_graph.branches"), [])
-        self.assertEqual(self.view.get_regions("gs_log_graph.prelude_refs"), [])
-        self.assertEqual(self.settings.get("git_savvy.log_graph_view.prelude_refs"), [])
+        self.assertEqual(self.settings.get("git_savvy.log_graph_view.prelude_controls"), {"all": None, "refs": []})
 
     def test_overview_retains_its_label_without_all_highlight(self) -> None:
         self.settings.set("git_savvy.log_graph_view.all_branches", True)
@@ -140,5 +200,40 @@ class TestGraphPrelude(DeferrableTestCase):
         self.settings.set("git_savvy.log_graph_view.overview", True)
         draw_prelude(self.view, prelude(self.view))
 
-        self.assertEqual(prelude(self.view), "\n  REPO: /repo\n  OVERVIEW\n\n")
+        self.assertEqual(prelude(self.view).text, "\n  REPO: /repo\n  OVERVIEW\n\n")
         self.assertEqual(self.view.get_regions("gs_log_graph.all"), [])
+
+
+class TestPreludeControls(DeferrableTestCase):
+    @p.expand([(None,), (False,), (True,)])
+    def test_settings_round_trip_preserves_controls(self, selected: bool | None) -> None:
+        controls = PreludeControls(
+            Toggle(sublime.Region(3, 6), selected) if selected is not None else None,
+            [RefToggle(sublime.Region(8, 13), True, "refs/heads/topic"),
+             RefToggle(sublime.Region(14, 19), False, "refs/tags/topic")]
+        )
+
+        data = controls.to_dict()
+
+        self.assertEqual(data, {
+            "all": {"region": [3, 6], "selected": selected} if selected is not None else None,
+            "refs": [
+                {"ref": "refs/heads/topic", "region": [8, 13], "selected": True},
+                {"ref": "refs/tags/topic", "region": [14, 19], "selected": False}
+            ]
+        })
+        self.assertEqual(PreludeControls.from_dict(sublime.decode_value(sublime.encode_value(data))), controls)
+
+    def test_missing_controls_are_empty(self) -> None:
+        self.assertEqual(PreludeControls.from_dict({}), PreludeControls(None, []))
+
+    @p.expand([(2, False), (3, True), (7, True), (8, False)])
+    def test_hit_testing_excludes_the_end(self, point: int, expected: bool) -> None:
+        for toggle in (Toggle(sublime.Region(3, 8), False),
+                       RefToggle(sublime.Region(3, 8), True, "refs/heads/topic")):
+            self.assertEqual(toggle.contains(point), expected)
+
+
+def prelude_ref_regions(view: sublime.View) -> list[sublime.Region]:
+    controls = PreludeControls.from_dict(view.settings().get("git_savvy.log_graph_view.prelude_controls", {}))
+    return [toggle.region for toggle in controls.refs]

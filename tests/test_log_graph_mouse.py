@@ -11,6 +11,7 @@ from GitSavvy.core.interfaces.log_graph_panels import gs_log_graph_edit_branches
 from GitSavvy.core.interfaces.log_graph_renderer import draw_prelude, gs_log_graph_refresh, prelude
 from GitSavvy.core.git_mixins.branches import Upstream
 from GitSavvy.tests.test_graph_panels import branch
+from GitSavvy.tests.test_graph_prelude import prelude_ref_regions
 from GitSavvy.core.interfaces.dashboard_mouse import (
     TARGET_KEY as DASHBOARD_TARGET_KEY, gs_dashboard_mouse
 )
@@ -128,9 +129,13 @@ class TestGraphPreludeMouse(DeferrableTestCase):
         self.view = sublime.active_window().new_file()
         self.view.set_scratch(True)
         self.view.assign_syntax("Packages/GitSavvy/syntax/graph.sublime-syntax")
-        self.view.run_command("append", {"characters": "\n  REPO: /repo\n  all  all\n  all\n\n"})
-        self.view.settings().set("git_savvy.log_graph_view", True)
-        self.view.settings().set("git_savvy.log_graph_view.all_branches", False)
+        settings = self.view.settings()
+        settings.set("git_savvy.log_graph_view", True)
+        settings.set("git_savvy.repo_path", "/repo")
+        settings.set("git_savvy.log_graph_view.all_branches", False)
+        settings.set("git_savvy.log_graph_view.apply_filters", True)
+        settings.set("git_savvy.log_graph_view.filters", "all")
+        draw_prelude(self.view, prelude(self.view))
         self.label = self.view.find("all", 0)
         self.event = {"x": 10, "y": 10, "button": 1}
         self.command = gs_log_graph_mouse(self.view)
@@ -210,7 +215,7 @@ class TestGraphPreludeMouse(DeferrableTestCase):
             settings.set("git_savvy.log_graph_view.branch_upstreams", ["refs/remotes/origin/stale"])
             settings.set("git_savvy.log_graph_view.branch_choices", refs)
             draw_prelude(self.view, prelude(self.view))
-            target = self.view.get_regions("gs_log_graph.prelude_refs")[index]
+            target = prelude_ref_regions(self.view)[index]
             when(self.view).window_to_text(...).thenReturn(target.begin())
             self.command.run(None, self.event)
 
@@ -227,7 +232,7 @@ class TestGraphPreludeMouse(DeferrableTestCase):
         settings.set("git_savvy.log_graph_view.branches", ["refs/heads/all", "refs/tags/v1"])
         when(gs_log_graph_edit_branches).get_branches().thenReturn([branch("all")])
         draw_prelude(self.view, prelude(self.view))
-        target = self.view.get_regions("gs_log_graph.prelude_refs")[0]
+        target = prelude_ref_regions(self.view)[0]
         when(self.view).window_to_text(...).thenReturn(target.begin())
         self.command.run(None, self.event, fallback_selection="words")
 
@@ -243,7 +248,7 @@ class TestGraphPreludeMouse(DeferrableTestCase):
             lambda *args, **kwargs: draw_prelude(self.view, prelude(self.view))
         )
         draw_prelude(self.view, prelude(self.view))
-        target = self.view.get_regions("gs_log_graph.prelude_refs")[0]
+        target = prelude_ref_regions(self.view)[0]
         when(self.view).window_to_text(...).thenReturn(target.begin())
         self.command.run(None, self.event)
         self.assertTrue(settings.get("git_savvy.log_graph_view.all_branches"))
@@ -269,8 +274,8 @@ class TestGraphPreludeMouse(DeferrableTestCase):
             lambda *args, **kwargs: draw_prelude(self.view, prelude(self.view))
         )
         draw_prelude(self.view, prelude(self.view))
-        header = prelude(self.view)
-        targets = self.view.get_regions("gs_log_graph.prelude_refs")
+        header = prelude(self.view).text
+        targets = prelude_ref_regions(self.view)
         selected = ["topic", "origin/main", "7d00d223^!"]
         for index in (1, 2, 0, 2, 0, 1):
             name = ["topic", "origin/main", "7d00d223^!"][index]
@@ -280,8 +285,8 @@ class TestGraphPreludeMouse(DeferrableTestCase):
                 selected.append(name)
             when(self.view).window_to_text(...).thenReturn(targets[index].begin())
             self.command.run(None, self.event, fallback_selection="words")
-            self.assertEqual(prelude(self.view), header)
-            self.assertEqual(self.view.get_regions("gs_log_graph.prelude_refs"), targets)
+            self.assertEqual(prelude(self.view).text, header)
+            self.assertEqual(prelude_ref_regions(self.view), targets)
             self.assertCountEqual(
                 [self.view.substr(r) for r in self.view.get_regions("gs_log_graph.branches")], selected
             )
@@ -296,7 +301,7 @@ class TestGraphPreludeMouse(DeferrableTestCase):
         refs = ["refs/heads/topic", "refs/tags/v1"]
         settings.set("git_savvy.log_graph_view.branch_choices", refs)
         draw_prelude(self.view, prelude(self.view))
-        regions = self.view.get_regions("gs_log_graph.prelude_refs")
+        regions = prelude_ref_regions(self.view)
         for point in (regions[0].begin() - 1, regions[0].end(), regions[1].end(),
                       self.view.find("topic", regions[0].end()).begin()):
             when(self.view).window_to_text(...).thenReturn(point)

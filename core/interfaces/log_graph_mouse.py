@@ -8,6 +8,7 @@ from sublime_plugin import EventListener, TextCommand
 from ..git_command import GitCommand
 from ..fns import unique
 from ..git_mixins.branches import Branch
+from .log_graph_prelude import PreludeControls
 from .multi_selector import normalize_mouse_selection
 
 
@@ -46,20 +47,17 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
             return
 
         pt = view.window_to_text((event["x"], event["y"]))
-        if not context_menu and any(
-            region.begin() <= pt < region.end()
-            for region in view.find_by_selector("meta.prelude.all.git_savvy.graph")[:1]
-        ):
-            settings.erase("git_savvy.mouse_selected_target")
-            view.run_command("gs_log_graph_toggle_all_setting")
-            return
-
         if not context_menu:
-            refs: list[str] = settings.get("git_savvy.log_graph_view.prelude_refs", [])
-            for region, ref in zip(view.get_regions("gs_log_graph.prelude_refs"), refs):
-                if region.begin() <= pt < region.end():
+            controls = PreludeControls.from_dict(settings.get("git_savvy.log_graph_view.prelude_controls", {}))
+            if controls.all is not None and controls.all.contains(pt):
+                settings.erase("git_savvy.mouse_selected_target")
+                view.run_command("gs_log_graph_toggle_all_setting")
+                return
+
+            for toggle in controls.refs:
+                if toggle.contains(pt):
                     settings.erase("git_savvy.mouse_selected_target")
-                    view.run_command("gs_log_graph_edit_branches", {"branch": ref})
+                    view.run_command("gs_log_graph_edit_branches", {"branch": toggle.ref})
                     return
 
         if fallback_selection is not None:
