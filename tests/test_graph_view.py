@@ -200,6 +200,21 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
 
         return log_view
 
+    def test_all_highlight_updates_when_header_text_does_not_change(self):
+        view = yield from self.setup_graph_view_async(show_commit_info_setting=False)
+        prelude_region = view.find_by_selector("meta.prelude.git_savvy.graph")[0]
+        header = view.substr(prelude_region)
+        self.assertEqual(view.get_regions("gs_log_graph.all"), [])
+
+        view.run_command("gs_log_graph_toggle_all_setting")
+        yield lambda: bool(view.get_regions("gs_log_graph.all"))
+        self.assertEqual([view.substr(r) for r in view.get_regions("gs_log_graph.all")], ["all"])
+        self.assertEqual(view.substr(prelude_region), header)
+
+        view.run_command("gs_log_graph_toggle_all_setting")
+        yield lambda: not view.get_regions("gs_log_graph.all")
+        self.assertEqual(view.substr(prelude_region), header)
+
     def test_graph_without_linked_worktrees_avoids_query(self):
         yield from self.setup_graph_view_async(show_commit_info_setting=False)
         verify(gs_log_graph_refresh, times=0).get_worktrees()

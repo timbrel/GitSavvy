@@ -7,13 +7,14 @@ from unittesting import DeferrableTestCase
 from GitSavvy.core.commands import worktrees
 from GitSavvy.core.git_mixins.worktrees import WorktreeLocation
 from GitSavvy.core.interfaces import log_graph
+from GitSavvy.core.interfaces.log_graph_renderer import gs_log_graph_refresh
 from GitSavvy.core.interfaces.dashboard_mouse import (
     TARGET_KEY as DASHBOARD_TARGET_KEY, gs_dashboard_mouse
 )
 from GitSavvy.core.interfaces.log_graph_mouse import (
     TARGET_KEY, GsLogGraphMouseListener, gs_log_graph_mouse
 )
-from GitSavvy.tests.mockito import mock, unstub, verify, when
+from GitSavvy.tests.mockito import mock, spy2, unstub, verify, when
 
 
 class TestGraphMouseGestures(DeferrableTestCase):
@@ -119,7 +120,104 @@ class TestGraphMouseGestures(DeferrableTestCase):
             verify(self.view, times=2).run_command("drag_select", {"event": self.event, "by": by})
 
 
+class TestGraphPreludeMouse(DeferrableTestCase):
+    def setUp(self) -> None:
+        self.view = sublime.active_window().new_file()
+        self.view.set_scratch(True)
+        self.view.assign_syntax("Packages/GitSavvy/syntax/graph.sublime-syntax")
+        self.view.run_command("append", {"characters": "\n  REPO: /repo\n  all  all\n  all\n\n"})
+        self.view.settings().set("git_savvy.log_graph_view", True)
+        self.view.settings().set("git_savvy.log_graph_view.all_branches", False)
+        self.label = self.view.find("all", 0)
+        self.event = {"x": 10, "y": 10, "button": 1}
+        self.command = gs_log_graph_mouse(self.view)
+        self.scheduled = []
+        when(sublime).set_timeout(...).thenAnswer(
+            lambda callback, *args: self.scheduled.append(callback)
+        )
+        when(log_graph.GsLogGraphCursorListener).is_applicable(...).thenReturn(False)
+        when(log_graph).colorize_dots(self.view).thenReturn(None)
+        when(log_graph).colorize_fixups(self.view).thenReturn(None)
+        when(gs_log_graph_refresh).run(...).thenReturn(None)
+        spy2(self.view.run_command)
+        when(self.view).window_to_text(...).thenReturn(self.label.begin())
+        when(self.view).run_command("drag_select", ...).thenReturn(None)
+        when(self.view).run_command("context_menu", ...).thenReturn(None)
+        when(self.view).run_command("gs_log_graph_branch_drag", ...).thenReturn(None)
+
+    def tearDown(self) -> None:
+        unstub()
+        self.view.close()
+
+    def test_clicking_each_letter_toggles_without_moving_selection(self) -> None:
+        selection = list(self.view.sel())
+        for point in range(self.label.begin(), self.label.end()):
+            before = self.view.settings().get("git_savvy.log_graph_view.all_branches")
+            self.view.settings().set("git_savvy.mouse_selected_target", [1, 3])
+            when(self.view).window_to_text(...).thenReturn(point)
+            self.command.run(None, self.event)
+            self.command.run(None, self.event, release=True)
+
+            self.assertEqual(self.view.settings().get("git_savvy.log_graph_view.all_branches"), not before)
+            self.assertEqual(list(self.view.sel()), selection)
+            self.assertIsNone(self.view.settings().get("git_savvy.mouse_selected_target"))
+        self.assertEqual(self.scheduled, [])
+        verify(gs_log_graph_refresh, times=3).run(...)
+        verify(self.view, times=0).run_command("drag_select", ...)
+
+    def test_multiclicks_on_all_toggle_instead_of_selecting_text(self) -> None:
+        selection = list(self.view.sel())
+        for by in ("words", "lines"):
+            before = self.view.settings().get("git_savvy.log_graph_view.all_branches")
+            self.command.run(None, self.event, fallback_selection=by)
+            self.assertEqual(self.view.settings().get("git_savvy.log_graph_view.all_branches"), not before)
+            self.assertEqual(list(self.view.sel()), selection)
+        verify(gs_log_graph_refresh, times=2).run(...)
+        verify(self.view, times=0).run_command("drag_select", ...)
+
+    def test_multiclicks_elsewhere_retain_native_selection(self) -> None:
+        when(self.view).window_to_text(...).thenReturn(self.label.end() + 2)
+        for by in ("words", "lines"):
+            self.view.settings().set("git_savvy.mouse_selected_target", [1, 3])
+            self.command.run(None, self.event, fallback_selection=by)
+            verify(self.view).run_command("drag_select", {"event": self.event, "by": by})
+            self.assertIsNone(self.view.settings().get("git_savvy.mouse_selected_target"))
+        verify(gs_log_graph_refresh, times=0).run(...)
+
+    def test_nearby_text_and_filter_named_all_do_not_toggle(self) -> None:
+        filter_label = self.view.find_by_selector("meta.prelude.all.git_savvy.graph")[1]
+        for point in (self.label.begin() - 1, self.label.end(), self.label.end() + 2, filter_label.begin()):
+            when(self.view).window_to_text(...).thenReturn(point)
+            self.command.run(None, self.event)
+
+        self.assertFalse(self.view.settings().get("git_savvy.log_graph_view.all_branches"))
+        verify(gs_log_graph_refresh, times=0).run(...)
+
+    def test_right_click_retains_native_context_menu(self) -> None:
+        self.command.run(None, {**self.event, "button": 2}, context_menu=True)
+        verify(self.view).run_command("context_menu", ...)
+        verify(gs_log_graph_refresh, times=0).run(...)
+
+    def test_alt_click_still_selects_text(self) -> None:
+        self.command.run(None, self.event, text_selection="characters")
+        verify(self.view).run_command("drag_select", {"event": self.event})
+        verify(gs_log_graph_refresh, times=0).run(...)
+
+
 class TestGraphMouseBindings(DeferrableTestCase):
+    def test_multiclick_bindings_try_graph_actions_before_native_selection(self) -> None:
+        bindings = sublime.decode_value(sublime.load_resource("Packages/GitSavvy/Default.sublime-mousemap"))
+        for count, by in ((2, "words"), (3, "lines")):
+            binding = next(
+                binding for binding in reversed(bindings)
+                if binding["button"] == "button1" and binding.get("modifiers", []) == []
+                and binding.get("count") == count
+                and any(c["key"] == "setting.git_savvy.log_graph_view" for c in binding.get("context", []))
+            )
+            self.assertEqual(binding["press_command"], "gs_log_graph_mouse")
+            self.assertEqual(binding["press_args"], {"fallback_selection": by})
+            self.assertEqual(binding["args"], {"release": True})
+
     def test_right_click_priority(self) -> None:
         bindings = sublime.decode_value(sublime.load_resource("Packages/GitSavvy/Default.sublime-mousemap"))
         for multi, dragging, expected in (

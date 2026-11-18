@@ -19,7 +19,8 @@ TARGET_KEY = "git_savvy.log_graph_mouse_target"
 class gs_log_graph_mouse(TextCommand, GitCommand):
     def run(
         self, edit: sublime.Edit, event: dict, release: bool = False,
-        context_menu: bool = False, text_selection: str | None = None
+        context_menu: bool = False, text_selection: str | None = None,
+        fallback_selection: str | None = None
     ) -> None:
         from .log_graph import COMMIT_LINE, colorize_dots, colorize_fixups
 
@@ -45,6 +46,19 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
             return
 
         pt = view.window_to_text((event["x"], event["y"]))
+        if not context_menu and any(
+            region.begin() <= pt < region.end()
+            for region in view.find_by_selector("meta.prelude.all.git_savvy.graph")[:1]
+        ):
+            settings.erase("git_savvy.mouse_selected_target")
+            view.run_command("gs_log_graph_toggle_all_setting")
+            return
+
+        if fallback_selection is not None:
+            settings.erase("git_savvy.mouse_selected_target")
+            view.run_command("drag_select", {"event": event, "by": fallback_selection})
+            return
+
         if context_menu:
             selected: list[list[int]] = settings.get("git_savvy.multi_selection", [])
             if selected and not any(a <= pt < b for a, b in selected):

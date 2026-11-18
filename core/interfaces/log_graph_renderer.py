@@ -49,6 +49,7 @@ from ..types import FullHash, ShortHash
 from ..ui__busy_spinner import start_busy_indicator, stop_busy_indicator
 from ..view import replace_view_content, visible_views
 from .log_graph import (
+    SELECTED_ITEM_SCOPE,
     get_simple_selection,
     just_set_cursor,
     navigate_to_symbol,
@@ -470,7 +471,7 @@ class gs_log_graph_refresh(GsTextCommand):
                 if initial_draw else
                 self.view.find_by_selector('meta.prelude.git_savvy.graph')[0]
             )
-            replace_view_content(self.view, prelude_text, prelude_region)
+            draw_prelude(self.view, prelude_text, prelude_region)
 
         should_abort = make_aborter(self.view)
         # Set flag that we started the refresh process.  This must be in sync with the later
@@ -838,7 +839,7 @@ class gs_log_graph_refresh(GsTextCommand):
 
             visible_selection = is_sel_in_viewport(self.view)
 
-            replace_view_content(self.view, prelude_text, current_prelude_region)
+            draw_prelude(self.view, prelude_text, current_prelude_region)
             if assume_complete_redraw:
                 clear_graph()
             drain_and_draw_queue(self.view, PaintingStateMachine(), follow, col_range, visible_selection)
@@ -1032,7 +1033,7 @@ class gs_log_graph_refresh(GsTextCommand):
             args += ['--simplify-by-decoration', '--sparse']
 
         if branches and not all_branches:
-            upstreams = settings.get("git_savvy.log_graph_view.branch_upstreams", [])
+            upstreams: list[str] = settings.get("git_savvy.log_graph_view.branch_upstreams", [])
             args += list(dict.fromkeys([*branches, *upstreams]))
 
         if filters and apply_filters:
@@ -1057,8 +1058,7 @@ def make_worktree_branch_marker(branches: set[str]) -> Optional[Callable[[str], 
     return partial(pattern.sub, rf"\g<0> {WORKTREE_MARKER}")
 
 
-def prelude(view):
-    # type: (sublime.View) -> str
+def prelude(view: sublime.View) -> str:
     settings = view.settings()
     all_branches = settings.get("git_savvy.log_graph_view.all_branches") or False
     apply_filters = settings.get("git_savvy.log_graph_view.apply_filters")
@@ -1106,16 +1106,33 @@ def prelude(view):
     prelude += (
         "  "
         + "  ".join(filter_((
-            (
-                'OVERVIEW'
-                if overview
-                else '[a]ll: true' if all_branches else '[a]ll: false'
-            ),
-            formatted_branches,
-            formatted_filters
+            'OVERVIEW' if overview else 'all',
+            formatted_branches
         )))
     )
+    if formatted_filters:
+        prelude += (
+            formatted_filters if formatted_filters.startswith("\n")
+            else "\n  " + formatted_filters
+        )
     return prelude + "\n\n"
+
+
+def draw_prelude(view: sublime.View, text: str, region: sublime.Region | None = None) -> None:
+    replace_view_content(view, text, region)
+    settings = view.settings()
+    if (
+        settings.get("git_savvy.log_graph_view.all_branches")
+        and not settings.get("git_savvy.log_graph_view.overview")
+    ):
+        view.add_regions(
+            "gs_log_graph.all",
+            view.find_by_selector("meta.prelude.all.git_savvy.graph")[:1],
+            scope=SELECTED_ITEM_SCOPE,
+            flags=sublime.RegionFlags.NO_UNDO
+        )
+    else:
+        view.erase_regions("gs_log_graph.all")
 
 
 def get_column_range(view, region):

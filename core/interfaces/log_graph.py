@@ -82,6 +82,7 @@ T = TypeVar('T')
 
 GRAPH_SHOW_MORE_COMMIT_INFO_KEY = "graph_show_more_commit_info"
 DOT_SCOPE = 'git_savvy.graph.dot'
+SELECTED_ITEM_SCOPE = 'git_savvy.graph.selected_item'
 DOT_ABOVE_SCOPE = 'git_savvy.graph.dot.above'
 PATH_SCOPE = 'git_savvy.graph.path_char'
 PATH_ABOVE_SCOPE = 'git_savvy.graph.path_char.above'
@@ -89,6 +90,12 @@ MATCHING_COMMIT_SCOPE = 'git_savvy.graph.matching_commit'
 NO_FILTERS = ([], "", "")  # type: Tuple[List[str], str, str]
 
 provide("graph", [
+    ScopedStyle(
+        "GitSavvy Selected Graph Item",
+        SELECTED_ITEM_SCOPE,
+        foreground=ColorRef("log_graph", "selected_item_foreground"),
+        background=ColorRef("log_graph", "selected_item_background")
+    ),
     ScopedStyle(
         "GitSavvy Highlighted Commit Dot",
         DOT_SCOPE,

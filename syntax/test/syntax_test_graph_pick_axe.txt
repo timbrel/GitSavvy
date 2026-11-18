@@ -1,7 +1,9 @@
 # SYNTAX TEST "Packages/GitSavvy/syntax/graph.sublime-syntax"
 
   REPO: C:\Users\c-flo\AppData\Roaming\Sublime Text\Packages\GitSavvy
-  [a]ll: false
+  all  main
+# ^^^ meta.prelude.all.git_savvy.graph
+#      ^^^^ - meta.prelude.all.git_savvy.graph
   -S'''
     class gs_revert_commit(LogMixin, WindowCommand, GitCommand):
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^    git-savvy.graph meta.prelude.git_savvy.graph comment.prelude.git_savvy.graph
