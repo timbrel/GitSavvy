@@ -196,6 +196,7 @@ class gs_graph(GsWindowCommand):
                 settings.set("git_savvy.log_graph_view.all_branches", all)
                 settings.set("git_savvy.log_graph_view.show_tags", show_tags)
                 settings.set("git_savvy.log_graph_view.branches", branches)
+                settings.erase("git_savvy.log_graph_view.branch_upstreams")
                 if decoration is not None:
                     settings.set('git_savvy.log_graph_view.decoration', decoration)
                 settings.set('git_savvy.log_graph_view.apply_filters', apply_filters)

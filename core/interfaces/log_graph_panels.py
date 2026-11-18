@@ -6,12 +6,11 @@ import os
 import sublime
 from sublime_plugin import ListInputHandler, TextCommand
 
+from ..commands.checkout import branch_ref
 from ..fns import filter_
 from ..git_command import GitCommand
+from ..git_mixins.branches import Branch
 from ..runtime import enqueue_on_ui
-from ..ui_mixins.input_panel import show_single_line_input_panel
-
-from typing import List
 
 
 __all__ = (
@@ -20,20 +19,57 @@ __all__ = (
 )
 
 
-class gs_log_graph_edit_branches(TextCommand):
-    def run(self, edit):
-        settings = self.view.settings()
-        branches = settings.get("git_savvy.log_graph_view.branches", [])  # type: List[str]
+class gs_log_graph_edit_branches(TextCommand, GitCommand):
+    # Keep input() and run() on the same instance, as for the file picker.
+    _input_handler: GraphBranchesInputHandler | None = None
 
-        def on_done(text):
-            # type: (str) -> None
-            new_branches = list(filter_(text.split(' ')))
-            settings.set("git_savvy.log_graph_view.branches", new_branches)
-            self.view.run_command("gs_log_graph_refresh")
+    def run(self, edit: sublime.Edit, branch: str | None = None, selected_index: int = 0) -> None:
+        view = self.view
+        if branch is None:
+            window = view.window()
+            assert window
+            window.run_command("show_overlay", {
+                "overlay": "command_palette",
+                "command": "gs_log_graph_edit_branches",
+                "args": {"selected_index": selected_index}
+            })
+            return
 
-        show_single_line_input_panel(
-            "branches", ' '.join(branches), on_done, select_text=True
+        handler, self._input_handler = self._input_handler, None
+        if handler is None:
+            handler = GraphBranchesInputHandler(self)
+            handler.list_items()
+        branch = handler.resolve_branch(branch)
+        selected = handler.selected_branches
+        next_branches = (
+            [ref for ref in selected if ref != branch]
+            if branch in selected else
+            selected + [branch]
         )
+        settings = view.settings()
+        settings.set("git_savvy.log_graph_view.branches", next_branches)
+        # Keep automatic additions separate from the user's explicit choices.
+        settings.set("git_savvy.log_graph_view.branch_upstreams", handler.upstreams_for(next_branches))
+        settings.set("git_savvy.log_graph_view.all_branches", not next_branches)
+        settings.set("git_savvy.log_graph_view.overview", False)
+        view.run_command("gs_log_graph_refresh", {"assume_complete_redraw": True})
+        if handler.keep_open:
+            next_refs = handler.ordered_refs(next_branches)
+            enqueue_on_ui(view.run_command, "gs_log_graph_edit_branches", {
+                "selected_index": next_refs.index(branch) if branch in next_refs else 0
+            })
+
+    def is_enabled(self) -> bool:
+        return bool(self.view.settings().get("git_savvy.log_graph_view"))
+
+    def input_description(self) -> str:
+        return " "
+
+    def input(self, args: dict) -> GraphBranchesInputHandler | None:
+        if "branch" not in args:
+            self._input_handler = GraphBranchesInputHandler(self, args.get("selected_index", 0))
+            return self._input_handler
+        return None
 
 
 class gs_log_graph_edit_files(TextCommand, GitCommand):
@@ -156,3 +192,102 @@ class GraphFilesInputHandler(ListInputHandler):
             # Backspace can pop the input back to the general command palette.
             # Close it after Sublime has finished removing the input handler.
             enqueue_on_ui(window.run_command, "hide_overlay")
+
+
+class GraphBranchesInputHandler(ListInputHandler):
+    def __init__(self, command: gs_log_graph_edit_branches, selected_index: int = 0) -> None:
+        self.command = command
+        self.selected_index = selected_index
+        self.branches: dict[str, Branch] = {}
+        self.refs: list[str] = []
+        self.selected_branches: list[str] = []
+        self.keep_open = False
+
+    def name(self) -> str:
+        return "branch"
+
+    def list_items(self) -> tuple[list[sublime.ListInputItem], int]:
+        branches = sorted(
+            self.command.get_branches(),
+            key=lambda b: (-b.committerdate, b.canonical_name, b.is_remote)
+        )
+        self.branches = {branch_ref(branch): branch for branch in branches}
+        settings = self.command.view.settings()
+        selected: list[str] = settings.get("git_savvy.log_graph_view.branches", [])
+        self.selected_branches = (
+            [] if (
+                settings.get("git_savvy.log_graph_view.all_branches")
+                or settings.get("git_savvy.log_graph_view.overview")
+            ) else list(dict.fromkeys(
+                self.resolve_branch(ref) for ref in selected
+            ))
+        )
+        self.refs = self.ordered_refs(self.selected_branches)
+        upstreams = self.upstreams_for(self.selected_branches)
+        items = [self.branch_item(ref, upstreams) for ref in self.refs]
+        if not items:
+            items.append(sublime.ListInputItem("There are no branches available.", None))
+        return items, self.selected_index
+
+    def preview(self, value: str | None) -> str:
+        action = "unselect" if value in self.selected_branches else "select"
+        return f"[ctrl+enter] to {action}, [enter] to also close"
+
+    def want_event(self) -> bool:
+        return True
+
+    def validate(self, value: str | None, event: dict | None = None) -> bool:
+        return value in self.refs
+
+    def confirm(self, value: str, event: dict) -> None:
+        modifiers = event.get("modifier_keys", {})
+        self.keep_open = modifiers.get("ctrl", False) or modifiers.get("primary", False)
+
+    def cancel(self) -> None:
+        self.command._input_handler = None
+        if window := self.command.view.window():
+            enqueue_on_ui(window.run_command, "hide_overlay")
+
+    def ordered_refs(self, selected: list[str]) -> list[str]:
+        refs = list(self.branches) + [ref for ref in selected if ref not in self.branches]
+        return sorted(refs, key=lambda ref: ref not in selected)
+
+    def upstreams_for(self, selected: list[str]) -> list[str]:
+        upstreams = []
+        for ref in selected:
+            branch = self.branches.get(ref)
+            if branch and (upstream := branch.upstream) and upstream.status != "gone":
+                namespace = "remotes" if upstream.remote not in ("", ".") else "heads"
+                upstream_ref = f"refs/{namespace}/{upstream.canonical_name}"
+                if upstream_ref not in selected and upstream_ref not in upstreams:
+                    upstreams.append(upstream_ref)
+        return upstreams
+
+    def resolve_branch(self, ref: str) -> str:
+        if ref in self.branches:
+            return ref
+        if ref == "HEAD":
+            return next((key for key, branch in self.branches.items() if branch.active), ref)
+        # Prefer a local branch when a short name also names a remote branch.
+        for namespace in ("heads", "remotes"):
+            full_ref = f"refs/{namespace}/{ref}"
+            if full_ref in self.branches:
+                return full_ref
+        return ref
+
+    def branch_item(self, ref: str, upstreams: list[str]) -> sublime.ListInputItem:
+        branch = self.branches.get(ref)
+        name = branch.canonical_name if branch else ref
+        return sublime.ListInputItem(
+            (
+                f"✓ {name}" if ref in self.selected_branches else
+                f"  {name}" if self.selected_branches else
+                name
+            ),
+            ref,
+            annotation=" · ".join(filter_((
+                "upstream" if ref in upstreams else "",
+                "remote" if branch and branch.is_remote else "",
+                branch.relative_committerdate if branch else ""
+            )))
+        )

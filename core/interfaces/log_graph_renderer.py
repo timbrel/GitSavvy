@@ -1031,8 +1031,9 @@ class gs_log_graph_refresh(GsTextCommand):
         ):
             args += ['--simplify-by-decoration', '--sparse']
 
-        if branches and not all_branches:
-            args += branches
+        if not all_branches:
+            upstreams = settings.get("git_savvy.log_graph_view.branch_upstreams", []) if branches else []
+            args += list(dict.fromkeys(["HEAD", *(branches or []), *upstreams]))
 
         if filters and apply_filters:
             args += shlex.split(filters)
@@ -1098,7 +1099,7 @@ def prelude(view):
         formatted_filters = None
 
     if not all_branches and not overview:
-        formatted_branches = " ".join(branches)
+        formatted_branches = " ".join(re.sub(r"^refs/(?:heads|remotes)/", "", ref) for ref in branches)
     else:
         formatted_branches = None
 
