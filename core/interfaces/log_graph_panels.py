@@ -249,13 +249,18 @@ class GraphBranchesInputHandler(ListInputHandler):
             enqueue_on_ui(window.run_command, "hide_overlay")
 
     def ordered_refs(self, selected: list[str]) -> list[str]:
-        refs = list(self.branches) + [ref for ref in selected if ref not in self.branches]
+        refs = (["HEAD"] if selected else []) + list(self.branches) + [
+            ref for ref in selected if ref != "HEAD" and ref not in self.branches
+        ]
         return sorted(refs, key=lambda ref: ref not in selected)
 
     def upstreams_for(self, selected: list[str]) -> list[str]:
         upstreams = []
         for ref in selected:
-            branch = self.branches.get(ref)
+            branch = (
+                next((branch for branch in self.branches.values() if branch.active), None)
+                if ref == "HEAD" else self.branches.get(ref)
+            )
             if branch and (upstream := branch.upstream) and upstream.status != "gone":
                 namespace = "remotes" if upstream.remote not in ("", ".") else "heads"
                 upstream_ref = f"refs/{namespace}/{upstream.canonical_name}"
@@ -264,10 +269,8 @@ class GraphBranchesInputHandler(ListInputHandler):
         return upstreams
 
     def resolve_branch(self, ref: str) -> str:
-        if ref in self.branches:
+        if ref == "HEAD" or ref in self.branches:
             return ref
-        if ref == "HEAD":
-            return next((key for key, branch in self.branches.items() if branch.active), ref)
         # Prefer a local branch when a short name also names a remote branch.
         for namespace in ("heads", "remotes"):
             full_ref = f"refs/{namespace}/{ref}"

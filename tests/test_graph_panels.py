@@ -42,11 +42,11 @@ class TestGraphBranchInput(DeferrableTestCase):
         items, index = handler.list_items()
 
         self.assertEqual([item.value for item in items], [
-            "refs/heads/main", "refs/heads/topic", "refs/remotes/origin/main"
+            "refs/heads/main", "HEAD", "refs/heads/topic", "refs/remotes/origin/main"
         ])
-        self.assertEqual([item.text for item in items], ["✓ main", "  topic", "  origin/main"])
-        self.assertIn("upstream", items[2].annotation)
-        self.assertIn("remote", items[2].annotation)
+        self.assertEqual([item.text for item in items], ["✓ main", "  HEAD", "  topic", "  origin/main"])
+        self.assertIn("upstream", items[3].annotation)
+        self.assertIn("remote", items[3].annotation)
         self.assertEqual(index, 1)
         verify(self.command, times=1).get_branches()
 
@@ -54,7 +54,7 @@ class TestGraphBranchInput(DeferrableTestCase):
         self.set_selected(["main", "topic"])
         handler = self.handler()
         self.assertEqual(handler.refs, [
-            "refs/heads/topic", "refs/heads/main", "refs/remotes/origin/main"
+            "refs/heads/topic", "refs/heads/main", "HEAD", "refs/remotes/origin/main"
         ])
 
     def test_equal_timestamps_have_stable_name_order(self) -> None:
@@ -73,7 +73,7 @@ class TestGraphBranchInput(DeferrableTestCase):
         handler = self.command.input({})
         items, _ = handler.list_items()
         self.assertEqual([item.value for item in items], [
-            "refs/heads/origin/main", "refs/remotes/origin/main"
+            "refs/heads/origin/main", "HEAD", "refs/remotes/origin/main"
         ])
         self.assertEqual(handler.selected_branches, ["refs/heads/origin/main"])
 
@@ -95,7 +95,7 @@ class TestGraphBranchInput(DeferrableTestCase):
         verify(self.view).run_command("gs_log_graph_edit_branches", {"selected_index": 0})
 
     @p.expand([
-        (["main", "topic"], "refs/heads/topic", 1),
+        (["main", "topic"], "refs/heads/topic", 2),
         (["main"], "refs/heads/main", 2),
         (["main@{1}"], "main@{1}", 0)
     ])
@@ -186,9 +186,44 @@ class TestGraphBranchInput(DeferrableTestCase):
         handler = self.command.input({})
         items, _ = handler.list_items()
 
-        self.assertEqual(handler.selected_branches, ["refs/heads/main", "main@{1}"])
+        self.assertEqual(handler.selected_branches, ["HEAD", "main@{1}"])
         self.assertEqual(items[1].value, "main@{1}")
         self.assertTrue(handler.validate("main@{1}"))
+
+    def test_head_can_be_selected_alongside_branches_and_removed_independently(self) -> None:
+        self.set_selected(["topic"])
+        self.select("HEAD", "ctrl")
+
+        self.assertEqual(self.selected(), ["refs/heads/topic", "HEAD"])
+        self.assertEqual(self.handler().refs[:2], ["HEAD", "refs/heads/topic"])
+        self.assertEqual(self.handler().refs.count("HEAD"), 1)
+        self.assertEqual(self.upstreams(), ["refs/remotes/origin/main"])
+        verify(self.view).run_command("gs_log_graph_edit_branches", {"selected_index": 0})
+
+        self.select("HEAD")
+        self.assertEqual(self.selected(), ["refs/heads/topic"])
+        self.assertFalse(self.settings.get("git_savvy.log_graph_view.all_branches"))
+
+    def test_head_selection_includes_its_upstream_without_resolving_to_branch_name(self) -> None:
+        self.set_selected(["topic"])
+        self.select("HEAD")
+        self.select("refs/heads/topic")
+        self.assertEqual(self.selected(), ["HEAD"])
+        self.assertEqual(self.upstreams(), ["refs/remotes/origin/main"])
+        self.assertEqual(
+            self.handler().preview("HEAD"), "[ctrl+enter] to unselect, [enter] to also close"
+        )
+
+        self.select("HEAD")
+        self.assertEqual(self.selected(), [])
+        self.assertTrue(self.settings.get("git_savvy.log_graph_view.all_branches"))
+
+    def test_detached_head_can_be_selected_without_an_upstream(self) -> None:
+        when(self.command).get_branches().thenReturn([branch("topic")])
+        self.set_selected(["topic"])
+        self.select("HEAD")
+        self.assertEqual(self.selected(), ["refs/heads/topic", "HEAD"])
+        self.assertEqual(self.upstreams(), [])
 
     def test_preview_distinguishes_explicit_and_implicit_selection(self) -> None:
         self.set_selected(["topic"])
@@ -202,6 +237,19 @@ class TestGraphBranchInput(DeferrableTestCase):
             "[ctrl+enter] to select, [enter] to also close"
         )
 
+    def test_head_appears_only_while_there_are_selections(self) -> None:
+        self.assertNotIn("HEAD", self.handler().refs)
+        self.select("refs/heads/topic")
+        self.assertIn("HEAD", self.handler().refs)
+        self.select("refs/heads/topic")
+        self.assertNotIn("HEAD", self.handler().refs)
+
+    @p.expand([("all_branches",), ("overview",)])
+    def test_head_is_hidden_when_saved_selections_are_inactive(self, mode: str) -> None:
+        self.set_selected(["HEAD", "topic"])
+        self.settings.set(f"git_savvy.log_graph_view.{mode}", True)
+        self.assertNotIn("HEAD", self.handler().refs)
+
     def test_empty_repository_has_a_non_actionable_message(self) -> None:
         when(self.command).get_branches().thenReturn([])
         handler = self.command.input({})
@@ -209,6 +257,8 @@ class TestGraphBranchInput(DeferrableTestCase):
 
         self.assertEqual(items[0].text, "There are no branches available.")
         self.assertFalse(handler.validate(items[0].value))
+        self.assertFalse(handler.validate("HEAD"))
+        self.assertFalse(handler.validate(None))
         self.assertFalse(handler.validate("missing"))
 
     def test_cancel_hides_palette_without_changing_selection(self) -> None:
@@ -277,16 +327,16 @@ class TestGraphBranchArguments(DeferrableTestCase):
     def test_rendering_includes_upstreams_without_duplicate_refs(self) -> None:
         args = gs_log_graph_refresh.build_git_command(self.command)
 
-        self.assertEqual(args.count("HEAD"), 1)
+        self.assertNotIn("HEAD", args)
         self.assertEqual(args.count("refs/heads/topic"), 1)
         self.assertEqual(args.count("refs/remotes/origin/main"), 1)
 
-    @p.expand([(None,), ([],), (["HEAD"],)])
-    def test_head_is_included_without_duplicate_or_stale_upstream_refs(self, branches) -> None:
+    @p.expand([(None, 0), ([], 0), (["HEAD"], 1), (["HEAD", "refs/heads/topic"], 1)])
+    def test_head_is_only_passed_when_selected(self, branches, expected_head_count: int) -> None:
         self.settings.set("git_savvy.log_graph_view.branches", branches)
         args = gs_log_graph_refresh.build_git_command(self.command)
 
-        self.assertEqual(args.count("HEAD"), 1)
+        self.assertEqual(args.count("HEAD"), expected_head_count)
         self.assertNotIn("--all", args)
         if not branches:
             self.assertNotIn("refs/remotes/origin/main", args)

@@ -1031,9 +1031,9 @@ class gs_log_graph_refresh(GsTextCommand):
         ):
             args += ['--simplify-by-decoration', '--sparse']
 
-        if not all_branches:
-            upstreams = settings.get("git_savvy.log_graph_view.branch_upstreams", []) if branches else []
-            args += list(dict.fromkeys(["HEAD", *(branches or []), *upstreams]))
+        if branches and not all_branches:
+            upstreams = settings.get("git_savvy.log_graph_view.branch_upstreams", [])
+            args += list(dict.fromkeys([*branches, *upstreams]))
 
         if filters and apply_filters:
             args += shlex.split(filters)
