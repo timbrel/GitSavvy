@@ -7,7 +7,10 @@ from unittesting import DeferrableTestCase
 from GitSavvy.core.commands import worktrees
 from GitSavvy.core.git_mixins.worktrees import WorktreeLocation
 from GitSavvy.core.interfaces import log_graph
-from GitSavvy.core.interfaces.log_graph_renderer import gs_log_graph_refresh
+from GitSavvy.core.interfaces.log_graph_panels import gs_log_graph_edit_branches
+from GitSavvy.core.interfaces.log_graph_renderer import draw_prelude, gs_log_graph_refresh, prelude
+from GitSavvy.core.git_mixins.branches import Upstream
+from GitSavvy.tests.test_graph_panels import branch
 from GitSavvy.core.interfaces.dashboard_mouse import (
     TARGET_KEY as DASHBOARD_TARGET_KEY, gs_dashboard_mouse
 )
@@ -192,6 +195,114 @@ class TestGraphPreludeMouse(DeferrableTestCase):
 
         self.assertFalse(self.view.settings().get("git_savvy.log_graph_view.all_branches"))
         verify(gs_log_graph_refresh, times=0).run(...)
+
+    def test_dormant_choice_clicks_select_the_exact_ref_and_its_upstream(self) -> None:
+        settings = self.view.settings()
+        refs = ["refs/heads/topic", "refs/remotes/origin/main", "refs/tags/topic"]
+        when(gs_log_graph_edit_branches).get_branches().thenReturn([
+            branch("topic", upstream=Upstream("origin", "main", "origin/main", "")),
+            branch("main", remote="origin")
+        ])
+        selection = list(self.view.sel())
+        for index, ref in enumerate(refs):
+            settings.set("git_savvy.log_graph_view.all_branches", True)
+            settings.set("git_savvy.log_graph_view.branches", ["refs/heads/stale"])
+            settings.set("git_savvy.log_graph_view.branch_upstreams", ["refs/remotes/origin/stale"])
+            settings.set("git_savvy.log_graph_view.branch_choices", refs)
+            draw_prelude(self.view, prelude(self.view))
+            target = self.view.get_regions("gs_log_graph.prelude_refs")[index]
+            when(self.view).window_to_text(...).thenReturn(target.begin())
+            self.command.run(None, self.event)
+
+            self.assertFalse(settings.get("git_savvy.log_graph_view.all_branches"))
+            self.assertEqual(settings.get("git_savvy.log_graph_view.branches"), [ref])
+            self.assertEqual(settings.get("git_savvy.log_graph_view.branch_upstreams"),
+                             ["refs/remotes/origin/main"] if index == 0 else [])
+            self.assertEqual(list(self.view.sel()), selection)
+        verify(gs_log_graph_edit_branches, times=3).get_branches()
+        verify(self.view, times=0).run_command("drag_select", ...)
+
+    def test_clicking_selected_ref_removes_only_that_item(self) -> None:
+        settings = self.view.settings()
+        settings.set("git_savvy.log_graph_view.branches", ["refs/heads/all", "refs/tags/v1"])
+        when(gs_log_graph_edit_branches).get_branches().thenReturn([branch("all")])
+        draw_prelude(self.view, prelude(self.view))
+        target = self.view.get_regions("gs_log_graph.prelude_refs")[0]
+        when(self.view).window_to_text(...).thenReturn(target.begin())
+        self.command.run(None, self.event, fallback_selection="words")
+
+        self.assertFalse(settings.get("git_savvy.log_graph_view.all_branches"))
+        self.assertEqual(settings.get("git_savvy.log_graph_view.branches"), ["refs/tags/v1"])
+        verify(self.view, times=0).run_command("drag_select", ...)
+
+    def test_all_toggle_restores_branch_after_clicking_it_off(self) -> None:
+        settings = self.view.settings()
+        settings.set("git_savvy.log_graph_view.branches", ["refs/heads/worker-profiler"])
+        when(gs_log_graph_edit_branches).get_branches().thenReturn([branch("worker-profiler")])
+        when(gs_log_graph_refresh).run(...).thenAnswer(
+            lambda *args, **kwargs: draw_prelude(self.view, prelude(self.view))
+        )
+        draw_prelude(self.view, prelude(self.view))
+        target = self.view.get_regions("gs_log_graph.prelude_refs")[0]
+        when(self.view).window_to_text(...).thenReturn(target.begin())
+        self.command.run(None, self.event)
+        self.assertTrue(settings.get("git_savvy.log_graph_view.all_branches"))
+        self.assertEqual(self.view.get_regions("gs_log_graph.branches"), [])
+
+        self.assertEqual(settings.get("git_savvy.log_graph_view.branches"), ["refs/heads/worker-profiler"])
+        for _ in range(2):
+            self.view.run_command("gs_log_graph_toggle_all_setting")
+            self.assertEqual(
+                [self.view.substr(r) for r in self.view.get_regions("gs_log_graph.branches")],
+                ["worker-profiler"]
+            )
+            self.view.run_command("gs_log_graph_toggle_all_setting")
+            self.assertEqual(self.view.get_regions("gs_log_graph.branches"), [])
+
+    def test_comparison_refs_stay_in_place_when_toggled_off_and_on(self) -> None:
+        settings = self.view.settings()
+        settings.set("git_savvy.log_graph_view.branches", ["topic", "origin/main", "7d00d223^!"])
+        when(gs_log_graph_edit_branches).get_branches().thenReturn([
+            branch("topic"), branch("main", remote="origin")
+        ])
+        when(gs_log_graph_refresh).run(...).thenAnswer(
+            lambda *args, **kwargs: draw_prelude(self.view, prelude(self.view))
+        )
+        draw_prelude(self.view, prelude(self.view))
+        header = prelude(self.view)
+        targets = self.view.get_regions("gs_log_graph.prelude_refs")
+        selected = ["topic", "origin/main", "7d00d223^!"]
+        for index in (1, 2, 0, 2, 0, 1):
+            name = ["topic", "origin/main", "7d00d223^!"][index]
+            if name in selected:
+                selected.remove(name)
+            else:
+                selected.append(name)
+            when(self.view).window_to_text(...).thenReturn(targets[index].begin())
+            self.command.run(None, self.event, fallback_selection="words")
+            self.assertEqual(prelude(self.view), header)
+            self.assertEqual(self.view.get_regions("gs_log_graph.prelude_refs"), targets)
+            self.assertCountEqual(
+                [self.view.substr(r) for r in self.view.get_regions("gs_log_graph.branches")], selected
+            )
+            self.assertEqual(settings.get("git_savvy.log_graph_view.all_branches"), not selected)
+        verify(self.view, times=0).run_command("drag_select", ...)
+
+    def test_ref_separators_and_filter_text_are_not_click_targets(self) -> None:
+        settings = self.view.settings()
+        settings.set("git_savvy.log_graph_view.all_branches", True)
+        settings.set("git_savvy.log_graph_view.apply_filters", True)
+        settings.set("git_savvy.log_graph_view.filters", "topic")
+        refs = ["refs/heads/topic", "refs/tags/v1"]
+        settings.set("git_savvy.log_graph_view.branch_choices", refs)
+        draw_prelude(self.view, prelude(self.view))
+        regions = self.view.get_regions("gs_log_graph.prelude_refs")
+        for point in (regions[0].begin() - 1, regions[0].end(), regions[1].end(),
+                      self.view.find("topic", regions[0].end()).begin()):
+            when(self.view).window_to_text(...).thenReturn(point)
+            self.command.run(None, self.event, fallback_selection="words")
+        verify(self.view, times=0).run_command("gs_log_graph_edit_branches", ...)
+        verify(self.view, times=4).run_command("drag_select", ...)
 
     def test_right_click_retains_native_context_menu(self) -> None:
         self.command.run(None, {**self.event, "button": 2}, context_menu=True)

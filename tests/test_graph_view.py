@@ -158,8 +158,8 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
             when(gs_show_commit_info).to_short_hash(sha1).thenReturn(sha1)
 
     def create_graph_view_async(self, repo_path, log, wait_for, markers=None):
-        when(gs_log_graph_refresh).read_graph(...).thenReturn(
-            line.replace("|", "%00") for line in log.splitlines(keepends=True)
+        when(gs_log_graph_refresh).read_graph(...).thenAnswer(
+            lambda **kwargs: (line.replace("|", "%00") for line in log.splitlines(keepends=True))
         )
         # `GitCommand.get_repo_path` "validates" a given repo using
         # `os.path.exists`.
@@ -168,6 +168,7 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         when(GitCommand).get_working_dir_status().thenReturn(CLEAN_WORKING_DIR)
         when(gs_log_graph_refresh).get_worktrees().thenRaise(AssertionError("Unexpected Git query"))
         when(gs_log_graph_refresh).get_worktree_locations().thenReturn([])
+        when(gs_log_graph_refresh).get_branches().thenRaise(AssertionError("Unexpected branch query"))
         if markers is not None:
             when(gs_log_graph_refresh).get_worktree_markers().thenReturn(markers)
         self.window.run_command('gs_graph', {'repo_path': repo_path})
@@ -214,6 +215,23 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         view.run_command("gs_log_graph_toggle_all_setting")
         yield lambda: not view.get_regions("gs_log_graph.all")
         self.assertEqual(view.substr(prelude_region), header)
+
+    def test_all_graph_reuse_remembers_suspended_subset(self):
+        view = yield from self.setup_graph_view_async(show_commit_info_setting=False)
+        settings = view.settings()
+        ref = 'refs/heads/worker-profiler'
+        upstream = 'refs/remotes/origin/worker-profiler'
+        settings.set('git_savvy.log_graph_view.branches', [ref])
+        settings.set('git_savvy.log_graph_view.branch_upstreams', [upstream])
+        view.run_command('gs_log_graph_toggle_all_setting')
+        yield lambda: bool(view.get_regions('gs_log_graph.all'))
+        self.window.run_command('gs_graph', {'repo_path': '/not/there', 'all': True})
+        self.assertEqual(self.window.active_view(), view)
+        view.run_command('gs_log_graph_toggle_all_setting')
+        yield lambda: not view.get_regions('gs_log_graph.all')
+        self.assertIn('all  worker-profiler', view.substr(sublime.Region(0, view.size())))
+        self.assertEqual(settings.get('git_savvy.log_graph_view.branches'), [ref])
+        self.assertEqual(settings.get('git_savvy.log_graph_view.branch_upstreams'), [upstream])
 
     def test_graph_without_linked_worktrees_avoids_query(self):
         yield from self.setup_graph_view_async(show_commit_info_setting=False)

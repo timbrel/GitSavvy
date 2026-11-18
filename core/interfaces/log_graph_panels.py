@@ -47,9 +47,21 @@ class gs_log_graph_edit_branches(TextCommand, GitCommand):
             selected + [branch]
         )
         settings = view.settings()
-        settings.set("git_savvy.log_graph_view.branches", next_branches)
+        # Retain both old and new choices, including revision expressions, so
+        # deselecting an item does not remove its control from the prelude.
+        settings.set("git_savvy.log_graph_view.branch_choices", list(dict.fromkeys(
+            handler.resolve_branch(ref) for ref in [
+                *settings.get("git_savvy.log_graph_view.branch_choices", []),
+                *(settings.get("git_savvy.log_graph_view.branches", []) or []),
+                branch
+            ]
+        )))
+        # All mode suspends the subset rather than deleting it. Keep the last
+        # nonempty subset so toggling `all` back off restores the same graph.
+        branch_subset = next_branches or selected
+        settings.set("git_savvy.log_graph_view.branches", branch_subset)
         # Keep automatic additions separate from the user's explicit choices.
-        settings.set("git_savvy.log_graph_view.branch_upstreams", handler.upstreams_for(next_branches))
+        settings.set("git_savvy.log_graph_view.branch_upstreams", handler.upstreams_for(branch_subset))
         settings.set("git_savvy.log_graph_view.all_branches", not next_branches)
         settings.set("git_savvy.log_graph_view.overview", False)
         view.run_command("gs_log_graph_refresh", {"assume_complete_redraw": True})
@@ -249,8 +261,10 @@ class GraphBranchesInputHandler(ListInputHandler):
             enqueue_on_ui(window.run_command, "hide_overlay")
 
     def ordered_refs(self, selected: list[str]) -> list[str]:
+        choices: list[str] = self.command.view.settings().get("git_savvy.log_graph_view.branch_choices", [])
+        remembered = dict.fromkeys(self.resolve_branch(ref) for ref in [*selected, *choices])
         refs = (["HEAD"] if selected else []) + list(self.branches) + [
-            ref for ref in selected if ref != "HEAD" and ref not in self.branches
+            ref for ref in remembered if ref != "HEAD" and ref not in self.branches
         ]
         return sorted(refs, key=lambda ref: ref not in selected)
 

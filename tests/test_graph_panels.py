@@ -7,6 +7,7 @@ from GitSavvy.tests.parameterized import parameterized as p
 from GitSavvy.tests.mockito import mock, unstub, verify, when
 
 from GitSavvy.core.interfaces import log_graph_panels as panels
+from GitSavvy.core.interfaces.log_graph import gs_log_graph_toggle_all_setting
 from GitSavvy.core.interfaces.log_graph_panels import gs_log_graph_edit_files
 from GitSavvy.core.interfaces.log_graph_renderer import gs_log_graph_refresh
 from GitSavvy.core.git_mixins.branches import Branch, Upstream
@@ -97,9 +98,9 @@ class TestGraphBranchInput(DeferrableTestCase):
     @p.expand([
         (["main", "topic"], "refs/heads/topic", 2),
         (["main"], "refs/heads/main", 2),
-        (["main@{1}"], "main@{1}", 0)
+        (["main@{1}"], "main@{1}", 3)
     ])
-    def test_unselect_keeps_focus_on_the_moved_branch_or_first_remaining_row(
+    def test_unselect_keeps_focus_on_the_moved_item(
         self, selected: list[str], ref: str, index: int
     ) -> None:
         self.set_selected(selected)
@@ -142,13 +143,44 @@ class TestGraphBranchInput(DeferrableTestCase):
         self.assertTrue(self.settings.get("git_savvy.log_graph_view.all_branches"))
         self.assertEqual(self.handler().selected_branches, [])
 
-    def test_unselecting_last_branch_returns_to_all_branches(self) -> None:
+    def test_picker_retains_deselected_comparison_refs(self) -> None:
+        self.set_selected(["topic", "origin/main", "7d00d223^!"])
+        choices = ["refs/heads/topic", "refs/remotes/origin/main", "7d00d223^!"]
+        for ref in choices:
+            self.select(ref)
+            self.assertEqual(self.settings.get("git_savvy.log_graph_view.branch_choices"), choices)
+            self.assertIn(ref, self.handler().refs)
+        self.assertEqual(self.selected(), ["7d00d223^!"])
+        self.assertEqual(self.handler().selected_branches, [])
+        self.assertTrue(self.settings.get("git_savvy.log_graph_view.all_branches"))
+
+        for ref in reversed(choices):
+            self.select(ref)
+            self.assertEqual(self.settings.get("git_savvy.log_graph_view.branch_choices"), choices)
+        self.assertEqual(self.selected(), list(reversed(choices)))
+
+    def test_unselecting_last_branch_suspends_the_subset(self) -> None:
         self.set_selected(["topic"])
         self.select("refs/heads/topic")
 
-        self.assertEqual(self.selected(), [])
-        self.assertEqual(self.upstreams(), [])
+        self.assertEqual(self.selected(), ["refs/heads/topic"])
+        self.assertEqual(self.upstreams(), ["refs/remotes/origin/main"])
+        self.assertEqual(self.handler().selected_branches, [])
         self.assertTrue(self.settings.get("git_savvy.log_graph_view.all_branches"))
+
+    @p.expand([("refs/heads/topic",), ("HEAD",), ("7d00d223^!",)])
+    def test_all_toggle_restores_subset_after_picker_deselection(self, ref: str) -> None:
+        self.set_selected([ref])
+        self.select(ref)
+        expected_upstreams = ["refs/remotes/origin/main"] if ref != "7d00d223^!" else []
+        toggle = gs_log_graph_toggle_all_setting(self.view)
+        for _ in range(2):
+            toggle.run(None)
+            self.assertEqual(self.handler().selected_branches, [ref])
+            self.assertEqual(self.upstreams(), expected_upstreams)
+            toggle.run(None)
+            self.assertEqual(self.handler().selected_branches, [])
+            self.assertEqual(self.selected(), [ref])
 
     @p.expand([
         (None, []),
@@ -215,7 +247,8 @@ class TestGraphBranchInput(DeferrableTestCase):
         )
 
         self.select("HEAD")
-        self.assertEqual(self.selected(), [])
+        self.assertEqual(self.selected(), ["HEAD"])
+        self.assertEqual(self.handler().selected_branches, [])
         self.assertTrue(self.settings.get("git_savvy.log_graph_view.all_branches"))
 
     def test_detached_head_can_be_selected_without_an_upstream(self) -> None:

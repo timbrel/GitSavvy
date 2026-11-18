@@ -181,13 +181,11 @@ class gs_graph(GsWindowCommand):
             if file_path
             else []
         )
-        if branches is None:
-            branches = []
         apply_filters = paths or filters
 
         this_id = (
             repo_path,
-            all or branches,
+            all or branches or [],
             True if overview else (paths, filters) if apply_filters else NO_FILTERS
         )
         for view in self.window.views():
@@ -202,8 +200,10 @@ class gs_graph(GsWindowCommand):
                 settings.set("git_savvy.log_graph_view.overview", overview)
                 settings.set("git_savvy.log_graph_view.all_branches", all)
                 settings.set("git_savvy.log_graph_view.show_tags", show_tags)
-                settings.set("git_savvy.log_graph_view.branches", branches)
-                settings.erase("git_savvy.log_graph_view.branch_upstreams")
+                keep_branch_selection = all and branches is None
+                if not keep_branch_selection:
+                    settings.set("git_savvy.log_graph_view.branches", branches or [])
+                    settings.erase("git_savvy.log_graph_view.branch_upstreams")
                 if decoration is not None:
                     settings.set('git_savvy.log_graph_view.decoration', decoration)
                 settings.set('git_savvy.log_graph_view.apply_filters', apply_filters)
@@ -245,7 +245,7 @@ class gs_graph(GsWindowCommand):
                 "git_savvy.log_graph_view.overview": overview,
                 "git_savvy.log_graph_view.all_branches": all,
                 "git_savvy.log_graph_view.show_tags": show_tags,
-                "git_savvy.log_graph_view.branches": branches,
+                "git_savvy.log_graph_view.branches": branches or [],
                 "git_savvy.log_graph_view.follow": follow,
                 "git_savvy.log_graph_view.decoration": decoration,
                 "git_savvy.log_graph_view.filters": filters,

@@ -54,6 +54,14 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
             view.run_command("gs_log_graph_toggle_all_setting")
             return
 
+        if not context_menu:
+            refs: list[str] = settings.get("git_savvy.log_graph_view.prelude_refs", [])
+            for region, ref in zip(view.get_regions("gs_log_graph.prelude_refs"), refs):
+                if region.begin() <= pt < region.end():
+                    settings.erase("git_savvy.mouse_selected_target")
+                    view.run_command("gs_log_graph_edit_branches", {"branch": ref})
+                    return
+
         if fallback_selection is not None:
             settings.erase("git_savvy.mouse_selected_target")
             view.run_command("drag_select", {"event": event, "by": fallback_selection})

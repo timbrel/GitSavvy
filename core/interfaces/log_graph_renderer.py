@@ -1060,9 +1060,7 @@ def make_worktree_branch_marker(branches: set[str]) -> Optional[Callable[[str], 
 
 def prelude(view: sublime.View) -> str:
     settings = view.settings()
-    all_branches = settings.get("git_savvy.log_graph_view.all_branches") or False
     apply_filters = settings.get("git_savvy.log_graph_view.apply_filters")
-    branches = settings.get("git_savvy.log_graph_view.branches") or []
     filters = settings.get("git_savvy.log_graph_view.filters") or ""
     overview = settings.get("git_savvy.log_graph_view.overview")
     paths = settings.get("git_savvy.log_graph_view.paths") or []
@@ -1098,10 +1096,7 @@ def prelude(view: sublime.View) -> str:
     else:
         formatted_filters = None
 
-    if not all_branches and not overview:
-        formatted_branches = " ".join(re.sub(r"^refs/(?:heads|remotes)/", "", ref) for ref in branches)
-    else:
-        formatted_branches = None
+    formatted_branches = " ".join(short_ref(ref) for ref in prelude_refs(view))
 
     prelude += (
         "  "
@@ -1121,18 +1116,59 @@ def prelude(view: sublime.View) -> str:
 def draw_prelude(view: sublime.View, text: str, region: sublime.Region | None = None) -> None:
     replace_view_content(view, text, region)
     settings = view.settings()
+    refs = prelude_refs(view)
+    if not settings.get("git_savvy.log_graph_view.overview"):
+        settings.set("git_savvy.log_graph_view.branch_choices", refs)
+    selected: list[str] = (
+        [] if settings.get("git_savvy.log_graph_view.all_branches")
+        else settings.get("git_savvy.log_graph_view.branches", []) or []
+    )
+    labels = view.find_by_selector("meta.prelude.all.git_savvy.graph")[:1]
+    regions = []
+    if labels and refs:
+        start = labels[0].end() + 2
+        for ref in refs:
+            end = start + len(short_ref(ref))
+            regions.append(sublime.Region(start, end))
+            start = end + 1
+    settings.set("git_savvy.log_graph_view.prelude_refs", refs)
+    view.add_regions(
+        "gs_log_graph.prelude_refs", regions,
+        flags=sublime.RegionFlags.HIDDEN | sublime.RegionFlags.NO_UNDO
+    )
+    view.add_regions(
+        "gs_log_graph.branches",
+        [region for region, ref in zip(regions, refs) if ref in selected],
+        scope=SELECTED_ITEM_SCOPE,
+        flags=sublime.RegionFlags.NO_UNDO
+    )
     if (
         settings.get("git_savvy.log_graph_view.all_branches")
         and not settings.get("git_savvy.log_graph_view.overview")
     ):
         view.add_regions(
             "gs_log_graph.all",
-            view.find_by_selector("meta.prelude.all.git_savvy.graph")[:1],
+            labels,
             scope=SELECTED_ITEM_SCOPE,
             flags=sublime.RegionFlags.NO_UNDO
         )
     else:
         view.erase_regions("gs_log_graph.all")
+
+
+def prelude_refs(view: sublime.View) -> list[str]:
+    settings = view.settings()
+    if settings.get("git_savvy.log_graph_view.overview"):
+        return []
+    # Keep the controls in place when their selection changes.
+    return list(dict.fromkeys([
+        *settings.get("git_savvy.log_graph_view.branch_choices", []),
+        *(settings.get("git_savvy.log_graph_view.branches", []) or [])
+    ]))
+
+
+def short_ref(ref: str) -> str:
+    return re.sub(r"^refs/(?:heads|remotes|tags)/", "", ref)
 
 
 def get_column_range(view, region):

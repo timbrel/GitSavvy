@@ -21,7 +21,7 @@ class TestGraphPrelude(DeferrableTestCase):
 
     @p.expand([
         (True, [], "all"),
-        (True, ["refs/heads/topic"], "all"),
+        (True, ["refs/heads/topic"], "all  topic"),
         (False, [], "all"),
         (False, ["HEAD", "refs/heads/topic", "refs/remotes/origin/main"], "all  HEAD topic origin/main")
     ])
@@ -87,6 +87,52 @@ class TestGraphPrelude(DeferrableTestCase):
         self.assertEqual(
             [self.view.substr(region) for region in self.view.get_regions("gs_log_graph.all")], ["all"]
         )
+
+    def test_selected_refs_are_individually_highlighted(self) -> None:
+        refs = ["HEAD", "refs/heads/topic", "refs/remotes/origin/main", "refs/tags/2.62.2"]
+        self.settings.set("git_savvy.log_graph_view.branches", refs)
+        spy2(self.view.add_regions)
+        draw_prelude(self.view, prelude(self.view))
+
+        regions = self.view.get_regions("gs_log_graph.branches")
+        self.assertEqual([self.view.substr(r) for r in regions], ["HEAD", "topic", "origin/main", "2.62.2"])
+        self.assertEqual(self.view.get_regions("gs_log_graph.prelude_refs"), regions)
+        self.assertEqual(self.settings.get("git_savvy.log_graph_view.prelude_refs"), refs)
+        verify(self.view).add_regions(
+            "gs_log_graph.branches", regions, scope=SELECTED_ITEM_SCOPE, flags=sublime.RegionFlags.NO_UNDO
+        )
+        self.assertEqual(self.view.get_regions("gs_log_graph.all"), [])
+
+    def test_all_keeps_choices_commented_and_not_highlighted(self) -> None:
+        self.settings.set("git_savvy.log_graph_view.all_branches", True)
+        refs = ["refs/heads/topic", "refs/remotes/origin/master", "refs/tags/2.62.2"]
+        self.settings.set("git_savvy.log_graph_view.branches", refs)
+        draw_prelude(self.view, prelude(self.view))
+
+        self.assertEqual(prelude(self.view), "\n  REPO: /repo\n  all  topic origin/master 2.62.2\n\n")
+        self.assertEqual(self.view.get_regions("gs_log_graph.branches"), [])
+        regions = self.view.get_regions("gs_log_graph.prelude_refs")
+        self.assertEqual([self.view.substr(r) for r in regions], ["topic", "origin/master", "2.62.2"])
+        for region in regions:
+            self.assertTrue(self.view.match_selector(region.begin(), "comment.prelude.git_savvy.graph"))
+
+    def test_switching_modes_keeps_choices_but_changes_highlights(self) -> None:
+        self.settings.set("git_savvy.log_graph_view.all_branches", True)
+        refs = ["refs/heads/topic", "refs/tags/v1"]
+        self.settings.set("git_savvy.log_graph_view.branches", refs)
+        draw_prelude(self.view, prelude(self.view))
+        self.settings.set("git_savvy.log_graph_view.all_branches", False)
+        self.settings.set("git_savvy.log_graph_view.branches", ["refs/tags/v1"])
+        draw_prelude(self.view, prelude(self.view))
+        self.assertEqual([self.view.substr(r) for r in self.view.get_regions("gs_log_graph.branches")], ["v1"])
+        self.assertEqual(self.settings.get("git_savvy.log_graph_view.prelude_refs"), refs)
+        self.assertEqual(self.view.get_regions("gs_log_graph.all"), [])
+
+        self.settings.set("git_savvy.log_graph_view.overview", True)
+        draw_prelude(self.view, prelude(self.view))
+        self.assertEqual(self.view.get_regions("gs_log_graph.branches"), [])
+        self.assertEqual(self.view.get_regions("gs_log_graph.prelude_refs"), [])
+        self.assertEqual(self.settings.get("git_savvy.log_graph_view.prelude_refs"), [])
 
     def test_overview_retains_its_label_without_all_highlight(self) -> None:
         self.settings.set("git_savvy.log_graph_view.all_branches", True)
