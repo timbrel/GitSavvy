@@ -99,6 +99,10 @@
         "args": { "all": true }
     },
     {
+        "caption": "git: graph filter by file or directory",
+        "command": "gs_log_graph_edit_files"
+    },
+    {
         "caption": "git: Repo History",
         "command": "gs_graph",
         "args": { "all": true }
