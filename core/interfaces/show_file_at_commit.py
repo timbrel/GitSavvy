@@ -163,14 +163,22 @@ class gs_show_file_at_commit(GsWindowCommand):
 def refresh_view(
     view: sublime.View, commit_hash: ShortHash, position: Position | None = None
 ) -> None:
-    settings = view.settings()
-    file_path = settings.get("git_savvy.file_path")
-
     cmd = GitContext.for_view(view)
-    file_path_at_commit = cmd.filename_at_commit(file_path, commit_hash)
-    text = cmd.get_file_content_at_commit(file_path_at_commit, commit_hash)
+    file_path = view.settings().get("git_savvy.file_path")
+    text = load_revision(cmd, file_path, commit_hash)
+    display_revision(cmd, view, file_path, commit_hash, text, position)
 
-    settings.set("git_savvy.show_file_at_commit_view.commit", commit_hash)
+
+def load_revision(cmd: GitCommand, file_path: FullPath, commit_hash: ShortHash) -> str:
+    historical_path = cmd.filename_at_commit(file_path, commit_hash)
+    return cmd.get_file_content_at_commit(historical_path, commit_hash)
+
+
+def display_revision(
+    cmd: GitContext, view: sublime.View, file_path: FullPath, commit_hash: ShortHash,
+    text: str, position: Position | None
+) -> None:
+    view.settings().set("git_savvy.show_file_at_commit_view.commit", commit_hash)
     render(view, text, position)
     view.reset_reference_document()
     enqueue_on_worker(
