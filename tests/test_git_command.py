@@ -1,11 +1,31 @@
 import io
 import subprocess
 
+import sublime
+
 from unittesting import DeferrableTestCase
 from GitSavvy.tests.mockito import unstub, verify, when
 
 from GitSavvy.core import git_command
 from GitSavvy.core.exceptions import GitSavvyError
+
+
+class TestGitContext(DeferrableTestCase):
+    def test_keeps_its_origin_when_source_view_closes(self):
+        window = sublime.active_window()
+        source = window.new_file()
+        source.set_scratch(True)
+        repo = sublime.packages_path()
+        source.settings().set("git_savvy.repo_path", repo)
+        source.settings().set("git_savvy.file_path", "/repo/source")
+        ctx = git_command.GitContext.for_view(source)
+        source.close()
+
+        self.assertEqual(ctx.some_window(), window)
+        self.assertEqual(ctx.repo_path, repo)
+        self.assertEqual(ctx.file_path, "/repo/source")
+        with self.assertRaises(git_command.DetachedView):
+            git_command.GitContext.for_view(source)
 
 
 class TestGitTimeout(DeferrableTestCase):

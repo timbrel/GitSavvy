@@ -475,7 +475,7 @@ class _GitCommand(SettingsMixin):
             if "*** Please tell me who you are." in stderr_s:
                 show_panel_on_error = False
                 sublime.set_timeout_async(
-                    lambda: sublime.active_window().run_command("gs_setup_user"))
+                    lambda: window.run_command("gs_setup_user"))
 
             raise GitSavvyError(
                 "$ {}\n\n{}{}".format(
@@ -505,7 +505,7 @@ class _GitCommand(SettingsMixin):
     def _git_environment(self, window, custom_environ=None):
         vars_for_replace = ChainMap(
             custom_environ or {},
-            window.extract_variables(),
+            self._window_variables(window),
             os.environ
         )
         savvy_env = self.project_settings.get("env") or {}
@@ -518,6 +518,9 @@ class _GitCommand(SettingsMixin):
             savvy_env_expanded or {},
             os.environ
         )
+
+    def _window_variables(self, window: sublime.Window) -> dict[str, str]:
+        return window.extract_variables()
 
     def git_throwing_silently(self, *args, **kwargs):
         return self.git(
@@ -870,6 +873,35 @@ class GitCommand(
     _GitCommand
 ):
     pass
+
+
+class GitContext(GitCommand):
+    """Git for deferred work: capture the origin before the user changes focus."""
+
+    @classmethod
+    def for_view(cls, view: sublime.View) -> GitContext:
+        window = view.window()
+        if not window:
+            raise DetachedView("View already closed.")
+        return cls(window, view)
+
+    def __init__(self, window: sublime.Window, view: sublime.View | None) -> None:
+        self.window = window
+        self.view = view
+        self._variables = window.extract_variables()
+        self._file_path = super().file_path
+        self._repo_path = self.get_repo_path()
+
+    @property
+    def repo_path(self) -> FullPath:
+        return self._repo_path
+
+    @property
+    def file_path(self) -> FullPath | None:
+        return self._file_path
+
+    def _window_variables(self, window: sublime.Window) -> dict[str, str]:
+        return self._variables
 
 
 ###
