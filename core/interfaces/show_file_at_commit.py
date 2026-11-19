@@ -10,7 +10,7 @@ from ..base_commands import GsTextCommand, GsWindowCommand
 from ..fns import chain, filter_
 from ..runtime import (
     enqueue_on_ui, enqueue_on_worker, on_worker,
-    run_as_text_command, text_command, throttled
+    run_as_future, run_as_text_command, text_command, throttled
 )
 from ..types import FullHash, FullPath, ShortHash
 from ..ui_mixins.quick_panel import show_log_panel
@@ -105,8 +105,8 @@ class gs_show_file_at_commit(GsWindowCommand):
 
         cmd = GitContext.for_view(view) if view else GitContext(window, None)
         open_views = {compute_identifier_for_view(v) for v in window.views()}
-        revision = prepare_revision(cmd, filepath, commit_hash, position, fix_position, open_views)
-        show_revision(cmd, revision, lang)
+        future = run_as_future(prepare_revision, cmd, filepath, commit_hash, position, fix_position, open_views)
+        show_revision(cmd, future.result(), lang)
 
 
 class Revision(NamedTuple):
