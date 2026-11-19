@@ -64,7 +64,7 @@ from .log_graph_helper import (
     WORKTREE_MARKER,
 )
 
-from .log_graph_prelude import Prelude, PreludeControls, RefToggle, Toggle
+from .log_graph_prelude import Prelude, PreludeControls, RefToggle, Toggle, comparison_tips, short_ref
 
 T = TypeVar("T")
 
@@ -1079,6 +1079,7 @@ def prelude(view: sublime.View) -> Prelude:
     text += "  "
     all_toggle = None
     refs = []
+    resolve_base = None
 
     if overview:
         text += "OVERVIEW"
@@ -1095,13 +1096,17 @@ def prelude(view: sublime.View) -> Prelude:
                 sublime.Region(start, len(text)), not all_branches and ref in branches, ref
             ))
 
+        if comparison_tips([toggle.ref for toggle in refs]):
+            text += " [!]"
+            resolve_base = sublime.Region(len(text) - 3, len(text))
+
     if apply_filters and (formatted_filters := format_prelude_filters(filters)):
         text += (
             formatted_filters if formatted_filters.startswith("\n")
             else "\n  " + formatted_filters
         )
 
-    return Prelude(text + "\n\n", PreludeControls(all_toggle, refs))
+    return Prelude(text + "\n\n", PreludeControls(all_toggle, refs, resolve_base))
 
 
 def draw_prelude(view: sublime.View, header: Prelude, region: sublime.Region | None = None) -> None:
@@ -1142,10 +1147,6 @@ def prelude_refs(view: sublime.View) -> list[str]:
         *settings.get("git_savvy.log_graph_view.branch_choices", []),
         *(settings.get("git_savvy.log_graph_view.branches", []) or [])
     ]))
-
-
-def short_ref(ref: str) -> str:
-    return re.sub(r"^refs/(?:heads|remotes|tags)/", "", ref)
 
 
 def format_prelude_filters(filters: str) -> str:

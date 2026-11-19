@@ -5,6 +5,7 @@ import sublime
 from unittesting import DeferrableTestCase
 
 from GitSavvy.core.commands import worktrees
+from GitSavvy.core.commands.commit_compare import gs_log_graph_focus_comparison
 from GitSavvy.core.ui__quick_panel import ActionType
 from GitSavvy.core.git_mixins.worktrees import WorktreeLocation
 from GitSavvy.core.interfaces import log_graph, log_graph_colorize
@@ -14,6 +15,7 @@ from GitSavvy.core.interfaces.log_graph_renderer import draw_prelude, gs_log_gra
 from GitSavvy.core.git_mixins.branches import Upstream
 from GitSavvy.tests.parameterized import parameterized as p
 from GitSavvy.tests.test_graph_panels import branch
+from GitSavvy.core.types import FullHash
 from GitSavvy.tests.test_graph_prelude import prelude_ref_regions
 from GitSavvy.core.interfaces.dashboard_mouse import (
     TARGET_KEY as DASHBOARD_TARGET_KEY, gs_dashboard_mouse
@@ -381,6 +383,70 @@ class TestGraphPreludeMouse(DeferrableTestCase):
             self.assertEqual(settings.get("git_savvy.log_graph_view.branches"), [remaining])
             self.assertEqual(settings.get("git_savvy.log_graph_view.all_branches"), all_mode)
 
+    def test_resolve_toggle_remove_and_recompute_merge_bases_in_place(self) -> None:
+        settings = self.view.settings()
+        tips = ["refs/heads/A", "refs/heads/B", "refs/remotes/origin/main"]
+        choices = ["refs/heads/dormant", *tips]
+        settings.set("git_savvy.log_graph_view.all_branches", True)
+        settings.set("git_savvy.log_graph_view.branches", tips)
+        settings.set("git_savvy.log_graph_view.branch_choices", choices)
+        settings.set("git_savvy.log_graph_view.branch_upstreams", ["refs/remotes/origin/A"])
+        when(gs_log_graph_refresh).run(...).thenAnswer(lambda *a, **kw: draw_prelude(self.view, prelude(self.view)))
+        focus = gs_log_graph_focus_comparison
+        when(focus).git_throwing_silently("merge-base", "--octopus", "--all", "--", *choices).thenReturn(
+            "a" * 40 + "\n" + "b" * 40, "c" * 40
+        )
+        when(focus).to_short_hash(...).thenAnswer(lambda sha: sha[:7])
+        when(gs_log_graph_edit_branches).get_branches().thenReturn([])
+        draw_prelude(self.view, prelude(self.view))
+
+        def click(label: str, shift: bool = False) -> None:
+            region = self.view.find(label, 0, sublime.LITERAL)
+            self.assertNotEqual(region.begin(), -1, label)
+            when(self.view).window_to_text(...).thenReturn(region.begin())
+            self.command.run(None, self.event, toggle_branch_choice=shift)
+
+        click("[!]")
+        a, b = "aaaaaaa^!", "bbbbbbb^!"
+        self.assertFalse(settings.get("git_savvy.log_graph_view.all_branches"))
+        self.assertEqual(settings.get("git_savvy.log_graph_view.branches"), [*choices, a, b])
+        self.assertEqual(settings.get("git_savvy.log_graph_view.branch_choices"), [*choices, a, b])
+        click(a)
+        self.assertEqual(settings.get("git_savvy.log_graph_view.branches"), [*choices, b])
+        self.assertIsNone(prelude(self.view).controls.resolve_base)
+        click(a, shift=True)
+        self.assertIsNone(prelude(self.view).controls.resolve_base)
+        click(b, shift=True)
+        click("[!]")
+        self.assertEqual(settings.get("git_savvy.log_graph_view.branches"), [*choices, "ccccccc^!"])
+        verify(focus, times=2).git_throwing_silently(...)
+
+    def test_removing_only_active_cutoff_offers_remaining_choices_for_comparison(self) -> None:
+        settings = self.view.settings()
+        tips = ["refs/heads/A", "refs/heads/B"]
+        cutoff = "aaaaaaa^!"
+        settings.set("git_savvy.log_graph_view.branches", [*tips, cutoff])
+        settings.set("git_savvy.log_graph_view.all_branches", True)
+        draw_prelude(self.view, prelude(self.view))
+        when(gs_log_graph_refresh).run(...).thenAnswer(lambda *a, **kw: draw_prelude(self.view, prelude(self.view)))
+        when(gs_log_graph_edit_branches).get_branches().thenReturn([])
+        when(self.view).window_to_text(...).thenReturn(self.view.find(cutoff, 0, sublime.LITERAL).begin())
+        self.command.run(None, self.event)
+        self.assertEqual(settings.get("git_savvy.log_graph_view.branches"), [cutoff])
+        self.command.run(None, self.event, toggle_branch_choice=True)
+        self.assertTrue(settings.get("git_savvy.log_graph_view.all_branches"))
+        self.assertEqual(settings.get("git_savvy.log_graph_view.branches"), [])
+        region = self.view.find("[!]", 0, sublime.LITERAL)
+        self.assertNotEqual(region.begin(), -1)
+
+        focus = gs_log_graph_focus_comparison
+        when(focus).git_throwing_silently("merge-base", "--octopus", "--all", "--", *tips).thenReturn("b" * 40)
+        when(focus).to_short_hash(...).thenReturn("bbbbbbb")
+        when(self.view).window_to_text(...).thenReturn(region.begin())
+        self.command.run(None, self.event)
+        self.assertEqual(settings.get("git_savvy.log_graph_view.branches"), [*tips, "bbbbbbb^!"])
+        self.assertFalse(settings.get("git_savvy.log_graph_view.all_branches"))
+
     def test_shift_click_elsewhere_extends_selection(self) -> None:
         self.view.run_command("append", {"characters": "* abcdef0 (HEAD, tag: topic) topic\n"})
         for label in ("all", "abcdef0", "HEAD", "topic)", "topic\n"):
@@ -404,7 +470,12 @@ class TestGraphPreludeMouse(DeferrableTestCase):
 
         verify(GraphMouse, times=0).press(...)
 
-    def test_right_click_retains_native_context_menu(self) -> None:
+    def test_right_click_on_merge_base_control_retains_native_context_menu(self) -> None:
+        self.view.settings().set("git_savvy.log_graph_view.branches", ["main", "topic"])
+        header = prelude(self.view)
+        draw_prelude(self.view, header)
+        assert header.controls.resolve_base is not None
+        when(self.view).window_to_text(...).thenReturn(header.controls.resolve_base.begin())
         self.command.run(None, {**self.event, "button": 2}, context_menu=True)
         verify(self.view).run_command("context_menu", ...)
         verify(gs_log_graph_refresh, times=0).run(...)
@@ -469,9 +540,8 @@ class TestGraphLabelSelection(DeferrableTestCase):
         view.settings().set(TARGET_KEY, [target.a, target.b])
         command = GraphMouse(view)
         when(command).target_at(11).thenReturn(target)
-        branch = mock({"name": "topic"})
-        when(command).branch_at(11).thenReturn(branch)
-        when(command).branch_actions(view.window(), branch).thenReturn([
+        when(command).branch_at(11, "abcdef0").thenReturn((branch("topic"), None))
+        when(command).branch_actions(...).thenReturn([
             ("Rename 'topic'", lambda: self.fail("Cancelled menu ran an action"))
         ])
         captured = []
@@ -523,15 +593,32 @@ class TestGraphCheckoutActions(DeferrableTestCase):
         target = sublime.Region(11, 18)
         command = GraphMouse(view)
         when(view).find_by_selector(...).thenReturn([target])
-        when(view).show_popup_menu(...).thenReturn(None)
+        labels = []
+        when(view).show_popup_menu(...).thenAnswer(lambda items, on_done: labels.extend(items))
         when(command).current_state().thenReturn({})
-        when(command).get_branches().thenReturn([mock({
-            "name": "feature", "is_remote": False, "active": False,
-            "upstream": None, "commit_hash": "abcdef0"
-        })])
+        when(command).get_branches().thenReturn([
+            branch("feature")._replace(commit_hash=FullHash("abcdef0" + "1" * 33)), branch("main", active=True)
+        ])
 
         self.assertTrue(command.show_menu(11, target, "abcdef0"))
+        self.assertEqual(labels[-2:], ["-", "Compare 'feature' with 'main'"])
         verify(command, times=1).get_branches()
+
+    def test_branch_hit_requires_a_unique_match_on_the_clicked_commit(self) -> None:
+        view = mock()
+        region = sublime.Region(11, 22)
+        when(view).find_by_selector(...).thenReturn([region])
+        when(view).substr(region).thenReturn("origin/main")
+        mouse = GraphMouse(view)
+        local = branch("origin/main", active=True)
+        remote = branch("main", remote="origin")._replace(commit_hash=FullHash("b" * 40))
+        when(mouse).get_branches().thenReturn([local, remote])
+        self.assertEqual(mouse.branch_at(11, "aaaaaaa"), (local, local))
+        self.assertEqual(mouse.branch_at(11, "bbbbbbb"), (remote, local))
+        self.assertIsNone(mouse.branch_at(11, "ccccccc"))
+
+        when(mouse).get_branches().thenReturn([local, remote._replace(commit_hash=local.commit_hash)])
+        self.assertIsNone(mouse.branch_at(11, "aaaaaaa"))
 
     def test_branch_without_upstream(self) -> None:
         menu = self.branch_menu(active=False, upstream=None)
@@ -615,7 +702,7 @@ class TestGraphCheckoutActions(DeferrableTestCase):
         view.settings().set("git_savvy.log_graph_view", True)
         command = GraphMouse(view)
         when(command).target_at(2).thenReturn(target)
-        when(command).branch_at(2).thenReturn(None)
+        when(command).branch_at(2, "abcdef0").thenReturn(None)
         when(command).fixup_actions(2, "abcdef0").thenReturn([])
         when(command).cherry_pick_and_revert_actions(...).thenReturn([])
         when(view).match_selector(2, "string.other.rebase-hint.git-savvy").thenReturn(False)
@@ -629,7 +716,7 @@ class TestGraphCheckoutActions(DeferrableTestCase):
 
         command.show_menu(2, target, "abcdef0")
 
-        labels, on_done, _ = captured[0]
+        labels, on_done = captured[0]
         self.assertEqual([
             "Create branch at abcdef0", "Create tag...", "-",
             "Checkout here", "Checkout in a worktree", "-"
@@ -648,7 +735,7 @@ class TestGraphCheckoutActions(DeferrableTestCase):
         view.run_command("append", {"characters": "* abcdef0 fixup! subject\n"})
         target = sublime.Region(10, 15)
         handler = GraphMouse(view)
-        when(handler).branch_at(10).thenReturn(None)
+        when(handler).branch_at(10, "abcdef0").thenReturn(None)
         when(handler).get_branches().thenRaise(AssertionError("Unexpected branch query"))
         when(handler).commit_actions(...).thenRaise(AssertionError("Unexpected commit actions"))
         when(view).match_selector(10, "string.other.rebase-hint.git-savvy").thenReturn(True)
@@ -663,9 +750,9 @@ class TestGraphCheckoutActions(DeferrableTestCase):
         self.assertFalse(handler.show_menu(10, target, "abcdef0"))
         self.assertEqual(captured, [])
         self.assertTrue(handler.show_menu(10, target, "abcdef0"))
-        labels, on_done, point = captured[0]
+        labels, on_done = captured[0]
         self.assertEqual(labels, ["Apply fix"])
-        self.assertEqual(point, 10)
+        self.assertEqual(list(view.sel()), [target])
         on_done(0)
         verify(view).run_command("gs_rebase_apply_fixup", args)
 
@@ -680,7 +767,7 @@ class TestGraphCheckoutActions(DeferrableTestCase):
         view.sel().add(sublime.Region(2, 9))
         command = GraphMouse(view)
         when(command).target_at(2).thenReturn(sublime.Region(2, 9))
-        when(command).branch_at(2).thenReturn(None)
+        when(command).branch_at(2, "abcdef0").thenReturn(None)
         when(command).cherry_pick_and_revert_actions(...).thenReturn([])
         when(view).match_selector(2, "string.other.rebase-hint.git-savvy").thenReturn(False)
         when(view).match_selector(2, "constant.numeric.graph.commit-hash.git-savvy").thenReturn(True)
@@ -700,7 +787,7 @@ class TestGraphCheckoutActions(DeferrableTestCase):
         command.press(2, {"x": 2, "y": 0, "button": 2}, context_menu=True)
 
         self.assertEqual(view.settings().get("git_savvy.multi_selection"), [[2, 9], [18, 25]])
-        labels, on_done, _ = captured[0]
+        labels, on_done = captured[0]
         self.assertEqual(["Diff 1234567..abcdef0", "-"], labels[:2])
         on_done(0)
         verify(window).run_command("gs_diff", {
@@ -783,7 +870,7 @@ class TestGraphCheckoutActions(DeferrableTestCase):
             "upstream": upstream, "worktree_path": None, "commit_hash": "abcdef0"
         })
         when(command).get_branches().thenRaise(AssertionError("Redundant branch lookup"))
-        return command.branch_actions(self.window, branch)
+        return command.local_branch_actions(self.window, branch)
 
     def check_worktree_checkout(self, start_point: str) -> None:
         command = worktrees.gs_checkout_in_worktree(mock())

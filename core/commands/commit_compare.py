@@ -1,12 +1,20 @@
+from __future__ import annotations
+
+import sublime
 from sublime_plugin import WindowCommand
 
-from GitSavvy.core.base_commands import GsWindowCommand
+from ..base_commands import GsTextCommand, GsWindowCommand
+from ..exceptions import GitSavvyError
+from ..git_command import GitCommand
+from ..interfaces.log_graph_prelude import comparison_tips, short_ref
+from ..types import FullHash
 from ..ui_mixins.quick_panel import PanelActionMixin, show_branch_panel
 from ..ui_mixins.input_panel import show_single_line_input_panel
 
 
 __all__ = (
     "gs_compare_commit",
+    "gs_log_graph_focus_comparison",
     "gs_compare_against_reference",
     "gs_compare_against_branch",
     "gs_compare_against",
@@ -22,21 +30,62 @@ class gs_compare_commit(GsWindowCommand):
     def run(self, base_commit, target_commit=None, file_path=None, title=None):
         base_commit = base_commit or "HEAD"
         target_commit = target_commit or "HEAD"
-        merge_bases = self.git('merge-base', base_commit, target_commit, '-a').strip().splitlines()
-        if not merge_bases:
-            self.window.status_message("No common base for {} and {}".format(base_commit, target_commit))
+        tips = [base_commit, target_commit]
+        view = self.window.active_view()
+        if view and view.settings().get("git_savvy.log_graph_view"):
+            view.run_command("gs_log_graph_focus_comparison", {"tips": tips})
             return
 
-        branches = (
-            [base_commit, target_commit]
-            + ['{}^!'.format(base) for base in map(self.to_short_hash, merge_bases)]
-        )
+        boundaries = merge_base_boundaries(self, tips)
+        if not boundaries:
+            return
+        branches = tips + boundaries
         self.window.run_command("gs_graph", {
             'all': False,
             'file_path': file_path,
             'branches': branches,
             'follow': base_commit
         })
+
+
+class gs_log_graph_focus_comparison(GsTextCommand):
+    def run(self, edit: sublime.Edit, tips: list[str] | None = None) -> None:
+        settings = self.view.settings()
+        replace_comparison = tips is not None
+        if tips is None:
+            tips = list(settings.get("git_savvy.log_graph_view.branches") or [])
+            choices = list(dict.fromkeys([*settings.get("git_savvy.log_graph_view.branch_choices", []), *tips]))
+            tips = comparison_tips(choices)
+            if not tips:
+                return
+        else:
+            choices = tips
+
+        boundaries = merge_base_boundaries(self, tips)
+        if not boundaries:
+            return
+
+        if replace_comparison:
+            settings.erase("git_savvy.log_graph_view.branch_upstreams")
+            settings.set("git_savvy.log_graph_view.follow", short_ref(tips[0]))
+        settings.set("git_savvy.log_graph_view.branch_choices", choices + boundaries)
+        settings.set("git_savvy.log_graph_view.branches", tips + boundaries)
+        settings.set("git_savvy.log_graph_view.all_branches", False)
+        settings.set("git_savvy.log_graph_view.overview", False)
+        self.view.run_command("gs_log_graph_refresh", {"assume_complete_redraw": True})
+
+
+def merge_base_boundaries(command: GitCommand, tips: list[str]) -> list[str]:
+    try:
+        bases = command.git_throwing_silently("merge-base", "--octopus", "--all", "--", *tips).splitlines()
+    except GitSavvyError as exc:
+        if exc.stderr:
+            exc.show_error_panel()
+            return []
+        bases = []
+    if not bases:
+        sublime.status_message("No common base for {}".format(", ".join(tips)))
+    return [command.to_short_hash(FullHash(base)) + "^!" for base in bases]
 
 
 class gs_compare_against_reference(GsWindowCommand):

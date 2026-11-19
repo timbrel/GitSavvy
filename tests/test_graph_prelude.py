@@ -24,7 +24,7 @@ class TestGraphPrelude(DeferrableTestCase):
         (True, [], "all"),
         (True, ["refs/heads/topic"], "all  topic"),
         (False, [], "all"),
-        (False, ["HEAD", "refs/heads/topic", "refs/remotes/origin/main"], "all  HEAD topic origin/main")
+        (False, ["HEAD", "refs/heads/topic", "refs/remotes/origin/main"], "all  HEAD topic origin/main [!]")
     ])
     def test_all_label_and_branches(self, enabled: bool, branches: list[str], expected: str) -> None:
         self.settings.set("git_savvy.log_graph_view.all_branches", enabled)
@@ -169,12 +169,19 @@ class TestGraphPrelude(DeferrableTestCase):
         self.settings.set("git_savvy.log_graph_view.branches", refs)
         draw_prelude(self.view, prelude(self.view))
 
-        self.assertEqual(prelude(self.view).text, "\n  REPO: /repo\n  all  topic origin/master 2.62.2\n\n")
+        self.assertEqual(prelude(self.view).text, "\n  REPO: /repo\n  all  topic origin/master 2.62.2 [!]\n\n")
         self.assertEqual(self.view.get_regions("gs_log_graph.branches"), [])
         regions = prelude_ref_regions(self.view)
         self.assertEqual([self.view.substr(r) for r in regions], ["topic", "origin/master", "2.62.2"])
         for region in regions:
             self.assertTrue(self.view.match_selector(region.begin(), "comment.prelude.git_savvy.graph"))
+
+    @p.expand([(False,), (True,)])
+    def test_two_listed_tips_offer_resolution_even_if_only_one_is_selected(self, all_mode: bool) -> None:
+        self.settings.set("git_savvy.log_graph_view.branch_choices", ["main", "topic"])
+        self.settings.set("git_savvy.log_graph_view.branches", ["main"])
+        self.settings.set("git_savvy.log_graph_view.all_branches", all_mode)
+        self.assertIn("all  main topic [!]", prelude(self.view).text)
 
     def test_switching_modes_keeps_choices_but_changes_highlights(self) -> None:
         self.settings.set("git_savvy.log_graph_view.all_branches", True)
