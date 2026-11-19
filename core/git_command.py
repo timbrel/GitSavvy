@@ -21,7 +21,7 @@ import traceback
 import sublime
 
 from . import command_log, debug, output_panel, worker_occupancy as _worker_occupancy
-from .settings import SettingsMixin
+from .settings import ProjectSettings, SettingsMixin
 from .utils import (
     try_kill_proc, paths_upwards, proc_has_been_aborted_by_user,
     proc_has_been_killed, resolve_path, STARTUPINFO
@@ -309,7 +309,7 @@ class _GitCommand(SettingsMixin):
         command_str = debug.pretty_git_command(command[1:])
 
         if show_panel is None:
-            show_panel = git_cmd in self.app_settings.get("show_panel_for")
+            show_panel = git_cmd in self._panel_commands()
 
         show_spinner = (
             timeout == NOT_SET
@@ -518,6 +518,9 @@ class _GitCommand(SettingsMixin):
             savvy_env_expanded or {},
             os.environ
         )
+
+    def _panel_commands(self) -> list[str]:
+        return self.app_settings.get("show_panel_for")
 
     def _window_variables(self, window: sublime.Window) -> dict[str, str]:
         return window.extract_variables()
@@ -891,6 +894,15 @@ class GitContext(GitCommand):
         self._variables = window.extract_variables()
         self._file_path = super().file_path
         self._repo_path = self.get_repo_path()
+        self._settings = ProjectSettings(window).snapshot()
+        self._show_panel_for = super()._panel_commands()
+
+    def _panel_commands(self) -> list[str]:
+        return self._show_panel_for
+
+    @property
+    def project_settings(self) -> dict[str, Any]:
+        return self._settings
 
     @property
     def repo_path(self) -> FullPath:

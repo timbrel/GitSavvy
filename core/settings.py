@@ -35,6 +35,9 @@ class _AppSettings:
     def set(self, name: str, value: Any) -> None:
         self._settings.set(name, value)  # implicitly calls `_on_update` to clear cache
 
+    def snapshot(self) -> dict[str, Any]:
+        return self._settings.to_dict()
+
     def has(self, name: str) -> bool:
         return self._settings.has(name)
 
@@ -74,6 +77,11 @@ class ProjectSettings:
         except KeyError:
             return app_settings.get(key, default)
 
+    def snapshot(self) -> dict[str, Any]:
+        if self._change_count != PROJECT_FILE_CHANGE_COUNT:
+            self._reload()
+        return {**app_settings.snapshot(), **self._settings}
+
     @classmethod
     def forget_window(cls, window_id: sublime.WindowId) -> None:
         cls._instances.pop(window_id, None)
@@ -92,7 +100,7 @@ class SettingsMixin:
         return app_settings
 
     @property
-    def project_settings(self) -> ProjectSettings:
+    def project_settings(self) -> ProjectSettings | dict[str, Any]:
         if self._project_settings is None:
             self._project_settings = ProjectSettings(self.some_window())
         return self._project_settings
