@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 import os
-from typing import Any
+from typing import Any, Protocol
 
 import sublime
 import sublime_plugin
@@ -92,6 +92,10 @@ class ProjectSettings:
         self._change_count = PROJECT_FILE_CHANGE_COUNT
 
 
+class ReadableSettings(Protocol):
+    def get(self, key: str, default: Any = None, /) -> Any: ...
+
+
 class SettingsMixin:
     _project_settings: ProjectSettings | None = None
 
@@ -100,7 +104,7 @@ class SettingsMixin:
         return app_settings
 
     @property
-    def project_settings(self) -> ProjectSettings | dict[str, Any]:
+    def project_settings(self) -> ReadableSettings:
         if self._project_settings is None:
             self._project_settings = ProjectSettings(self.some_window())
         return self._project_settings
