@@ -1,7 +1,7 @@
 """Walk the graph drawn in a log view, without asking Git for commit history.
 
 A dot is a `Char` at a commit marker (●, ⌂ or *), not at the commit hash.
-From a selection, start with `iter_selected_dots(view)` or `find_dots(view)`.
+From a selection, start with `iter_dots_from_sel(view)` or `dots_from_sel(view)`.
 From a buffer point, use `dot_from_line(view, line_from_pt(view, pt))`.
 The point can be anywhere on the line, including in a label or message.
 
@@ -45,12 +45,12 @@ NextFn = Callable[['Char'], Iterator['Char']]
 Direction = Literal["down", "up"]
 
 
-def find_dots(view: sublime.View) -> set[Char]:
+def dots_from_sel(view: sublime.View) -> set[Char]:
     """Return the distinct dots on the selected lines."""
-    return set(iter_selected_dots(view))
+    return set(iter_dots_from_sel(view))
 
 
-def iter_selected_dots(view: sublime.View) -> Iterator[Char]:
+def iter_dots_from_sel(view: sublime.View) -> Iterator[Char]:
     """Yield the dot on each selection’s starting line, skipping lines without a dot."""
     for s in view.sel():
         line = line_from_pt(view, s.begin())

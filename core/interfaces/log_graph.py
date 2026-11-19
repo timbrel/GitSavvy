@@ -501,7 +501,7 @@ class gs_log_graph_navigate_wide(TextCommand):
         # type: (sublime.Edit, bool) -> None
         view = self.view
         try:
-            cur_dot = next(chain(walk.find_graph_art_at_cursor(view), walk.iter_selected_dots(view)))
+            cur_dot = next(chain(walk.find_graph_art_at_cursor(view), walk.iter_dots_from_sel(view)))
         except StopIteration:
             view.run_command("gs_log_graph_navigate", {"forward": forward})
             return
@@ -743,7 +743,7 @@ class gs_log_graph_toggle_overview(TextCommand):
             symbols = view.symbols()
             symbols_ = {s for _, s in symbols}
             if follow not in symbols_:
-                dots = walk.find_dots(view)
+                dots = walk.dots_from_sel(view)
                 if len(dots) == 1:
                     dot = dots.pop()
                     s = next_symbol_upwards(view, symbols, dot)

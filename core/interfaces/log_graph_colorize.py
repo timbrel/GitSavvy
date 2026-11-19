@@ -23,7 +23,7 @@ MATCHING_COMMIT_SCOPE = 'git_savvy.graph.matching_commit'
 
 
 def colorize_dots(view: sublime.View) -> None:
-    dots = walk.find_graph_art_at_cursor(view) or tuple(walk.find_dots(view))
+    dots = walk.find_graph_art_at_cursor(view) or tuple(walk.dots_from_sel(view))
     _colorize_dots(view.id(), dots)
 
 
@@ -120,7 +120,7 @@ def __paint(view: sublime.View, paths_down: list[list[walk.Char]], paths_up: lis
 
 
 def colorize_fixups(view: sublime.View) -> None:
-    dots = tuple(walk.find_dots(view))
+    dots = tuple(walk.dots_from_sel(view))
     _colorize_fixups(view.id(), dots)
 
 
