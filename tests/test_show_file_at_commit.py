@@ -11,6 +11,50 @@ from GitSavvy.core.interfaces import show_file_at_commit as module
 from GitSavvy.core.view import Position
 
 
+class TestShowFileAtCommitPosition(DeferrableTestCase):
+    def setUp(self) -> None:
+        self.addCleanup(unstub)
+        self.cmd = module.GitCommand()
+
+    def test_maps_row_using_historical_paths_and_preserves_column_and_offset(self):
+        when(self.cmd).filename_at_commit("/repo/current.py", "older").thenReturn(
+            "/repo/old.py"
+        )
+        when(self.cmd).filename_at_commit("/repo/current.py", "newer").thenReturn(
+            "/repo/new.py"
+        )
+        when(self.cmd).find_matching_lineno_between_files(
+            ("older", "/repo/old.py"), ("newer", "/repo/new.py"), 4
+        ).thenReturn(12)
+
+        position = module.map_position(
+            self.cmd, "/repo/current.py", "older", "newer", Position(3, 7, 20.5)
+        )
+
+        self.assertEqual(position, Position(11, 7, 20.5))
+        verify(self.cmd).filename_at_commit("/repo/current.py", "older")
+        verify(self.cmd).filename_at_commit("/repo/current.py", "newer")
+        verify(self.cmd).find_matching_lineno_between_files(
+            ("older", "/repo/old.py"), ("newer", "/repo/new.py"), 4
+        )
+
+    def test_missing_position_does_not_query_git(self):
+        when(self.cmd).filename_at_commit(...).thenRaise(
+            AssertionError("Unexpected lookup")
+        )
+        when(self.cmd).find_matching_lineno_between_files(...).thenRaise(
+            AssertionError("Unexpected line mapping")
+        )
+
+        position = module.map_position(
+            self.cmd, "/repo/current.py", "older", "newer", None
+        )
+
+        self.assertIsNone(position)
+        verify(self.cmd, times=0).filename_at_commit(...)
+        verify(self.cmd, times=0).find_matching_lineno_between_files(...)
+
+
 class TestShowFileAtCommitRefresh(DeferrableTestCase):
     def setUp(self) -> None:
         self.view = sublime.active_window().new_file()

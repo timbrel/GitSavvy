@@ -288,15 +288,9 @@ class gs_show_file_at_commit_open_previous_commit(GsTextCommand):
             flash(view, "No older commit found.")
             return
 
-        position = capture_cur_position(view)
-        if position is not None:
-            row, col, offset = position
-            line = self.find_matching_lineno_between_files(
-                (commit_hash, self.filename_at_commit(file_path, commit_hash)),
-                (previous_commit, self.filename_at_commit(file_path, previous_commit)),
-                row + 1
-            )
-            position = Position(line - 1, col, offset)
+        position = map_position(
+            self, file_path, commit_hash, previous_commit, capture_cur_position(view)
+        )
 
         with keep_info_popup_state(view):
             refresh_view(view, previous_commit, position)
@@ -324,15 +318,9 @@ class gs_show_file_at_commit_open_next_commit(GsTextCommand):
                 flash(view, "No newer commit found.")
             return
 
-        position = capture_cur_position(view)
-        if position is not None:
-            row, col, offset = position
-            line = self.find_matching_lineno_between_files(
-                (commit_hash, self.filename_at_commit(file_path, commit_hash)),
-                (commit, self.filename_at_commit(file_path, commit)),
-                row + 1
-            )
-            position = Position(line - 1, col, offset)
+        position = map_position(
+            self, file_path, commit_hash, commit, capture_cur_position(view)
+        )
 
         with keep_info_popup_state(view):
             refresh_view(view, commit, position)
@@ -367,15 +355,9 @@ class gs_show_file_at_commit_open_next_change(GsTextCommand):
             "position": list(current_position) if current_position else None,
         })
 
-        position = None
-        if current_position is not None:
-            row, col, offset = current_position
-            line = self.find_matching_lineno_between_files(
-                (commit_hash, self.filename_at_commit(file_path, commit_hash)),
-                (commit, self.filename_at_commit(file_path, commit)),
-                row + 1
-            )
-            position = Position(line - 1, col, offset)
+        position = map_position(
+            self, file_path, commit_hash, commit, current_position
+        )
 
         with keep_info_popup_state(view):
             refresh_view(view, commit, position)
@@ -693,17 +675,31 @@ class gs_show_file_at_commit_open_log(GsTextCommand):
         commit = self.to_short_hash(commit)
         previous_commit = view.settings().get("git_savvy.show_file_at_commit_view.commit")
         position = capture_cur_position(view)
-        if position is not None:
-            row, col, offset = position
-            file_path = view.settings().get("git_savvy.file_path")
-            line = self.find_matching_lineno_between_files(
-                (previous_commit, self.filename_at_commit(file_path, previous_commit)),
-                (commit, self.filename_at_commit(file_path, commit)),
-                row + 1
-            )
-            position = Position(line - 1, col, offset)
+        file_path = view.settings().get("git_savvy.file_path")
+        position = map_position(
+            self, file_path, previous_commit, commit, position
+        )
 
         enqueue_on_worker(refresh_view, view, commit, position)
+
+
+def map_position(
+    cmd: GitCommand,
+    file_path: FullPath,
+    base_commit: ShortHash,
+    target_commit: ShortHash,
+    position: Position | None
+) -> Position | None:
+    if position is None:
+        return None
+
+    row, col, offset = position
+    line = cmd.find_matching_lineno_between_files(
+        (base_commit, cmd.filename_at_commit(file_path, base_commit)),
+        (target_commit, cmd.filename_at_commit(file_path, target_commit)),
+        row + 1
+    )
+    return Position(line - 1, col, offset)
 
 
 class gs_show_file_at_commit_open_blame(GsTextCommand):
