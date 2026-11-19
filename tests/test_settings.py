@@ -8,7 +8,7 @@ from GitSavvy.core.settings import (
     color_value,
     read_default_settings,
 )
-from GitSavvy.tests.mockito import unstub, when
+from GitSavvy.tests.mockito import mock, unstub, verify, when
 
 
 class TestReadDefaultSettings(DeferrableTestCase):
@@ -19,6 +19,30 @@ class TestReadDefaultSettings(DeferrableTestCase):
             settings["colors"]["log_graph"]["commit_dot_background"],
             "#991"
         )
+
+
+class TestAppSettingsSnapshot(DeferrableTestCase):
+    def test_bulk_read_populates_cache_until_invalidated(self):
+        self.addCleanup(unstub)
+        backing = mock()
+        when(settings.sublime).load_settings(...).thenReturn(backing)
+        app = settings._AppSettings()
+        when(backing).get("first").thenReturn(1)
+        when(backing).to_dict().thenReturn({"first": 1, "other": 2})
+
+        self.assertEqual(app.get("first"), 1)
+        snapshot = app.snapshot()
+        self.assertEqual(app.get("other"), 2)
+        self.assertEqual(app.get("absent", 3), 3)
+        self.assertEqual(app.snapshot(), {"first": 1, "other": 2})
+        verify(backing, times=1).to_dict()
+        verify(backing, times=0).get("other")
+        verify(backing, times=0).get("absent")
+
+        app._on_update()
+        when(backing).to_dict().thenReturn({"other": 4})
+        self.assertEqual(app.snapshot(), {"other": 4})
+        self.assertEqual(snapshot, {"first": 1, "other": 2})
 
 
 class TestProjectSettings(DeferrableTestCase):

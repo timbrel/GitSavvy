@@ -21,6 +21,7 @@ class _AppSettings:
     def __init__(self) -> None:
         self._settings = settings = sublime.load_settings("GitSavvy.sublime-settings")
         self._cache: dict[str, Any] = {}
+        self._cache_complete = False
         settings.clear_on_change(__name__)
         settings.add_on_change(__name__, self._on_update)
 
@@ -28,7 +29,11 @@ class _AppSettings:
         try:
             return self._cache[name]
         except KeyError:
-            current_value: Any = self._settings.get(name, default)
+            if self._cache_complete:
+                return default
+            current_value: Any = self._settings.get(name)
+            if current_value is None and not self._settings.has(name):
+                return default
             self._cache[name] = current_value
             return current_value
 
@@ -36,12 +41,16 @@ class _AppSettings:
         self._settings.set(name, value)  # implicitly calls `_on_update` to clear cache
 
     def snapshot(self) -> dict[str, Any]:
-        return self._settings.to_dict()
+        if not self._cache_complete:
+            self._cache = self._settings.to_dict()
+            self._cache_complete = True
+        return self._cache.copy()
 
     def has(self, name: str) -> bool:
         return self._settings.has(name)
 
     def _on_update(self) -> None:
+        self._cache_complete = False
         self._cache.clear()
 
 
