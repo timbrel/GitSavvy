@@ -23,7 +23,10 @@ class gs_log_graph_edit_branches(TextCommand, GitCommand):
     # Keep input() and run() on the same instance, as for the file picker.
     _input_handler: GraphBranchesInputHandler | None = None
 
-    def run(self, edit: sublime.Edit, branch: str | None = None, selected_index: int = 0) -> None:
+    def run(
+        self, edit: sublime.Edit, branch: str | None = None,
+        selected_index: int = 0, from_prelude: bool = False
+    ) -> None:
         view = self.view
         if branch is None:
             window = view.window()
@@ -40,33 +43,32 @@ class gs_log_graph_edit_branches(TextCommand, GitCommand):
             handler = GraphBranchesInputHandler(self)
             handler.list_items()
         branch = handler.resolve_branch(branch)
-        selected = handler.selected_branches
-        next_branches = (
-            [ref for ref in selected if ref != branch]
-            if branch in selected else
-            selected + [branch]
-        )
         settings = view.settings()
-        # Retain both old and new choices, including revision expressions, so
-        # deselecting an item does not remove its control from the prelude.
-        settings.set("git_savvy.log_graph_view.branch_choices", list(dict.fromkeys(
-            handler.resolve_branch(ref) for ref in [
-                *settings.get("git_savvy.log_graph_view.branch_choices", []),
-                *(settings.get("git_savvy.log_graph_view.branches", []) or []),
-                branch
-            ]
-        )))
-        # All mode suspends the subset rather than deleting it. Keep the last
-        # nonempty subset so toggling `all` back off restores the same graph.
-        branch_subset = next_branches or selected
-        settings.set("git_savvy.log_graph_view.branches", branch_subset)
-        # Keep automatic additions separate from the user's explicit choices.
-        settings.set("git_savvy.log_graph_view.branch_upstreams", handler.upstreams_for(branch_subset))
-        settings.set("git_savvy.log_graph_view.all_branches", not next_branches)
+        choices = handler.choices
+        subset = handler.subset
+        if from_prelude:
+            # Clicks only toggle visibility. The last subset survives all mode.
+            active = [] if settings.get("git_savvy.log_graph_view.all_branches") else subset
+            next_active = toggle_ref(active, branch)
+            subset = next_active or active
+        else:
+            # The picker edits the controls themselves, including dormant ones.
+            if branch in choices:
+                choices = [ref for ref in choices if ref != branch]
+                subset = [ref for ref in subset if ref != branch]
+            else:
+                choices = choices + [branch]
+                subset = subset + [branch]
+            next_active = subset
+
+        settings.set("git_savvy.log_graph_view.branch_choices", choices)
+        settings.set("git_savvy.log_graph_view.branches", subset)
+        settings.set("git_savvy.log_graph_view.branch_upstreams", handler.upstreams_for(subset))
+        settings.set("git_savvy.log_graph_view.all_branches", not next_active)
         settings.set("git_savvy.log_graph_view.overview", False)
         view.run_command("gs_log_graph_refresh", {"assume_complete_redraw": True})
         if handler.keep_open:
-            next_refs = handler.ordered_refs(next_branches)
+            next_refs = handler.ordered_refs(choices)
             enqueue_on_ui(view.run_command, "gs_log_graph_edit_branches", {
                 "selected_index": next_refs.index(branch) if branch in next_refs else 0
             })
@@ -82,6 +84,10 @@ class gs_log_graph_edit_branches(TextCommand, GitCommand):
             self._input_handler = GraphBranchesInputHandler(self, args.get("selected_index", 0))
             return self._input_handler
         return None
+
+
+def toggle_ref(refs: list[str], ref: str) -> list[str]:
+    return [r for r in refs if r != ref] if ref in refs else refs + [ref]
 
 
 class gs_log_graph_edit_files(TextCommand, GitCommand):
@@ -212,7 +218,8 @@ class GraphBranchesInputHandler(ListInputHandler):
         self.selected_index = selected_index
         self.branches: dict[str, Branch] = {}
         self.refs: list[str] = []
-        self.selected_branches: list[str] = []
+        self.choices: list[str] = []
+        self.subset: list[str] = []
         self.keep_open = False
 
     def name(self) -> str:
@@ -225,24 +232,23 @@ class GraphBranchesInputHandler(ListInputHandler):
         )
         self.branches = {branch_ref(branch): branch for branch in branches}
         settings = self.command.view.settings()
-        selected: list[str] = settings.get("git_savvy.log_graph_view.branches", [])
-        self.selected_branches = (
-            [] if (
-                settings.get("git_savvy.log_graph_view.all_branches")
-                or settings.get("git_savvy.log_graph_view.overview")
-            ) else list(dict.fromkeys(
-                self.resolve_branch(ref) for ref in selected
-            ))
-        )
-        self.refs = self.ordered_refs(self.selected_branches)
-        upstreams = self.upstreams_for(self.selected_branches)
+        self.subset = list(dict.fromkeys(
+            self.resolve_branch(ref) for ref in (settings.get("git_savvy.log_graph_view.branches") or [])
+        ))
+        self.choices = list(dict.fromkeys(
+            self.resolve_branch(ref) for ref in [
+                *settings.get("git_savvy.log_graph_view.branch_choices", []), *self.subset
+            ]
+        ))
+        self.refs = self.ordered_refs(self.choices)
+        upstreams = self.upstreams_for(self.subset)
         items = [self.branch_item(ref, upstreams) for ref in self.refs]
         if not items:
             items.append(sublime.ListInputItem("There are no branches available.", None))
         return items, self.selected_index
 
     def preview(self, value: str | None) -> str:
-        action = "unselect" if value in self.selected_branches else "select"
+        action = "remove" if value in self.choices else "add"
         return f"[ctrl+enter] to {action}, [enter] to also close"
 
     def want_event(self) -> bool:
@@ -261,10 +267,8 @@ class GraphBranchesInputHandler(ListInputHandler):
             enqueue_on_ui(window.run_command, "hide_overlay")
 
     def ordered_refs(self, selected: list[str]) -> list[str]:
-        choices: list[str] = self.command.view.settings().get("git_savvy.log_graph_view.branch_choices", [])
-        remembered = dict.fromkeys(self.resolve_branch(ref) for ref in [*selected, *choices])
         refs = (["HEAD"] if selected else []) + list(self.branches) + [
-            ref for ref in remembered if ref != "HEAD" and ref not in self.branches
+            ref for ref in selected if ref != "HEAD" and ref not in self.branches
         ]
         return sorted(refs, key=lambda ref: ref not in selected)
 
@@ -297,8 +301,8 @@ class GraphBranchesInputHandler(ListInputHandler):
         name = branch.canonical_name if branch else ref
         return sublime.ListInputItem(
             (
-                f"✓ {name}" if ref in self.selected_branches else
-                f"  {name}" if self.selected_branches else
+                f"✓ {name}" if ref in self.choices else
+                f"  {name}" if self.choices else
                 name
             ),
             ref,

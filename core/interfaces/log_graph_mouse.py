@@ -86,7 +86,7 @@ def activate_prelude_control(view: sublime.View, pt: int) -> bool:
     for toggle in controls.refs:
         if toggle.contains(pt):
             settings.erase("git_savvy.mouse_selected_target")
-            view.run_command("gs_log_graph_edit_branches", {"branch": toggle.ref})
+            view.run_command("gs_log_graph_edit_branches", {"branch": toggle.ref, "from_prelude": True})
             return True
 
     return False
