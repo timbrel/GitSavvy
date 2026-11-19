@@ -1,7 +1,9 @@
 from __future__ import annotations
+from concurrent.futures import Future, wait
 from contextlib import contextmanager
 from functools import lru_cache
 import re
+import time
 
 import sublime
 from sublime_plugin import TextCommand, ViewEventListener
@@ -44,6 +46,7 @@ __all__ = (
 from typing import Dict, Iterator, NamedTuple, Optional, Set, Tuple
 
 
+OPEN_BUDGET = 1.8
 SHOW_COMMIT_TITLE = "FILE: {}, {}"
 views_with_reference_document: Set[sublime.View] = set()
 
@@ -105,8 +108,16 @@ class gs_show_file_at_commit(GsWindowCommand):
 
         cmd = GitContext.for_view(view) if view else GitContext(window, None)
         open_views = {compute_identifier_for_view(v) for v in window.views()}
+        started = time.monotonic()
         future = run_as_future(prepare_revision, cmd, filepath, commit_hash, position, fix_position, open_views)
-        show_revision(cmd, future.result(), lang)
+        # Block M: no key handling, painting or placeholder during this wait.
+        done, _ = wait([future], timeout=OPEN_BUDGET)
+        if done:
+            show_revision(cmd, future.result(), lang)
+            return
+
+        waiting = new_revision_buffer(cmd, filepath, commit_hash)
+        await_slow_revision(cmd, waiting, future, lang, started)
 
 
 class Revision(NamedTuple):
@@ -130,20 +141,54 @@ def prepare_revision(
     return Revision(file_path, commit, position, text)
 
 
-def show_revision(cmd: GitContext, revision: Revision | None, syntax: str | None) -> None:
+def await_slow_revision(
+    cmd: GitContext, waiting: sublime.View, future: Future[Revision | None],
+    syntax: str | None, started: float
+) -> None:
+    def tick() -> None:
+        if waiting.window() != cmd.window:
+            return
+        if future.done():
+            try:
+                revision = future.result()
+            except Exception:
+                waiting.close()
+                raise
+            show_revision(cmd, revision, syntax, waiting)
+            return
+
+        elapsed = time.monotonic() - started
+        render(waiting, f"==== Loading is taking unusually long ==== ({elapsed:.1f}s)", None)
+        sublime.set_timeout(tick, 250)
+
+    tick()
+
+
+def show_revision(
+    cmd: GitContext, revision: Revision | None, syntax: str | None, waiting: sublime.View | None = None
+) -> None:
     if revision is None:
+        if waiting:
+            waiting.close()
         cmd.window.status_message("No older revision of this file found.")
         return
 
     file_path, commit, position, text = revision
     if existing := find_revision_view(cmd, file_path, commit):
-        focus_view(existing)
+        should_focus = not waiting or cmd.window.active_view() == waiting
+        if waiting:
+            waiting.close()
+        if should_focus:
+            focus_view(existing)
         if position:
             run_as_text_command(apply_position, existing, *position)
     elif text is not None:
-        view = new_revision_buffer(cmd, file_path, commit)
+        view = waiting or new_revision_buffer(cmd, file_path, commit)
+        view.set_name(SHOW_COMMIT_TITLE.format(cmd.to_short_path(file_path), commit))
         configure_revision_view(cmd, view, file_path, commit, syntax)
         display_revision(cmd, view, file_path, commit, text, position)
+    elif waiting:
+        waiting.close()
 
 
 def find_revision_view(cmd: GitContext, file_path: FullPath, commit: ShortHash) -> sublime.View | None:
