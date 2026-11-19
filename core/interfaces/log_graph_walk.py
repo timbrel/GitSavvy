@@ -1,3 +1,18 @@
+"""Walk the graph drawn in a log view, without asking Git for commit history.
+
+A dot is a `Char` at a commit marker (●, ⌂ or *), not at the commit hash.
+From a selection, start with `iter_selected_dots(view)` or `find_dots(view)`.
+From a buffer point, use `dot_from_line(view, line_from_pt(view, pt))`.
+The point can be anywhere on the line, including in a label or message.
+
+From a dot, `dots_after_dot` follows the drawn edges to the next commit on
+each path. Forward means down the view toward parents; backward means up
+toward children. Use `follow_dots` to keep going in visual order, or
+`follow_first_parent` to take only the first path at each fork. For painting
+the edges themselves, `follow_path_down` and `follow_path_up` yield the
+intervening graph characters as well as the dots at the ends of the paths.
+"""
+
 from __future__ import annotations
 
 from collections import deque
@@ -30,6 +45,28 @@ NextFn = Callable[['Char'], Iterator['Char']]
 Direction = Literal["down", "up"]
 
 
+def find_dots(view: sublime.View) -> set[Char]:
+    """Return the distinct dots on the selected lines."""
+    return set(iter_selected_dots(view))
+
+
+def iter_selected_dots(view: sublime.View) -> Iterator[Char]:
+    """Yield the dot on each selection’s starting line, skipping lines without a dot."""
+    for s in view.sel():
+        line = line_from_pt(view, s.begin())
+        dot = dot_from_line(view, line)
+        if dot:
+            yield dot
+
+
+def dot_from_line(view: sublime.View, line: TextRange) -> Char | None:
+    for ch in COMMIT_NODE_CHARS:
+        idx = line.text.find(ch)
+        if idx > -1:
+            return Char(view, line.region().begin() + idx)
+    return None
+
+
 def follow_first_parent(dot: Char, forward: bool = True) -> Iterator[Char]:
     """Follow left (first-parent) dot to dot omitting the path chars in between."""
     while True:
@@ -42,7 +79,7 @@ def follow_first_parent(dot: Char, forward: bool = True) -> Iterator[Char]:
 
 
 def follow_dots(dot: Char, forward: bool = True) -> Iterator[Char]:
-    """Breadth first traverse dot to dot."""
+    """Yield reachable dots in view order, excluding the starting dot."""
     # Always sort by `dot.pt` to keep the order exactly like the visual
     # order in the view.
     stack = sorted(dots_after_dot(dot, forward), key=lambda dot: dot.pt, reverse=not forward)
@@ -57,7 +94,7 @@ def follow_dots(dot: Char, forward: bool = True) -> Iterator[Char]:
 
 
 def dots_after_dot(dot: Char, forward: bool = True) -> Iterator[Char]:
-    """Return exact next dots (commits) after `dot`."""
+    """Yield only the dots one edge away in the given direction."""
     fn = follow_path_down if forward else follow_path_up
     return filter(lambda ch: ch.char() in COMMIT_NODE_CHARS, fn(dot))
 
@@ -75,26 +112,6 @@ def find_graph_art_at_cursor(view: sublime.View) -> tuple[Char, ...]:
         if c_ != " ":
             return (c_,)
     return ()
-
-
-def find_dots(view: sublime.View) -> set[Char]:
-    return set(iter_selected_dots(view))
-
-
-def iter_selected_dots(view: sublime.View) -> Iterator[Char]:
-    for s in view.sel():
-        line = line_from_pt(view, s.begin())
-        dot = dot_from_line(view, line)
-        if dot:
-            yield dot
-
-
-def dot_from_line(view: sublime.View, line: TextRange) -> Char | None:
-    for ch in COMMIT_NODE_CHARS:
-        idx = line.text.find(ch)
-        if idx > -1:
-            return Char(view, line.region().begin() + idx)
-    return None
 
 
 class Char:
