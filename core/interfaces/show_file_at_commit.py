@@ -102,28 +102,12 @@ class gs_show_file_at_commit(GsWindowCommand):
             if lang is None:
                 lang = view.settings().get('syntax')
 
-        if commit_hash:
-            commit_hash = self.to_short_hash(commit_hash)
-            # Callers may pass a historical path from a diff hunk.  Keep the
-            # view anchored to the working-dir path and resolve historical
-            # names only when loading content for a specific commit.
-            filepath = self.filename_at_head(filepath, commit_hash)
-        else:
-            commit_hash = self.recent_commit("HEAD", filepath)
-            if not commit_hash:
-                self.window.status_message("No older revision of this file found.")
-                return
+        target = resolve_target(self, filepath, commit_hash, position, fix_position)
+        if not target:
+            self.window.status_message("No older revision of this file found.")
+            return
 
-            if fix_position:
-                assert position
-                row, col, offset = position
-                line = self.reverse_find_matching_lineno_between_files(
-                    (commit_hash, self.filename_at_commit(filepath, commit_hash)),
-                    (None, filepath),
-                    row + 1
-                )
-                position = Position(line - 1, col, offset)
-
+        filepath, commit_hash, position = target
         this_id = (
             self.repo_path,
             filepath,
@@ -158,6 +142,33 @@ class gs_show_file_at_commit(GsWindowCommand):
         pass_next_commits_info_along(active_view, to=view)
 
         refresh_view(view, commit_hash, position)
+
+
+def resolve_target(
+    cmd: GitCommand, filepath: FullPath, commit_hash: FullHash | ShortHash | None,
+    position: Position | None, fix_position: bool
+) -> tuple[FullPath, ShortHash, Position | None] | None:
+    if commit_hash:
+        commit_hash = cmd.to_short_hash(commit_hash)
+        # Callers may pass a historical path from a diff hunk.  Keep the
+        # view anchored to the working-dir path and resolve historical
+        # names only when loading content for a specific commit.
+        filepath = cmd.filename_at_head(filepath, commit_hash)
+    else:
+        commit_hash = cmd.recent_commit("HEAD", filepath)
+        if not commit_hash:
+            return None
+
+        if fix_position:
+            assert position
+            row, col, offset = position
+            line = cmd.reverse_find_matching_lineno_between_files(
+                (commit_hash, cmd.filename_at_commit(filepath, commit_hash)),
+                (None, filepath),
+                row + 1
+            )
+            position = Position(line - 1, col, offset)
+    return filepath, commit_hash, position
 
 
 def refresh_view(
