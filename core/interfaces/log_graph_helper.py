@@ -1,17 +1,19 @@
 from __future__ import annotations
 
 import re
-from typing import Dict, List, Literal, Optional, Sequence, TypedDict
+from typing import Dict, Iterable, Iterator, List, Literal, NamedTuple, Optional, Sequence, TypedDict
 
 import sublime
 
+from ..fns import filter_, take
 from ..git_mixins.branches import Branch
+from ..text_helper import TextRange, line_from_pt
 from ..types import ShortHash
-from ...core.view import find_by_selector
+from ..view import find_by_selector
+from .log_graph_walk import COMMIT_NODE_CHARS, Char, dot_from_line, follow_dots
 
 
 GRAPH_CHAR_OPTIONS = r" /_\|\-\\."
-COMMIT_NODE_CHARS = "●⌂*"
 DEFAULT_NODE_CHAR = "●"
 ROOT_NODE_CHAR = "⌂"
 WORKTREE_MARKER = "■"
@@ -25,6 +27,11 @@ COMMIT_LINE = re.compile(
 FIND_COMMIT_HASH = "^[{graph_chars}]*[{node_chars}][{graph_chars}]* ".format(
     graph_chars=GRAPH_CHAR_OPTIONS, node_chars=COMMIT_NODE_CHARS
 )
+
+
+class Commit(NamedTuple):
+    commit_hash: str
+    commit_message: str
 
 
 class LineInfo(TypedDict, total=False):
@@ -128,3 +135,118 @@ def headline_cursorline(view: sublime.View) -> tuple[int, int]:
         cursor_line = 0
 
     return head_line, cursor_line
+
+
+def extract_commit_hash(line: str) -> str:
+    match = COMMIT_LINE.search(line)
+    return match.group('commit_hash') if match else ""
+
+
+def extract_commit_hash_span(line: TextRange) -> sublime.Region | None:
+    match = COMMIT_LINE.search(line.text)
+    if match:
+        a, b = match.span('commit_hash')
+        return sublime.Region(a + line.a, b + line.a)
+    return None
+
+
+def commit_message_from_line(view: sublime.View, line: TextRange) -> str | None:
+    line_span = line.region()
+    for r in extract_message_regions(view):
+        if line_span.contains(r):
+            return line.text[(r.a - line_span.a):(r.b - line_span.a)]
+    else:
+        return None
+
+
+def commit_hash_from_dot(view: sublime.View, dot: Char) -> str:
+    line = line_from_pt(view, dot.pt)
+    return extract_commit_hash(line.text)
+
+
+def find_base_commit_for_fixup(view: sublime.View, commit_line: TextRange, commit_message: str) -> str | None:
+    dot = dot_from_line(view, commit_line)
+    if not dot:
+        return None
+
+    original_message = strip_fixup_or_squash_prefix(commit_message)
+    target_dot = next(find_matching_commit(dot, original_message), None)
+    if not target_dot:
+        return None
+
+    return commit_hash_from_dot(view, target_dot)
+
+
+def is_fixup(commit: Commit) -> bool:
+    return commit.commit_message.startswith("fixup")
+
+
+def extract_message_regions(view: sublime.View) -> list[sublime.Region]:
+    return find_by_selector(view, "meta.graph.message.git-savvy")
+
+
+def is_fixup_or_squash_message(commit_message: str) -> bool:
+    return (
+        commit_message.startswith("fixup! ")
+        or commit_message.startswith("squash! ")
+    )
+
+
+def strip_fixup_or_squash_prefix(commit_message: str) -> str:
+    # As long as we process "visually", we must deal with
+    # truncated messages which end with one or multiple dots
+    # we have to strip.
+    if commit_message.startswith('fixup! '):
+        return commit_message[7:].rstrip('.').strip()
+    if commit_message.startswith('squash! '):
+        return commit_message[8:].rstrip('.').strip()
+    return commit_message
+
+
+def add_fixup_or_squash_prefixes(commit_message: str) -> list[str]:
+    return [
+        "fixup! " + commit_message,
+        "squash! " + commit_message
+    ]
+
+
+def commit_message_from_point(view: sublime.View, pt: int) -> str | None:
+    line_span = view.line(pt)
+    for r in extract_message_regions(view):
+        if line_span.a <= r.a <= line_span.b:  # optimized `line_span.contains(r)`
+            return view.substr(r)
+    else:
+        return None
+
+
+def find_matching_commit(dot: Char, message: str, forward: bool = True) -> Iterator[Char]:
+    dots = follow_dots(dot, forward=forward)
+    for dot, this_message in _with_message(take(100, dots)):
+        this_message = this_message.rstrip(".").strip()
+        shorter, longer = sorted((message, this_message), key=len)
+        if longer.startswith(shorter):
+            yield dot
+
+
+def find_fixups_upwards(dot: Char, message: str) -> Iterator[tuple[Char, str]]:
+    messages = add_fixup_or_squash_prefixes(message.rstrip(".").strip())
+
+    previous_dots = follow_dots(dot, forward=False)
+    for dot, this_message in _with_message(take(50, previous_dots)):
+        this_message = this_message.rstrip(".").strip()
+        if is_fixup_or_squash_message(this_message):
+            for message in messages:
+                shorter, longer = sorted((message, this_message), key=len)
+                if longer.startswith(shorter):
+                    yield dot, this_message
+
+
+def _with_message(dots: Iterable[Char]) -> Iterator[tuple[Char, str]]:
+    return filter_(map(with_message, dots))
+
+
+def with_message(dot: Char) -> tuple[Char, str] | None:
+    commit_message = commit_message_from_point(dot.view, dot.pt)
+    if commit_message:
+        return dot, commit_message
+    return None

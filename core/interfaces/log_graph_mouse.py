@@ -11,13 +11,20 @@ from ..git_command import GitCommand
 from ..fns import unique
 from ..git_mixins.branches import Branch
 from ..ui__quick_panel import ActionType
+from ..text_helper import line_from_pt
+from . import log_graph_colorize as colorize
+from .log_graph_branch_drag import get_drag_state
+from .log_graph_helper import (
+    COMMIT_LINE, Commit, commit_message_from_line, describe_head, find_base_commit_for_fixup,
+    format_revision_list, is_fixup, is_fixup_or_squash_message
+)
 from .log_graph_prelude import PreludeControls
-from .multi_selector import normalize_mouse_selection
+from .multi_selector import GRAPH_MOUSE_TARGET_KEY, normalize_mouse_selection
 
 
 __all__ = ("gs_log_graph_mouse", "GsLogGraphMouseListener")
 
-TARGET_KEY = "git_savvy.log_graph_mouse_target"
+
 POPUP_SEPARATOR: ActionType = ("-", lambda: None)
 
 
@@ -28,7 +35,7 @@ class gs_log_graph_mouse(GsTextCommand):
         fallback_selection: str | None = None
     ) -> None:
         view = self.view
-        view.settings().erase(TARGET_KEY)
+        view.settings().erase(GRAPH_MOUSE_TARGET_KEY)
 
         if release:
             view.run_command("gs_log_graph_branch_drag", {"action": "finish", "event": event})
@@ -58,15 +65,13 @@ class gs_log_graph_mouse(GsTextCommand):
 
 class GsLogGraphMouseListener(EventListener):
     def on_selection_modified(self, view: sublime.View) -> None:
-        from .log_graph_branch_drag import get_drag_state
-
         settings = view.settings()
-        if not settings.get("git_savvy.log_graph_view") and settings.get(TARGET_KEY) is None:
+        if not settings.get("git_savvy.log_graph_view") and settings.get(GRAPH_MOUSE_TARGET_KEY) is None:
             return
         # Armed drags still own native word-selection normalization. Moving
         # within that gesture must not invalidate the clicked-label identity.
         if get_drag_state(view) is None:
-            normalize_mouse_selection(view, TARGET_KEY)
+            normalize_mouse_selection(view, GRAPH_MOUSE_TARGET_KEY)
 
 
 def activate_prelude_control(view: sublime.View, pt: int) -> bool:
@@ -101,7 +106,6 @@ class GraphMouse(GitCommand):
         self.view = view
 
     def press(self, pt: int, event: dict, *, context_menu: bool = False) -> None:
-        from .log_graph import COMMIT_LINE, colorize_dots, colorize_fixups
 
         view = self.view
         settings = view.settings()
@@ -120,8 +124,8 @@ class GraphMouse(GitCommand):
         view.sel().clear()
         view.sel().add(target if target is not None else sublime.Region(pt))
         settings.set("git_savvy.mouse_selected_target", [target.a, target.b] if target else None)
-        colorize_dots(view)
-        colorize_fixups(view)
+        colorize.colorize_dots(view)
+        colorize.colorize_fixups(view)
 
         if context_menu:
             match = COMMIT_LINE.search(view.substr(view.line(pt)))
@@ -135,7 +139,6 @@ class GraphMouse(GitCommand):
         if target is not None and view.match_selector(
             target.a, "meta.graph.branch.git-savvy constant.other.git.branch"
         ):
-            from .log_graph_branch_drag import get_drag_state
 
             view.run_command("gs_log_graph_branch_drag", {"event": event})
             if get_drag_state(view) is not None:
@@ -143,7 +146,7 @@ class GraphMouse(GitCommand):
 
         args: dict = {"event": event}
         if target is not None:
-            settings.set(TARGET_KEY, [target.a, target.b])
+            settings.set(GRAPH_MOUSE_TARGET_KEY, [target.a, target.b])
             args["by"] = "words"
         # Let this TextCommand finish so Sublime draws the selection before
         # native drag tracking takes over until mouse release.
@@ -179,7 +182,7 @@ class GraphMouse(GitCommand):
 
         # The popup takes over the gesture and can swallow mouse-up. Do not
         # keep anchoring later keyboard selections to the pressed label.
-        view.settings().erase(TARGET_KEY)
+        view.settings().erase(GRAPH_MOUSE_TARGET_KEY)
         view.show_popup_menu([description for description, _ in actions], on_done, pt)
         return True
 
@@ -274,7 +277,6 @@ class GraphMouse(GitCommand):
         return actions
 
     def commit_actions(self, window: sublime.Window, pt: int, commit_hash: str) -> list[ActionType]:
-        from .log_graph_helper import format_revision_list
 
         selected_regions: list[list[int]] = self.view.settings().get("git_savvy.multi_selection", [])
         selected_commits = list(unique(
@@ -368,11 +370,6 @@ class GraphMouse(GitCommand):
         return actions
 
     def fixup_actions(self, pt: int, commit_hash: str) -> list[ActionType]:
-        from .log_graph import is_fixup_or_squash_message
-        from .log_graph_rebase_actions import (
-            Commit, commit_message_from_line, find_base_commit_for_fixup, is_fixup
-        )
-        from ..text_helper import line_from_pt
 
         line = line_from_pt(self.view, pt)
         message = commit_message_from_line(self.view, line)
@@ -393,7 +390,6 @@ class GraphMouse(GitCommand):
         )]
 
     def cherry_pick_and_revert_actions(self, window: sublime.Window, commits: list[str]) -> list[ActionType]:
-        from .log_graph_helper import describe_head, format_revision_list
 
         head = describe_head(self.view, {})
         pickable = [commit for commit in commits if head is None or commit != head["commit"]]

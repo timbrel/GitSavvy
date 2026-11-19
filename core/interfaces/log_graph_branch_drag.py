@@ -25,11 +25,11 @@ from sublime_plugin import EventListener
 
 from ..commands.branch import gs_move_branch
 from ..commands.checkout import gs_checkout_new_branch, other_worktree
-from .log_graph_mouse import TARGET_KEY
+
 from ..base_commands import GsTextCommand
 from ..git_mixins.branches import Branch
 from .log_graph_helper import COMMIT_LINE
-from .multi_selector import clear_multiselect
+from .multi_selector import GRAPH_MOUSE_TARGET_KEY, clear_multiselect
 from ..types import FullHash
 from ..view import replace_view_content
 
@@ -128,7 +128,7 @@ class gs_log_graph_branch_drag(GsTextCommand):
         window = view.window()
         assert window
 
-        view.settings().erase(TARGET_KEY)
+        view.settings().erase(GRAPH_MOUSE_TARGET_KEY)
         point = view.window_to_text((event["x"], event["y"]))
         region = branch_region_at(view, point)
         match = COMMIT_LINE.search(view.substr(view.line(point)))

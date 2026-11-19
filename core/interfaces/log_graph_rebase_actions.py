@@ -12,17 +12,19 @@ import sublime_plugin
 
 from . import util as interface_util
 from GitSavvy.core.base_commands import GsTextCommand, GsWindowCommand, ask_for_branch
+from .log_graph_walk import dot_from_line
 from GitSavvy.core.interfaces import log_graph
 from GitSavvy.core.interfaces.log_graph_renderer import resolve_commit_to_follow_after_rebase
 from GitSavvy.core.interfaces.log_graph_helper import (
-    LineInfo,
+    Commit, LineInfo, commit_hash_from_dot, commit_message_from_line, find_base_commit_for_fixup,
+    find_fixups_upwards, is_fixup, is_fixup_or_squash_message,
     describe_graph_line,
     describe_head,
     format_revision_list,
 )
 from GitSavvy.core.fns import filter_, unique
 from GitSavvy.core.git_command import GitCommand, GitSavvyError
-from GitSavvy.core.text_helper import TextRange, line_from_pt
+from GitSavvy.core.text_helper import line_from_pt
 from GitSavvy.core.runtime import on_new_thread, run_on_new_thread, throttled_by_key
 from GitSavvy.core.ui_mixins.input_panel import show_single_line_input_panel
 from GitSavvy.core.ui__quick_panel import noop, show_actions_panel, SEPARATOR, show_quick_panel
@@ -58,7 +60,7 @@ from typing import (
     Dict,
     List,
     Iterator,
-    NamedTuple,
+
     Optional,
     Tuple,
     TypeVar,
@@ -66,10 +68,6 @@ from typing import (
 from GitSavvy.core.base_commands import GsCommand, Args, Kont
 _T = TypeVar("_T")
 
-
-class Commit(NamedTuple):
-    commit_hash: str
-    commit_message: str
 
 
 QuickAction = Callable[[str], str]
@@ -284,7 +282,7 @@ class gs_rebase_action(GsWindowCommand):
             actions = []  # type: List[Tuple[str, Callable[[], None]]]
 
             if commit_message:
-                if log_graph.is_fixup_or_squash_message(commit_message):
+                if is_fixup_or_squash_message(commit_message):
                     base_commit = find_base_commit_for_fixup(view, line, commit_message)
                     if base_commit:
                         fixup_commit = Commit(commit_hash, commit_message)
@@ -297,10 +295,10 @@ class gs_rebase_action(GsWindowCommand):
                             )
                         ]
                 else:
-                    base_dot = log_graph.dot_from_line(view, line)
+                    base_dot = dot_from_line(view, line)
                     if base_dot:
                         base_commit = commit_hash
-                        dots = log_graph.find_fixups_upwards(base_dot, commit_message)
+                        dots = find_fixups_upwards(base_dot, commit_message)
                         fixups = [
                             Commit(commit_hash_from_dot(view, dot), message)
                             for dot, message in dots
@@ -705,42 +703,6 @@ class gs_log_graph_remove_previous_tip(GsTextCommand):
         set_filters(view, new_filters)
         view.run_command("gs_log_graph_refresh")
 
-
-def commit_message_from_line(view, line):
-    # type: (sublime.View, TextRange) -> Optional[str]
-    line_span = line.region()
-    for r in log_graph.extract_message_regions(view):
-        if line_span.contains(r):
-            return line.text[(r.a - line_span.a):(r.b - line_span.a)]
-    else:
-        return None
-
-
-def commit_hash_from_dot(view, dot):
-    # type: (sublime.View, log_graph.colorizer.Char) -> str
-    line = line_from_pt(view, dot.pt)
-    return log_graph.extract_commit_hash(line.text)
-
-
-def find_base_commit_for_fixup(view, commit_line, commit_message):
-    # type: (sublime.View, TextRange, str) -> Optional[str]
-    dot = log_graph.dot_from_line(view, commit_line)
-    if not dot:
-        return None
-
-    original_message = log_graph.strip_fixup_or_squash_prefix(commit_message)
-    target_dot = next(log_graph.find_matching_commit(dot, original_message), None)
-    if not target_dot:
-        return None
-
-    target_line = line_from_pt(view, target_dot.pt)
-    target_commit_hash = log_graph.extract_commit_hash(target_line.text)
-    return target_commit_hash
-
-
-def is_fixup(commit):
-    # type: (Commit) -> bool
-    return commit.commit_message.startswith("fixup")
 
 
 class RebaseCommand(GitCommand):

@@ -7,7 +7,8 @@ from unittesting import DeferrableTestCase
 from GitSavvy.core.commands import worktrees
 from GitSavvy.core.ui__quick_panel import ActionType
 from GitSavvy.core.git_mixins.worktrees import WorktreeLocation
-from GitSavvy.core.interfaces import log_graph
+from GitSavvy.core.interfaces import log_graph, log_graph_colorize
+from GitSavvy.core.interfaces.multi_selector import GRAPH_MOUSE_TARGET_KEY as TARGET_KEY
 from GitSavvy.core.interfaces.log_graph_panels import gs_log_graph_edit_branches
 from GitSavvy.core.interfaces.log_graph_renderer import draw_prelude, gs_log_graph_refresh, prelude
 from GitSavvy.core.git_mixins.branches import Upstream
@@ -17,7 +18,7 @@ from GitSavvy.core.interfaces.dashboard_mouse import (
     TARGET_KEY as DASHBOARD_TARGET_KEY, gs_dashboard_mouse
 )
 from GitSavvy.core.interfaces.log_graph_mouse import (
-    TARGET_KEY, GraphMouse, GsLogGraphMouseListener, gs_log_graph_mouse
+    GraphMouse, GsLogGraphMouseListener, gs_log_graph_mouse
 )
 from GitSavvy.tests.mockito import mock, spy2, unstub, verify, when
 
@@ -36,8 +37,8 @@ class TestGraphMouseGestures(DeferrableTestCase):
             lambda callback, *args: self.scheduled.append(callback)
         )
         when(log_graph.GsLogGraphCursorListener).is_applicable(...).thenReturn(False)
-        when(log_graph).colorize_dots(self.view).thenReturn(None)
-        when(log_graph).colorize_fixups(self.view).thenReturn(None)
+        when(log_graph_colorize).colorize_dots(self.view).thenReturn(None)
+        when(log_graph_colorize).colorize_fixups(self.view).thenReturn(None)
         when(self.view).window_to_text(...).thenReturn(15)
         when(GraphMouse).target_at(15).thenReturn(self.target)
         spy2(self.view.run_command)
@@ -159,8 +160,8 @@ class TestGraphPreludeMouse(DeferrableTestCase):
             lambda callback, *args: self.scheduled.append(callback)
         )
         when(log_graph.GsLogGraphCursorListener).is_applicable(...).thenReturn(False)
-        when(log_graph).colorize_dots(self.view).thenReturn(None)
-        when(log_graph).colorize_fixups(self.view).thenReturn(None)
+        when(log_graph_colorize).colorize_dots(self.view).thenReturn(None)
+        when(log_graph_colorize).colorize_fixups(self.view).thenReturn(None)
         when(gs_log_graph_refresh).run(...).thenReturn(None)
         spy2(self.view.run_command)
         when(self.view).window_to_text(...).thenReturn(self.label.begin())
@@ -628,8 +629,8 @@ class TestGraphCheckoutActions(DeferrableTestCase):
 
         when(window).focus_view(view).thenReturn(None)
         when(view).window_to_text(...).thenReturn(2)
-        when(log_graph).colorize_dots(view).thenReturn(None)
-        when(log_graph).colorize_fixups(view).thenReturn(None)
+        when(log_graph_colorize).colorize_dots(view).thenReturn(None)
+        when(log_graph_colorize).colorize_fixups(view).thenReturn(None)
         when(view).run_command("gs_rebase_squash_commits", ...).thenReturn(None)
 
         command.press(2, {"x": 2, "y": 0, "button": 2}, context_menu=True)
