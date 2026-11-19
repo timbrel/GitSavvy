@@ -32,7 +32,7 @@ class gs_log_graph_mouse(GsTextCommand):
     def run(
         self, edit: sublime.Edit, event: dict, release: bool = False,
         context_menu: bool = False, text_selection: str | None = None,
-        fallback_selection: str | None = None
+        fallback_selection: str | None = None, toggle_branch_choice: bool = False
     ) -> None:
         view = self.view
         view.settings().erase(GRAPH_MOUSE_TARGET_KEY)
@@ -50,7 +50,21 @@ class gs_log_graph_mouse(GsTextCommand):
             return
 
         pt = view.window_to_text((event["x"], event["y"]))
-        if not context_menu and activate_prelude_control(view, pt):
+        if not context_menu and activate_prelude_control(view, pt, remove_choice=toggle_branch_choice):
+            return
+
+        if toggle_branch_choice:
+            ref = view.expand_to_scope(
+                pt, "meta.graph.branch.git-savvy constant.other.git.branch - meta.graph.branch-move"
+            )
+            view.settings().erase("git_savvy.mouse_selected_target")
+            if ref is not None:
+                view.run_command("gs_log_graph_edit_branches", {"branch": view.substr(ref), "keep_all_mode": True})
+            else:
+                args = {"event": event, "extend": True}
+                if fallback_selection is not None:
+                    args["by"] = fallback_selection
+                view.run_command("drag_select", args)
             return
 
         if fallback_selection is not None:
@@ -74,11 +88,11 @@ class GsLogGraphMouseListener(EventListener):
             normalize_mouse_selection(view, GRAPH_MOUSE_TARGET_KEY)
 
 
-def activate_prelude_control(view: sublime.View, pt: int) -> bool:
+def activate_prelude_control(view: sublime.View, pt: int, *, remove_choice: bool = False) -> bool:
     settings = view.settings()
     controls = PreludeControls.from_dict(settings.get("git_savvy.log_graph_view.prelude_controls", {}))
 
-    if controls.all is not None and controls.all.contains(pt):
+    if not remove_choice and controls.all is not None and controls.all.contains(pt):
         settings.erase("git_savvy.mouse_selected_target")
         view.run_command("gs_log_graph_toggle_all_setting")
         return True
@@ -86,7 +100,11 @@ def activate_prelude_control(view: sublime.View, pt: int) -> bool:
     for toggle in controls.refs:
         if toggle.contains(pt):
             settings.erase("git_savvy.mouse_selected_target")
-            view.run_command("gs_log_graph_edit_branches", {"branch": toggle.ref, "from_prelude": True})
+            view.run_command("gs_log_graph_edit_branches", {
+                "branch": toggle.ref,
+                "action": "remove" if remove_choice else "toggle_visibility",
+                "keep_all_mode": remove_choice
+            })
             return True
 
     return False

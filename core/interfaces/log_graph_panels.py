@@ -25,7 +25,7 @@ class gs_log_graph_edit_branches(TextCommand, GitCommand):
 
     def run(
         self, edit: sublime.Edit, branch: str | None = None,
-        selected_index: int = 0, from_prelude: bool = False
+        selected_index: int = 0, action: str = "toggle_choice", keep_all_mode: bool = False
     ) -> None:
         view = self.view
         if branch is None:
@@ -46,7 +46,7 @@ class gs_log_graph_edit_branches(TextCommand, GitCommand):
         settings = view.settings()
         choices = handler.choices
         subset = handler.subset
-        if from_prelude:
+        if action == "toggle_visibility":
             # Clicks only toggle visibility. The last subset survives all mode.
             active = [] if settings.get("git_savvy.log_graph_view.all_branches") else subset
             next_active = toggle_ref(active, branch)
@@ -56,10 +56,12 @@ class gs_log_graph_edit_branches(TextCommand, GitCommand):
             if branch in choices:
                 choices = [ref for ref in choices if ref != branch]
                 subset = [ref for ref in subset if ref != branch]
+            elif action == "remove":
+                return  # The label may still be on screen while the graph redraws.
             else:
                 choices = choices + [branch]
                 subset = subset + [branch]
-            next_active = subset
+            next_active = [] if keep_all_mode and settings.get("git_savvy.log_graph_view.all_branches") else subset
 
         settings.set("git_savvy.log_graph_view.branch_choices", choices)
         settings.set("git_savvy.log_graph_view.branches", subset)

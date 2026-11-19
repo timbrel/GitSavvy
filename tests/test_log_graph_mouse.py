@@ -12,6 +12,7 @@ from GitSavvy.core.interfaces.multi_selector import GRAPH_MOUSE_TARGET_KEY as TA
 from GitSavvy.core.interfaces.log_graph_panels import gs_log_graph_edit_branches
 from GitSavvy.core.interfaces.log_graph_renderer import draw_prelude, gs_log_graph_refresh, prelude
 from GitSavvy.core.git_mixins.branches import Upstream
+from GitSavvy.tests.parameterized import parameterized as p
 from GitSavvy.tests.test_graph_panels import branch
 from GitSavvy.tests.test_graph_prelude import prelude_ref_regions
 from GitSavvy.core.interfaces.dashboard_mouse import (
@@ -324,6 +325,69 @@ class TestGraphPreludeMouse(DeferrableTestCase):
             self.command.run(None, self.event, fallback_selection="words")
         verify(self.view, times=0).run_command("gs_log_graph_edit_branches", ...)
         verify(self.view, times=4).run_command("drag_select", ...)
+
+    @p.expand([(True,), (False,)])
+    def test_shift_click_edits_branch_choices_without_selecting_text(self, all_mode: bool) -> None:
+        settings = self.view.settings()
+        settings.set("git_savvy.log_graph_view.all_branches", all_mode)
+        self.view.run_command("append", {"characters": "* abcdef0 (topic, origin/main) a subject\n"})
+        when(gs_log_graph_edit_branches).get_branches().thenReturn([branch("topic"), branch("main", remote="origin")])
+        local, remote = "refs/heads/topic", "refs/remotes/origin/main"
+        selection = list(self.view.sel())
+        for label, expected in (("topic", [local]), ("origin/main", [local, remote]),
+                                ("topic", [remote]), ("origin/main", [])):
+            when(self.view).window_to_text(...).thenReturn(self.view.find(label, 0).end() - 1)
+            self.command.run(None, self.event, toggle_branch_choice=True)
+            self.assertEqual(settings.get("git_savvy.log_graph_view.branch_choices"), expected)
+            self.assertEqual(settings.get("git_savvy.log_graph_view.branches"), expected)
+            self.assertEqual(settings.get("git_savvy.log_graph_view.all_branches"), all_mode or not expected)
+        self.assertEqual(list(self.view.sel()), selection)
+        verify(self.view, times=0).run_command("gs_log_graph_branch_drag", ...)
+        verify(self.view, times=0).run_command("drag_select", ...)
+
+    def test_shift_multiclick_bindings_toggle_choices_or_extend_native_selection(self) -> None:
+        bindings = sublime.decode_value(sublime.load_resource("Packages/GitSavvy/Default.sublime-mousemap"))
+        self.view.run_command("append", {"characters": "* abcdef0 (topic) subject\n"})
+        self.view.settings().set("git_savvy.log_graph_view.all_branches", True)
+        when(gs_log_graph_edit_branches).get_branches().thenReturn([branch("topic")])
+        for count, by in ((2, "words"), (3, "lines")):
+            binding = next(
+                b for b in reversed(bindings)
+                if b["button"] == "button1" and b.get("modifiers") == ["shift"] and b.get("count") == count
+                and any(c["key"] == "setting.git_savvy.log_graph_view" for c in b.get("context", []))
+            )
+            self.assertEqual(binding["press_command"], "gs_log_graph_mouse")
+            for label in ("topic", "subject"):
+                when(self.view).window_to_text(...).thenReturn(self.view.find(label, 0).begin())
+                self.command.run(None, self.event, **binding["press_args"])
+
+            self.assertEqual(self.view.settings().get("git_savvy.log_graph_view.branch_choices"),
+                             ["refs/heads/topic"] if count == 2 else [])
+            self.assertTrue(self.view.settings().get("git_savvy.log_graph_view.all_branches"))
+            verify(self.view).run_command("drag_select", {"event": self.event, "extend": True, "by": by})
+
+    @p.expand([(True,), (False,)])
+    def test_shift_click_removes_prelude_choice_even_before_redraw(self, all_mode: bool) -> None:
+        settings = self.view.settings()
+        remaining = "refs/heads/main"
+        settings.set("git_savvy.log_graph_view.branches", ["refs/heads/topic", remaining])
+        settings.set("git_savvy.log_graph_view.all_branches", all_mode)
+        when(gs_log_graph_edit_branches).get_branches().thenReturn([branch("topic"), branch("main")])
+        draw_prelude(self.view, prelude(self.view))
+        when(self.view).window_to_text(...).thenReturn(prelude_ref_regions(self.view)[0].begin())
+        for by in (None, "words", "lines"):
+            self.command.run(None, self.event, toggle_branch_choice=True, fallback_selection=by)
+            self.assertEqual(settings.get("git_savvy.log_graph_view.branch_choices"), [remaining])
+            self.assertEqual(settings.get("git_savvy.log_graph_view.branches"), [remaining])
+            self.assertEqual(settings.get("git_savvy.log_graph_view.all_branches"), all_mode)
+
+    def test_shift_click_elsewhere_extends_selection(self) -> None:
+        self.view.run_command("append", {"characters": "* abcdef0 (HEAD, tag: topic) topic\n"})
+        for label in ("all", "abcdef0", "HEAD", "topic)", "topic\n"):
+            when(self.view).window_to_text(...).thenReturn(self.view.find(label, 0, sublime.LITERAL).begin())
+            self.command.run(None, self.event, toggle_branch_choice=True)
+        verify(self.view, times=5).run_command("drag_select", {"event": self.event, "extend": True})
+        verify(self.view, times=0).run_command("gs_log_graph_edit_branches", ...)
 
     def test_controls_and_explicit_text_selection_bypass_graph_handler(self) -> None:
         when(GraphMouse).press(...).thenRaise(AssertionError("Unexpected graph interaction"))
