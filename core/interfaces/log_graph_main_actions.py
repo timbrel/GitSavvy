@@ -544,7 +544,7 @@ class gs_log_graph_action(GsWindowCommand):
                     "Compare '{}' with {}".format(good_target_name, good_head_name),
                     partial(
                         self.compare_commits,
-                        head_info["HEAD"] if head_is_on_a_branch else commit_hash,  # type: ignore[index]
+                        head_info["HEAD"] if head_is_on_a_branch else "HEAD",  # type: ignore[index]
                         good_target_name,
                         file_path=file_path,
                     )

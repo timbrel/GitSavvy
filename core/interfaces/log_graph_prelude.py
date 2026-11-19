@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 
 import sublime
 
@@ -16,9 +17,11 @@ class Prelude:
 class PreludeControls:
     all: Toggle | None
     refs: list[RefToggle]
+    resolve_base: sublime.Region | None = None
 
     def to_dict(self) -> dict:
         return {
+            **({"resolve_base": [self.resolve_base.a, self.resolve_base.b]} if self.resolve_base else {}),
             "all": {
                 "region": [self.all.region.a, self.all.region.b],
                 "selected": self.all.selected
@@ -42,7 +45,8 @@ class PreludeControls:
             [
                 RefToggle(sublime.Region(*item["region"]), item["selected"], item["ref"])
                 for item in data.get("refs", [])
-            ]
+            ],
+            sublime.Region(*data["resolve_base"]) if "resolve_base" in data else None
         )
 
 
@@ -58,3 +62,14 @@ class Toggle:
 @dataclass(frozen=True)
 class RefToggle(Toggle):
     ref: str
+
+
+def short_ref(ref: str) -> str:
+    return re.sub(r"^refs/(?:heads|remotes|tags)/", "", ref)
+
+
+def comparison_tips(choices: list[str]) -> list[str]:
+    if any(ref.endswith("^!") for ref in choices):
+        return []  # The resolved cutoff takes the place of [!].
+    tips = [ref for ref in choices if not (ref.startswith(("-", "^")) or ".." in ref or ref.endswith("^@"))]
+    return tips if len(tips) >= 2 else []
