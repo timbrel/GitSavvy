@@ -104,22 +104,46 @@ class gs_show_file_at_commit(GsWindowCommand):
                 lang = view.settings().get('syntax')
 
         cmd = GitContext.for_view(view) if view else GitContext(window, None)
-        target = resolve_target(cmd, filepath, commit_hash, position, fix_position)
-        if not target:
-            self.window.status_message("No older revision of this file found.")
-            return
+        open_views = {compute_identifier_for_view(v) for v in window.views()}
+        revision = prepare_revision(cmd, filepath, commit_hash, position, fix_position, open_views)
+        show_revision(cmd, revision, lang)
 
-        filepath, commit_hash, position = target
-        if existing := find_revision_view(cmd, filepath, commit_hash):
-            focus_view(existing)
-            if position:
-                run_as_text_command(apply_position, existing, *position)
-            return
 
-        text = load_revision(cmd, filepath, commit_hash)
-        view = new_revision_buffer(cmd, filepath, commit_hash)
-        configure_revision_view(cmd, view, filepath, commit_hash, lang)
-        display_revision(cmd, view, filepath, commit_hash, text, position)
+class Revision(NamedTuple):
+    file_path: FullPath
+    commit_hash: ShortHash
+    position: Position | None
+    text: str | None  # None when this revision is already open
+
+
+def prepare_revision(
+    cmd: GitContext, filepath: FullPath, commit_hash: FullHash | ShortHash | None,
+    position: Position | None, fix_position: bool, open_views: set
+) -> Revision | None:
+    target = resolve_target(cmd, filepath, commit_hash, position, fix_position)
+    if not target:
+        return None
+
+    file_path, commit, position = target
+    already_open = (cmd.repo_path, file_path, commit) in open_views
+    text = None if already_open else load_revision(cmd, file_path, commit)
+    return Revision(file_path, commit, position, text)
+
+
+def show_revision(cmd: GitContext, revision: Revision | None, syntax: str | None) -> None:
+    if revision is None:
+        cmd.window.status_message("No older revision of this file found.")
+        return
+
+    file_path, commit, position, text = revision
+    if existing := find_revision_view(cmd, file_path, commit):
+        focus_view(existing)
+        if position:
+            run_as_text_command(apply_position, existing, *position)
+    elif text is not None:
+        view = new_revision_buffer(cmd, file_path, commit)
+        configure_revision_view(cmd, view, file_path, commit, syntax)
+        display_revision(cmd, view, file_path, commit, text, position)
 
 
 def find_revision_view(cmd: GitContext, file_path: FullPath, commit: ShortHash) -> sublime.View | None:
