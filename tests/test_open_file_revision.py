@@ -1,6 +1,7 @@
 from concurrent.futures import Future
 import os
 from threading import current_thread
+from time import monotonic
 
 import sublime
 from unittesting import DeferrableTestCase
@@ -26,10 +27,24 @@ class TestWaitingView(DeferrableTestCase):
         self.addCleanup(source.close)
         self.addCleanup(unstub)
         self.addCleanup(setattr, module, "OPEN_BUDGET", module.OPEN_BUDGET)
-        module.OPEN_BUDGET = 0
+        module.OPEN_BUDGET = 0.05
         self.future = Future()
         self.ticks = []
-        when(module).run_as_future(...).thenReturn(self.future)
+        self.ui_turns = []
+
+        def start(*args):
+            self.started = monotonic()
+            sublime.set_timeout(lambda: self.ui_turns.append("yield"))
+            return self.future
+
+        new_buffer = module.new_revision_buffer
+
+        def create(*args):
+            self.time_before_creation = monotonic() - self.started
+            return new_buffer(*args)
+
+        when(module).run_as_future(...).thenAnswer(start)
+        when(module).new_revision_buffer(...).thenAnswer(create)
         when(module).enqueue_on_worker(...)
         schedule = sublime.set_timeout
         when(sublime).set_timeout(...).thenAnswer(schedule)
@@ -38,6 +53,11 @@ class TestWaitingView(DeferrableTestCase):
         self.window.run_command("gs_show_file_at_commit", {"filepath": "/repo/test", "commit_hash": "abc"})
         self.view = self.window.active_view()
         self.addCleanup(self.view.close)
+
+    def test_blocks_main_before_creating_any_view(self):
+        self.assertGreaterEqual(self.time_before_creation, module.OPEN_BUDGET)
+        self.assertEqual(self.ui_turns, [])
+        self.assertTrue(self.view.settings().get("git_savvy.loading_revision_view"))
 
     def test_slow_load_finishes_in_place_without_stealing_focus(self):
         self.assertIn("unusually long", self.view.substr(sublime.Region(0, self.view.size())))
