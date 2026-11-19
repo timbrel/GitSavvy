@@ -110,40 +110,45 @@ class gs_show_file_at_commit(GsWindowCommand):
             return
 
         filepath, commit_hash, position = target
-        this_id = (
-            cmd.repo_path,
-            filepath,
-            commit_hash
-        )
-        for view in self.window.views():
-            if compute_identifier_for_view(view) == this_id:
-                focus_view(view)
-                if position:
-                    run_as_text_command(apply_position, view, *position)
-                break
-        else:
-            create_view(cmd, commit_hash, filepath, position, lang)
+        if existing := find_revision_view(cmd, filepath, commit_hash):
+            focus_view(existing)
+            if position:
+                run_as_text_command(apply_position, existing, *position)
+            return
+
+        text = load_revision(cmd, filepath, commit_hash)
+        view = new_revision_buffer(cmd, filepath, commit_hash)
+        configure_revision_view(cmd, view, filepath, commit_hash, lang)
+        display_revision(cmd, view, filepath, commit_hash, text, position)
 
 
-def create_view(cmd: GitContext, commit_hash: ShortHash, file_path: FullPath,
-                position: Optional[Position], syntax: Optional[str]) -> None:
-    title = SHOW_COMMIT_TITLE.format(
-        cmd.to_short_path(file_path),
-        commit_hash,
-    )
-    view = create_scratch_view(cmd.window, "show_file_at_commit", {
-        "title": title,
-        "syntax": syntax or guess_syntax_for_file(cmd.window, file_path),
+def find_revision_view(cmd: GitContext, file_path: FullPath, commit: ShortHash) -> sublime.View | None:
+    identifier = (cmd.repo_path, file_path, commit)
+    return next((v for v in cmd.window.views() if compute_identifier_for_view(v) == identifier), None)
+
+
+def new_revision_buffer(
+    cmd: GitContext, file_path: FullPath, commit: str | None
+) -> sublime.View:
+    return create_scratch_view(cmd.window, "loading_revision", {
+        "title": SHOW_COMMIT_TITLE.format(cmd.to_short_path(file_path), commit or "HEAD"),
         "git_savvy.repo_path": cmd.repo_path,
-        "git_savvy.file_path": file_path,
-        "git_savvy.show_file_at_commit_view.commit": commit_hash,
         "auto_indent": False,
         "detect_indentation": False,
         "translate_tabs_to_spaces": False,
     })
-    pass_next_commits_info_along(cmd.view, to=view)
 
-    refresh_view(view, commit_hash, position)
+
+def configure_revision_view(
+    cmd: GitContext, view: sublime.View, file_path: FullPath, commit: ShortHash, syntax: str | None
+) -> None:
+    view.set_syntax_file(syntax or guess_syntax_for_file(cmd.window, file_path))
+    settings = view.settings()
+    settings.set("git_savvy.file_path", file_path)
+    settings.set("git_savvy.show_file_at_commit_view.commit", commit)
+    settings.set("git_savvy.show_file_at_commit_view", True)
+    settings.erase("git_savvy.loading_revision_view")
+    pass_next_commits_info_along(cmd.view, to=view)
 
 
 def resolve_target(
