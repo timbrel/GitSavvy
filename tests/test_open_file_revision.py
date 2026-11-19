@@ -1,3 +1,4 @@
+from concurrent.futures import Future
 import os
 from threading import current_thread
 
@@ -5,7 +6,7 @@ import sublime
 from unittesting import DeferrableTestCase
 
 from GitSavvy.core.interfaces import show_file_at_commit as module
-from GitSavvy.tests.mockito import unstub, when
+from GitSavvy.tests.mockito import ANY, unstub, when
 from GitSavvy.tests.test_git.common import GitRepoTestCase
 
 
@@ -14,6 +15,60 @@ class TestOpenFileInRepository(GitRepoTestCase):
         self.window.run_command("gs_show_file_at_commit", {"filepath": os.path.join(self._temp_dir, "README.md")})
         view = self.window.active_view()
         self.assertEqual(view.substr(sublime.Region(0, view.size())), "README")
+
+
+class TestWaitingView(DeferrableTestCase):
+    def setUp(self):
+        self.window = sublime.active_window()
+        source = self.window.new_file()
+        source.set_scratch(True)
+        source.settings().set("git_savvy.repo_path", sublime.packages_path())
+        self.addCleanup(source.close)
+        self.addCleanup(unstub)
+        self.addCleanup(setattr, module, "OPEN_BUDGET", module.OPEN_BUDGET)
+        module.OPEN_BUDGET = 0
+        self.future = Future()
+        self.ticks = []
+        when(module).run_as_future(...).thenReturn(self.future)
+        when(module).enqueue_on_worker(...)
+        schedule = sublime.set_timeout
+        when(sublime).set_timeout(...).thenAnswer(schedule)
+        when(sublime).set_timeout(ANY, 250).thenAnswer(lambda fn, ms: self.ticks.append(fn))
+
+        self.window.run_command("gs_show_file_at_commit", {"filepath": "/repo/test", "commit_hash": "abc"})
+        self.view = self.window.active_view()
+        self.addCleanup(self.view.close)
+
+    def test_slow_load_finishes_in_place_without_stealing_focus(self):
+        self.assertIn("unusually long", self.view.substr(sublime.Region(0, self.view.size())))
+        self.assertTrue(self.view.get_regions(module.WAIT_LINK))
+        self.assertFalse(self.view.settings().get("git_savvy.show_file_at_commit_view"))
+        self.ticks.pop()()
+        other = self.window.new_file()
+        self.addCleanup(other.close)
+
+        self.future.set_result(module.Revision("/repo/test", "abc", None, "done"))
+        self.ticks.pop()()
+
+        self.assertEqual(self.window.active_view(), other)
+        self.assertEqual(self.view.substr(sublime.Region(0, self.view.size())), "done")
+        self.assertTrue(self.view.settings().get("git_savvy.show_file_at_commit_view"))
+        self.assertFalse(self.view.get_regions(module.WAIT_LINK))
+        self.assertFalse(self.ticks)
+
+    def test_closing_placeholder_discards_late_result(self):
+        self.view.close()
+        remaining = self.window.views()
+        self.future.set_result(module.Revision("/repo/test", "abc", None, "done"))
+        self.ticks.pop()()
+        self.assertEqual(self.window.views(), remaining)
+        self.assertFalse(self.ticks)
+
+    def test_abort_removes_waiting_view(self):
+        self.future.set_exception(module.AbortedGitCall("Aborted", show_panel=False))
+        self.ticks.pop()()
+        self.assertFalse(self.view.is_valid())
+        self.assertFalse(self.ticks)
 
 
 class TestOpenFileRevision(DeferrableTestCase):

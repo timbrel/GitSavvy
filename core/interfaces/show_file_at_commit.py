@@ -9,6 +9,7 @@ import sublime
 from sublime_plugin import TextCommand, ViewEventListener
 
 from ..base_commands import GsTextCommand, GsWindowCommand
+from ..exceptions import AbortedGitCall
 from ..fns import chain, filter_
 from ..runtime import (
     enqueue_on_ui, enqueue_on_worker, on_worker,
@@ -46,6 +47,7 @@ __all__ = (
 from typing import Dict, Iterator, NamedTuple, Optional, Set, Tuple
 
 
+WAIT_LINK = "git_savvy.revision_command_log"
 OPEN_BUDGET = 1.8
 SHOW_COMMIT_TITLE = "FILE: {}, {}"
 views_with_reference_document: Set[sublime.View] = set()
@@ -113,7 +115,7 @@ class gs_show_file_at_commit(GsWindowCommand):
         # Block M: no key handling, painting or placeholder during this wait.
         done, _ = wait([future], timeout=OPEN_BUDGET)
         if done:
-            show_revision(cmd, future.result(), lang)
+            finish_open(cmd, future, lang)
             return
 
         waiting = new_revision_buffer(cmd, filepath, commit_hash)
@@ -149,24 +151,31 @@ def await_slow_revision(
         if waiting.window() != cmd.window:
             return
         if future.done():
-            try:
-                revision = future.result()
-            except Exception:
-                waiting.close()
-                raise
-            show_revision(cmd, revision, syntax, waiting)
+            waiting.erase_regions(WAIT_LINK)
+            finish_open(cmd, future, syntax, waiting)
             return
 
-        elapsed = time.monotonic() - started
-        render(waiting, f"==== Loading is taking unusually long ==== ({elapsed:.1f}s)", None)
+        draw_waiting_view(waiting, cmd.window, time.monotonic() - started)
         sublime.set_timeout(tick, 250)
 
     tick()
 
 
-def show_revision(
-    cmd: GitContext, revision: Revision | None, syntax: str | None, waiting: sublime.View | None = None
+def finish_open(
+    cmd: GitContext, future: Future[Revision | None], syntax: str | None, waiting: sublime.View | None = None
 ) -> None:
+    try:
+        revision = future.result()
+    except AbortedGitCall:
+        if waiting:
+            waiting.close()
+        cmd.window.status_message("Loading the revision was aborted.")
+        return
+    except Exception:
+        if waiting:
+            waiting.close()
+        raise
+
     if revision is None:
         if waiting:
             waiting.close()
@@ -218,6 +227,25 @@ def configure_revision_view(
     settings.set("git_savvy.show_file_at_commit_view", True)
     settings.erase("git_savvy.loading_revision_view")
     pass_next_commits_info_along(cmd.view, to=view)
+
+
+def draw_waiting_view(view: sublime.View, window: sublime.Window, elapsed: float) -> None:
+    sleep = ("z", "zz", "zzz", "zz")[int(elapsed * 2) % 4]
+    render(view, rf"""==== Loading is taking unusually long ==== ({elapsed:.1f}s)
+
+                 __
+                / _)  {sleep}
+       _.----._/ /
+      /         /
+   __/ (  | (  |
+  /__.-'|_|--|_|
+""", None)
+    view.add_regions(
+        WAIT_LINK, [sublime.Region(view.text_point(3, 0))],
+        annotations=['<a href="log">Open Git Command Log</a>'],
+        on_navigate=lambda _: window.run_command("gs_show_command_log"),
+        flags=sublime.RegionFlags.NO_UNDO
+    )
 
 
 def resolve_target(
