@@ -84,9 +84,10 @@ class gs_show_file_at_commit(GsWindowCommand):
 
     def run(self, commit_hash: FullHash | ShortHash | None = None, filepath: FullPath = None,
             position: Optional[Position] = None, lang: Optional[str] = None) -> None:
+        window = self.window
+        view = window.active_view()
         fix_position = False
         if not filepath:
-            view = self._current_view()
             if not view:
                 raise RuntimeError("can't grab an active view.")
 
@@ -102,14 +103,15 @@ class gs_show_file_at_commit(GsWindowCommand):
             if lang is None:
                 lang = view.settings().get('syntax')
 
-        target = resolve_target(self, filepath, commit_hash, position, fix_position)
+        cmd = GitContext.for_view(view) if view else GitContext(window, None)
+        target = resolve_target(cmd, filepath, commit_hash, position, fix_position)
         if not target:
             self.window.status_message("No older revision of this file found.")
             return
 
         filepath, commit_hash, position = target
         this_id = (
-            self.repo_path,
+            cmd.repo_path,
             filepath,
             commit_hash
         )
@@ -120,28 +122,28 @@ class gs_show_file_at_commit(GsWindowCommand):
                     run_as_text_command(apply_position, view, *position)
                 break
         else:
-            self.create_view(commit_hash, filepath, position, lang)
+            create_view(cmd, commit_hash, filepath, position, lang)
 
-    def create_view(self, commit_hash: ShortHash, file_path: str,
-                    position: Optional[Position], syntax: Optional[str]) -> None:
-        active_view = self.window.active_view()
-        title = SHOW_COMMIT_TITLE.format(
-            self.to_short_path(file_path),
-            commit_hash,
-        )
-        view = create_scratch_view(self.window, "show_file_at_commit", {
-            "title": title,
-            "syntax": syntax or guess_syntax_for_file(self.window, file_path),
-            "git_savvy.repo_path": self.repo_path,
-            "git_savvy.file_path": file_path,
-            "git_savvy.show_file_at_commit_view.commit": commit_hash,
-            "auto_indent": False,
-            "detect_indentation": False,
-            "translate_tabs_to_spaces": False,
-        })
-        pass_next_commits_info_along(active_view, to=view)
 
-        refresh_view(view, commit_hash, position)
+def create_view(cmd: GitContext, commit_hash: ShortHash, file_path: FullPath,
+                position: Optional[Position], syntax: Optional[str]) -> None:
+    title = SHOW_COMMIT_TITLE.format(
+        cmd.to_short_path(file_path),
+        commit_hash,
+    )
+    view = create_scratch_view(cmd.window, "show_file_at_commit", {
+        "title": title,
+        "syntax": syntax or guess_syntax_for_file(cmd.window, file_path),
+        "git_savvy.repo_path": cmd.repo_path,
+        "git_savvy.file_path": file_path,
+        "git_savvy.show_file_at_commit_view.commit": commit_hash,
+        "auto_indent": False,
+        "detect_indentation": False,
+        "translate_tabs_to_spaces": False,
+    })
+    pass_next_commits_info_along(cmd.view, to=view)
+
+    refresh_view(view, commit_hash, position)
 
 
 def resolve_target(
