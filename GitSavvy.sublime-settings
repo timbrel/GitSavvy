@@ -224,10 +224,12 @@
      */
     "inline_diff_auto_scroll": true,
 
+    // Set any color below to null to inherit that property from the active scheme.
+    // Omitting a key from your user settings keeps its GitSavvy default.
     "colors": {
         "log_graph": {
-            "selected_item_foreground": "#111",
-            "selected_item_background": "#aaf",
+            "selected_item_foreground": "#aaf",
+            "selected_item_background": null,
             "commit_dot_foreground": "#9911",
             "commit_dot_background": "#991",
             "path_foreground": "#991",
