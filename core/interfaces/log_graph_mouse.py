@@ -3,8 +3,9 @@ from __future__ import annotations
 from itertools import starmap
 
 import sublime
-from sublime_plugin import EventListener, TextCommand
+from sublime_plugin import EventListener
 
+from ..base_commands import GsTextCommand
 from ..git_command import GitCommand
 from ..fns import unique
 from ..git_mixins.branches import Branch
@@ -17,21 +18,17 @@ __all__ = ("gs_log_graph_mouse", "GsLogGraphMouseListener")
 TARGET_KEY = "git_savvy.log_graph_mouse_target"
 
 
-class gs_log_graph_mouse(TextCommand, GitCommand):
+class gs_log_graph_mouse(GsTextCommand):
     def run(
         self, edit: sublime.Edit, event: dict, release: bool = False,
         context_menu: bool = False, text_selection: str | None = None,
         fallback_selection: str | None = None
     ) -> None:
-        from .log_graph import COMMIT_LINE, colorize_dots, colorize_fixups
-
         view = self.view
-        settings = view.settings()
-        settings.erase(TARGET_KEY)
+        view.settings().erase(TARGET_KEY)
+
         if release:
-            view.run_command("gs_log_graph_branch_drag", {
-                "action": "finish", "event": event
-            })
+            view.run_command("gs_log_graph_branch_drag", {"action": "finish", "event": event})
             return
 
         window = view.window()
@@ -39,31 +36,72 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
             window.focus_view(view)
 
         if text_selection is not None:
-            settings.erase("git_savvy.mouse_selected_target")
-            selection_args: dict = {"event": event}
-            if text_selection != "characters":
-                selection_args["by"] = text_selection
-            view.run_command("drag_select", selection_args)
+            select_text(view, event, text_selection)
             return
 
         pt = view.window_to_text((event["x"], event["y"]))
-        if not context_menu:
-            controls = PreludeControls.from_dict(settings.get("git_savvy.log_graph_view.prelude_controls", {}))
-            if controls.all is not None and controls.all.contains(pt):
-                settings.erase("git_savvy.mouse_selected_target")
-                view.run_command("gs_log_graph_toggle_all_setting")
-                return
-
-            for toggle in controls.refs:
-                if toggle.contains(pt):
-                    settings.erase("git_savvy.mouse_selected_target")
-                    view.run_command("gs_log_graph_edit_branches", {"branch": toggle.ref})
-                    return
+        if not context_menu and activate_prelude_control(view, pt):
+            return
 
         if fallback_selection is not None:
-            settings.erase("git_savvy.mouse_selected_target")
-            view.run_command("drag_select", {"event": event, "by": fallback_selection})
+            select_text(view, event, fallback_selection)
             return
+
+        GraphMouse(view).press(pt, event, context_menu=context_menu)
+
+    def want_event(self) -> bool:
+        return True
+
+
+class GsLogGraphMouseListener(EventListener):
+    def on_selection_modified(self, view: sublime.View) -> None:
+        from .log_graph_branch_drag import get_drag_state
+
+        settings = view.settings()
+        if not settings.get("git_savvy.log_graph_view") and settings.get(TARGET_KEY) is None:
+            return
+        # Armed drags still own native word-selection normalization. Moving
+        # within that gesture must not invalidate the clicked-label identity.
+        if get_drag_state(view) is None:
+            normalize_mouse_selection(view, TARGET_KEY)
+
+
+def activate_prelude_control(view: sublime.View, pt: int) -> bool:
+    settings = view.settings()
+    controls = PreludeControls.from_dict(settings.get("git_savvy.log_graph_view.prelude_controls", {}))
+
+    if controls.all is not None and controls.all.contains(pt):
+        settings.erase("git_savvy.mouse_selected_target")
+        view.run_command("gs_log_graph_toggle_all_setting")
+        return True
+
+    for toggle in controls.refs:
+        if toggle.contains(pt):
+            settings.erase("git_savvy.mouse_selected_target")
+            view.run_command("gs_log_graph_edit_branches", {"branch": toggle.ref})
+            return True
+
+    return False
+
+
+def select_text(view: sublime.View, event: dict, by: str) -> None:
+    view.settings().erase("git_savvy.mouse_selected_target")
+    args: dict = {"event": event}
+    if by != "characters":
+        args["by"] = by
+
+    view.run_command("drag_select", args)
+
+
+class GraphMouse(GitCommand):
+    def __init__(self, view: sublime.View) -> None:
+        self.view = view
+
+    def press(self, pt: int, event: dict, *, context_menu: bool = False) -> None:
+        from .log_graph import COMMIT_LINE, colorize_dots, colorize_fixups
+
+        view = self.view
+        settings = view.settings()
 
         if context_menu:
             selected: list[list[int]] = settings.get("git_savvy.multi_selection", [])
@@ -75,11 +113,13 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
         if context_menu and target is None:
             view.run_command("context_menu", {"event": event})
             return
+
         view.sel().clear()
         view.sel().add(target if target is not None else sublime.Region(pt))
         settings.set("git_savvy.mouse_selected_target", [target.a, target.b] if target else None)
         colorize_dots(view)
         colorize_fixups(view)
+
         if context_menu:
             match = COMMIT_LINE.search(view.substr(view.line(pt)))
             if match and target is not None:
@@ -88,6 +128,7 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
                     return
             view.run_command("context_menu", {"event": event})
             return
+
         if target is not None and view.match_selector(
             target.a, "meta.graph.branch.git-savvy constant.other.git.branch"
         ):
@@ -105,9 +146,6 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
         # native drag tracking takes over until mouse release.
         sublime.set_timeout(lambda: view.run_command("drag_select", args), 0)
 
-    def want_event(self) -> bool:
-        return True
-
     def show_menu(self, pt: int, target: sublime.Region, commit_hash: str) -> bool:
         """Open actions for the clicked label; return False for the native menu."""
         view = self.view
@@ -118,17 +156,7 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
         actions: list[tuple[str, str, dict]]
         branch = self.branch_at(pt)
         if branch is not None:
-            actions = self.branch_actions(branch) + [
-                ("-", "", {}),
-                (
-                    "Rename '{}'".format(branch.name),
-                    "gs_rename_branch", {"branch": branch.name}
-                ),
-                (
-                    "Delete '{}'".format(branch.name),
-                    "gs_delete_branch", {"branch": branch.name, "undo_owner": view.id()}
-                )
-            ]
+            actions = self.branch_actions(branch)
         elif view.match_selector(target.a, "string.other.rebase-hint.git-savvy"):
             actions = self.fixup_actions(pt, commit_hash)
             if not actions:
@@ -136,64 +164,7 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
         elif not view.match_selector(pt, "constant.numeric.graph.commit-hash.git-savvy"):
             return False
         else:
-            from .log_graph_helper import format_revision_list
-
-            selected_regions: list[list[int]] = view.settings().get("git_savvy.multi_selection", [])
-            selected_commits = list(unique(
-                view.substr(r)
-                for r in sorted(
-                    starmap(sublime.Region, selected_regions),
-                    reverse=True
-                )
-            ))
-            if len(selected_commits) >= 2 and commit_hash in selected_commits:
-                diff_actions: list[tuple[str, str, dict]] = []
-                if len(selected_commits) == 2:
-                    base_commit, target_commit = selected_commits
-                    diff_actions = [
-                        (
-                            "Diff {}..{}".format(base_commit, target_commit),
-                            "gs_diff", {
-                                "base_commit": base_commit,
-                                "target_commit": target_commit,
-                                "in_cached_mode": False,
-                                "disable_stage": True
-                            }
-                        ),
-                        ("-", "", {})
-                    ]
-                actions = [
-                    *diff_actions,
-                    (
-                        "Squash {}".format(format_revision_list(selected_commits)),
-                        "gs_rebase_squash_commits",
-                        {"base_commit": selected_commits[0], "commits": selected_commits[1:]}
-                    ),
-                    *self.cherry_pick_and_revert_actions(selected_commits)
-                ]
-            else:
-                actions = [
-                    (
-                        "Create branch at {}".format(commit_hash),
-                        "gs_create_branch", {"start_point": commit_hash}
-                    ),
-                    ("Create tag...", "gs_create_tag", {"target_commit": commit_hash}),
-                    ("-", "", {}),
-                    ("Checkout here", "gs_checkout_branch", {"branch": commit_hash, "detach": True}),
-                    (
-                        "Checkout in a worktree", "gs_checkout_in_worktree",
-                        {"start_point": commit_hash}
-                    ),
-                    ("-", "", {}),
-                    *self.fixup_actions(pt, commit_hash),
-                    ("Reword", "gs_rebase_reword_commit", {"commit_hash": commit_hash}),
-                    ("Edit", "gs_rebase_edit_commit", {"commit_hash": commit_hash}),
-                    (
-                        "Drop", "gs_rebase_drop_commits",
-                        {"base_commit": commit_hash, "commits": [commit_hash]}
-                    ),
-                    *self.cherry_pick_and_revert_actions([commit_hash])
-                ]
+            actions = self.commit_actions(pt, commit_hash)
 
         view.sel().clear()
         view.sel().add(target)
@@ -262,6 +233,73 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
                 "Fetch {}".format(branch.upstream.canonical_name),
                 "gs_fetch", {"remote": branch.upstream.remote, "refspec": branch.upstream.branch}
             ))
+        actions += [
+            ("-", "", {}),
+            ("Rename '{}'".format(name), "gs_rename_branch", {"branch": name}),
+            ("Delete '{}'".format(name), "gs_delete_branch", {"branch": name, "undo_owner": self.view.id()})
+        ]
+        return actions
+
+    def commit_actions(self, pt: int, commit_hash: str) -> list[tuple[str, str, dict]]:
+        from .log_graph_helper import format_revision_list
+
+        selected_regions: list[list[int]] = self.view.settings().get("git_savvy.multi_selection", [])
+        selected_commits = list(unique(
+            self.view.substr(r)
+            for r in sorted(
+                starmap(sublime.Region, selected_regions),
+                reverse=True
+            )
+        ))
+        if len(selected_commits) >= 2 and commit_hash in selected_commits:
+            diff_actions: list[tuple[str, str, dict]] = []
+            if len(selected_commits) == 2:
+                base_commit, target_commit = selected_commits
+                diff_actions = [
+                    (
+                        "Diff {}..{}".format(base_commit, target_commit),
+                        "gs_diff", {
+                            "base_commit": base_commit,
+                            "target_commit": target_commit,
+                            "in_cached_mode": False,
+                            "disable_stage": True
+                        }
+                    ),
+                    ("-", "", {})
+                ]
+            actions = [
+                *diff_actions,
+                (
+                    "Squash {}".format(format_revision_list(selected_commits)),
+                    "gs_rebase_squash_commits",
+                    {"base_commit": selected_commits[0], "commits": selected_commits[1:]}
+                ),
+                *self.cherry_pick_and_revert_actions(selected_commits)
+            ]
+        else:
+            actions = [
+                (
+                    "Create branch at {}".format(commit_hash),
+                    "gs_create_branch", {"start_point": commit_hash}
+                ),
+                ("Create tag...", "gs_create_tag", {"target_commit": commit_hash}),
+                ("-", "", {}),
+                ("Checkout here", "gs_checkout_branch", {"branch": commit_hash, "detach": True}),
+                (
+                    "Checkout in a worktree", "gs_checkout_in_worktree",
+                    {"start_point": commit_hash}
+                ),
+                ("-", "", {}),
+                *self.fixup_actions(pt, commit_hash),
+                ("Reword", "gs_rebase_reword_commit", {"commit_hash": commit_hash}),
+                ("Edit", "gs_rebase_edit_commit", {"commit_hash": commit_hash}),
+                (
+                    "Drop", "gs_rebase_drop_commits",
+                    {"base_commit": commit_hash, "commits": [commit_hash]}
+                ),
+                *self.cherry_pick_and_revert_actions([commit_hash])
+            ]
+
         return actions
 
     def fixup_actions(self, pt: int, commit_hash: str) -> list[tuple[str, str, dict]]:
@@ -325,16 +363,3 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
                     if not branch.is_remote and branch.name == name
                 ), None)
         return None
-
-
-class GsLogGraphMouseListener(EventListener):
-    def on_selection_modified(self, view: sublime.View) -> None:
-        from .log_graph_branch_drag import get_drag_state
-
-        settings = view.settings()
-        if not settings.get("git_savvy.log_graph_view") and settings.get(TARGET_KEY) is None:
-            return
-        # Armed drags still own native word-selection normalization. Moving
-        # within that gesture must not invalidate the clicked-label identity.
-        if get_drag_state(view) is None:
-            normalize_mouse_selection(view, TARGET_KEY)

@@ -16,7 +16,7 @@ from GitSavvy.core.interfaces.dashboard_mouse import (
     TARGET_KEY as DASHBOARD_TARGET_KEY, gs_dashboard_mouse
 )
 from GitSavvy.core.interfaces.log_graph_mouse import (
-    TARGET_KEY, GsLogGraphMouseListener, gs_log_graph_mouse
+    TARGET_KEY, GraphMouse, GsLogGraphMouseListener, gs_log_graph_mouse
 )
 from GitSavvy.tests.mockito import mock, spy2, unstub, verify, when
 
@@ -38,10 +38,11 @@ class TestGraphMouseGestures(DeferrableTestCase):
         when(log_graph).colorize_dots(self.view).thenReturn(None)
         when(log_graph).colorize_fixups(self.view).thenReturn(None)
         when(self.view).window_to_text(...).thenReturn(15)
-        when(self.command).target_at(15).thenReturn(self.target)
+        when(GraphMouse).target_at(15).thenReturn(self.target)
+        spy2(self.view.run_command)
         when(self.view).run_command("drag_select", ...).thenReturn(None)
         self.menus = []
-        when(self.command).show_menu(...).thenAnswer(lambda *args: self.menus.append(args) or True)
+        when(GraphMouse).show_menu(...).thenAnswer(lambda *args: self.menus.append(args) or True)
 
     def tearDown(self) -> None:
         unstub()
@@ -64,6 +65,19 @@ class TestGraphMouseGestures(DeferrableTestCase):
         # Keep the clicked-label identity for a subsequent Space multiselect.
         self.assertEqual(self.view.settings().get("git_savvy.mouse_selected_target"), [11, 26])
 
+    def test_registered_command_preserves_gesture_state_across_invocations(self) -> None:
+        # Sublime constructs its own View wrapper for the registered command.
+        when(sublime.View).window_to_text(...).thenReturn(15)
+
+        for _ in range(2):
+            self.view.run_command("gs_log_graph_mouse", {"event": self.event})
+            self.assertEqual(self.view.settings().get(TARGET_KEY), [11, 26])
+            self.assertEqual(list(self.view.sel()), [self.target])
+
+            self.view.run_command("gs_log_graph_mouse", {"event": {}, "release": True})
+            self.assertIsNone(self.view.settings().get(TARGET_KEY))
+            self.assertEqual(self.view.settings().get("git_savvy.mouse_selected_target"), [11, 26])
+
     def test_right_click_selects_label_and_opens_menu_without_drag_tracking(self) -> None:
         self.event["button"] = 2
         self.command.run(None, self.event, context_menu=True)
@@ -75,7 +89,7 @@ class TestGraphMouseGestures(DeferrableTestCase):
         self.assertIsNone(self.view.settings().get(TARGET_KEY))
 
     def test_right_click_outside_label_opens_normal_context_menu(self) -> None:
-        when(self.command).target_at(15).thenReturn(None)
+        when(GraphMouse).target_at(15).thenReturn(None)
         when(self.view).run_command("context_menu", {"event": self.event}).thenReturn(None)
         selection = list(self.view.sel())
         self.command.run(None, self.event, context_menu=True)
@@ -85,7 +99,7 @@ class TestGraphMouseGestures(DeferrableTestCase):
         self.assertEqual(self.menus, [])
 
     def test_right_click_label_without_actions_opens_normal_context_menu(self) -> None:
-        when(self.command).show_menu(...).thenReturn(False)
+        when(GraphMouse).show_menu(...).thenReturn(False)
         when(self.view).run_command("context_menu", {"event": self.event}).thenReturn(None)
         self.command.run(None, self.event, context_menu=True)
         verify(self.view).run_command("context_menu", {"event": self.event})
@@ -309,6 +323,21 @@ class TestGraphPreludeMouse(DeferrableTestCase):
         verify(self.view, times=0).run_command("gs_log_graph_edit_branches", ...)
         verify(self.view, times=4).run_command("drag_select", ...)
 
+    def test_controls_and_explicit_text_selection_bypass_graph_handler(self) -> None:
+        when(GraphMouse).press(...).thenRaise(AssertionError("Unexpected graph interaction"))
+
+        for by in (None, "words", "lines"):
+            self.command.run(None, self.event, fallback_selection=by)
+            self.command.run(None, self.event, text_selection=by or "characters")
+
+        self.view.settings().set("git_savvy.log_graph_view.branches", ["refs/heads/topic"])
+        when(gs_log_graph_edit_branches).get_branches().thenReturn([branch("topic")])
+        draw_prelude(self.view, prelude(self.view))
+        when(self.view).window_to_text(...).thenReturn(prelude_ref_regions(self.view)[0].begin())
+        self.command.run(None, self.event)
+
+        verify(GraphMouse, times=0).press(...)
+
     def test_right_click_retains_native_context_menu(self) -> None:
         self.command.run(None, {**self.event, "button": 2}, context_menu=True)
         verify(self.view).run_command("context_menu", ...)
@@ -372,11 +401,13 @@ class TestGraphLabelSelection(DeferrableTestCase):
         view.sel().add(target)
         view.settings().set("git_savvy.log_graph_view", True)
         view.settings().set(TARGET_KEY, [target.a, target.b])
-        command = gs_log_graph_mouse(view)
+        command = GraphMouse(view)
         when(command).target_at(11).thenReturn(target)
         branch = mock({"name": "topic"})
         when(command).branch_at(11).thenReturn(branch)
-        when(command).branch_actions(branch).thenReturn([])
+        when(command).branch_actions(branch).thenReturn([
+            ("Rename 'topic'", "gs_rename_branch", {"branch": "topic"})
+        ])
         captured = []
         when(view).show_popup_menu(...).thenAnswer(lambda *args: captured.append(args))
 
@@ -424,7 +455,7 @@ class TestGraphCheckoutActions(DeferrableTestCase):
         self.addCleanup(view.close)
         view.run_command("append", {"characters": "* abcdef0 (feature) subject\n"})
         target = sublime.Region(11, 18)
-        command = gs_log_graph_mouse(view)
+        command = GraphMouse(view)
         when(view).find_by_selector(...).thenReturn([target])
         when(view).show_popup_menu(...).thenReturn(None)
         when(command).current_state().thenReturn({})
@@ -438,8 +469,13 @@ class TestGraphCheckoutActions(DeferrableTestCase):
 
     def test_branch_without_upstream(self) -> None:
         menu = self.branch_menu(active=False, upstream=None)
-        self.assertEqual(["Checkout here", "Checkout in a worktree", "-", "Push..."],
-                         [label for label, _, _ in menu])
+        self.assertEqual([
+            "Checkout here", "Checkout in a worktree", "-", "Push...", "-", "Rename 'feature'", "Delete 'feature'"
+        ], [label for label, _, _ in menu])
+        self.assertEqual(menu[-2:], [
+            ("Rename 'feature'", "gs_rename_branch", {"branch": "feature"}),
+            ("Delete 'feature'", "gs_delete_branch", {"branch": "feature", "undo_owner": 77})
+        ])
         self.assertEqual(("gs_checkout_branch", {"branch": "feature"}), menu[0][1:])
         self.assertEqual(
             ("gs_checkout_in_worktree", {"start_point": "feature"}), menu[1][1:]
@@ -450,8 +486,10 @@ class TestGraphCheckoutActions(DeferrableTestCase):
             active=True, upstream=mock({"remote": "origin", "branch": "master", "canonical_name": "origin/master"}),
             worktree_path="/repo/current", is_current=True
         )
-        self.assertEqual(["Checkout in a new worktree", "-", "Push", "Merge into...", "Pull", "Fetch origin/master"],
-                         [label for label, _, _ in menu])
+        self.assertEqual([
+            "Checkout in a new worktree", "-", "Push", "Merge into...", "Pull", "Fetch origin/master",
+            "-", "Rename 'feature'", "Delete 'feature'"
+        ], [label for label, _, _ in menu])
         self.assertEqual(
             ("gs_checkout_in_worktree", {"start_point": "abcdef0"}), menu[0][1:]
         )
@@ -470,7 +508,8 @@ class TestGraphCheckoutActions(DeferrableTestCase):
         }))
         self.assertEqual([
             "Checkout here", "Checkout in a worktree", "-", "Push",
-            "Update feature from fork/topic/nested (ff-only)", "Fetch fork/topic/nested"
+            "Update feature from fork/topic/nested (ff-only)", "Fetch fork/topic/nested",
+            "-", "Rename 'feature'", "Delete 'feature'"
         ], [label for label, _, _ in menu])
         self.assertEqual(
             ("gs_fetch", {"remote": "fork", "refspec": "topic/nested:feature"}), menu[4][1:]
@@ -508,7 +547,7 @@ class TestGraphCheckoutActions(DeferrableTestCase):
         view.sel().clear()
         view.sel().add(target)
         view.settings().set("git_savvy.log_graph_view", True)
-        command = gs_log_graph_mouse(view)
+        command = GraphMouse(view)
         when(command).target_at(2).thenReturn(target)
         when(command).branch_at(2).thenReturn(None)
         when(command).fixup_actions(2, "abcdef0").thenReturn([])
@@ -536,6 +575,34 @@ class TestGraphCheckoutActions(DeferrableTestCase):
             "gs_checkout_in_worktree", {"start_point": "abcdef0"}
         )
 
+    def test_fixup_hint_uses_its_own_actions_and_shared_menu(self) -> None:
+        view = sublime.active_window().new_file()
+        view.set_scratch(True)
+        self.addCleanup(view.close)
+        view.run_command("append", {"characters": "* abcdef0 fixup! subject\n"})
+        target = sublime.Region(10, 15)
+        handler = GraphMouse(view)
+        when(handler).branch_at(10).thenReturn(None)
+        when(handler).get_branches().thenRaise(AssertionError("Unexpected branch query"))
+        when(handler).commit_actions(...).thenRaise(AssertionError("Unexpected commit actions"))
+        when(view).match_selector(10, "string.other.rebase-hint.git-savvy").thenReturn(True)
+        args = {"base_commit": "1234567", "fixes": []}
+        when(handler).fixup_actions(10, "abcdef0").thenReturn(
+            [], [("Apply fix", "gs_rebase_apply_fixup", args)]
+        )
+        captured = []
+        when(view).show_popup_menu(...).thenAnswer(lambda *args: captured.append(args))
+        when(view).run_command("gs_rebase_apply_fixup", args).thenReturn(None)
+
+        self.assertFalse(handler.show_menu(10, target, "abcdef0"))
+        self.assertEqual(captured, [])
+        self.assertTrue(handler.show_menu(10, target, "abcdef0"))
+        labels, on_done, point = captured[0]
+        self.assertEqual(labels, ["Apply fix"])
+        self.assertEqual(point, 10)
+        on_done(0)
+        verify(view).run_command("gs_rebase_apply_fixup", args)
+
     def test_two_selected_commits_offer_direct_diff(self) -> None:
         view = sublime.active_window().new_file()
         view.set_scratch(True)
@@ -545,7 +612,7 @@ class TestGraphCheckoutActions(DeferrableTestCase):
         view.settings().set("git_savvy.multi_selection", [[2, 9], [18, 25]])
         view.sel().clear()
         view.sel().add(sublime.Region(2, 9))
-        command = gs_log_graph_mouse(view)
+        command = GraphMouse(view)
         when(command).target_at(2).thenReturn(sublime.Region(2, 9))
         when(command).branch_at(2).thenReturn(None)
         when(command).cherry_pick_and_revert_actions(["1234567", "abcdef0"]).thenReturn([])
@@ -564,7 +631,7 @@ class TestGraphCheckoutActions(DeferrableTestCase):
         when(log_graph).colorize_fixups(view).thenReturn(None)
         when(view).run_command("gs_rebase_squash_commits", ...).thenReturn(None)
 
-        command.run(None, {"x": 2, "y": 0, "button": 2}, context_menu=True)
+        command.press(2, {"x": 2, "y": 0, "button": 2}, context_menu=True)
 
         self.assertEqual(view.settings().get("git_savvy.multi_selection"), [[2, 9], [18, 25]])
         labels, on_done, _ = captured[0]
@@ -582,7 +649,8 @@ class TestGraphCheckoutActions(DeferrableTestCase):
     def test_cached_worktree_location_detaches_even_without_branch_worktreepath(self) -> None:
         menu = self.branch_menu(active=False, upstream=None, worktree_path="/repo/feature")
         self.assertEqual([
-            "Open worktree in a new window", "Checkout in a new worktree", "-", "Push..."
+            "Open worktree in a new window", "Checkout in a new worktree", "-", "Push...",
+            "-", "Rename 'feature'", "Delete 'feature'"
         ], [label for label, _, _ in menu])
         self.assertEqual(
             ("gs_checkout_in_worktree", {"start_point": "abcdef0"}), menu[1][1:]
@@ -598,7 +666,8 @@ class TestGraphCheckoutActions(DeferrableTestCase):
             }), worktree_path="/repo/feature"
         )
         self.assertEqual([
-            "Open worktree in a new window", "Checkout in a new worktree", "-", "Push", "Fetch origin/master"
+            "Open worktree in a new window", "Checkout in a new worktree", "-", "Push", "Fetch origin/master",
+            "-", "Rename 'feature'", "Delete 'feature'"
         ], [label for label, _, _ in menu])
 
     def test_open_worktree_command_only_opens_the_existing_checkout(self) -> None:
@@ -633,7 +702,9 @@ class TestGraphCheckoutActions(DeferrableTestCase):
         self, *, active: bool, upstream: object, worktree_path: str | None = None,
         is_current: bool = False, in_bisect: bool = False
     ) -> list[tuple[str, str, dict]]:
-        command = gs_log_graph_mouse(mock())
+        view = mock()
+        when(view).id().thenReturn(77)
+        command = GraphMouse(view)
         when(command).in_bisect().thenReturn(in_bisect)
         when(command).current_state().thenReturn({
             "worktree_locations": [WorktreeLocation(worktree_path, "feature", None, is_current)]
