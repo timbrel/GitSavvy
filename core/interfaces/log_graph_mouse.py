@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import partial
 from itertools import starmap
 
 import sublime
@@ -9,6 +10,7 @@ from ..base_commands import GsTextCommand
 from ..git_command import GitCommand
 from ..fns import unique
 from ..git_mixins.branches import Branch
+from ..ui__quick_panel import ActionType
 from .log_graph_prelude import PreludeControls
 from .multi_selector import normalize_mouse_selection
 
@@ -16,6 +18,7 @@ from .multi_selector import normalize_mouse_selection
 __all__ = ("gs_log_graph_mouse", "GsLogGraphMouseListener")
 
 TARGET_KEY = "git_savvy.log_graph_mouse_target"
+POPUP_SEPARATOR: ActionType = ("-", lambda: None)
 
 
 class gs_log_graph_mouse(GsTextCommand):
@@ -153,10 +156,10 @@ class GraphMouse(GitCommand):
         if window is None:
             return False
 
-        actions: list[tuple[str, str, dict]]
+        actions: list[ActionType]
         branch = self.branch_at(pt)
         if branch is not None:
-            actions = self.branch_actions(branch)
+            actions = self.branch_actions(window, branch)
         elif view.match_selector(target.a, "string.other.rebase-hint.git-savvy"):
             actions = self.fixup_actions(pt, commit_hash)
             if not actions:
@@ -164,83 +167,113 @@ class GraphMouse(GitCommand):
         elif not view.match_selector(pt, "constant.numeric.graph.commit-hash.git-savvy"):
             return False
         else:
-            actions = self.commit_actions(pt, commit_hash)
+            actions = self.commit_actions(window, pt, commit_hash)
 
         view.sel().clear()
         view.sel().add(target)
 
         def on_done(index: int) -> None:
             if 0 <= index < len(actions):
-                _, command, args = actions[index]
-                if not command:
-                    return
-                if command.startswith("gs_rebase_"):
-                    view.run_command(command, args)
-                else:
-                    window.run_command(command, args)
+                _, action = actions[index]
+                action()
 
         # The popup takes over the gesture and can swallow mouse-up. Do not
         # keep anchoring later keyboard selections to the pressed label.
         view.settings().erase(TARGET_KEY)
-        view.show_popup_menu([label for label, _, _ in actions], on_done, pt)
+        view.show_popup_menu([description for description, _ in actions], on_done, pt)
         return True
 
-    def branch_actions(self, branch: Branch) -> list[tuple[str, str, dict]]:
+    def branch_actions(self, window: sublime.Window, branch: Branch) -> list[ActionType]:
         name = branch.name
         worktrees = self.current_state().get("worktree_locations", [])
         worktree = next((wt for wt in worktrees if wt.branch_name == name), None)
         checked_out = branch.active or worktree is not None
-        actions: list[tuple[str, str, dict]] = []
+
+        actions: list[ActionType] = []
         if not checked_out:
-            actions.append(("Checkout here", "gs_checkout_branch", {"branch": name}))
+            actions.append((
+                "Checkout here",
+                partial(window.run_command, "gs_checkout_branch", {"branch": name})
+            ))
         elif worktree and not worktree.is_current:
             actions.append((
-                "Open worktree in a new window", "gs_open_worktree_in_new_window",
-                {"worktree": worktree.path}
+                "Open worktree in a new window",
+                partial(window.run_command, "gs_open_worktree_in_new_window", {
+                    "worktree": worktree.path
+                })
             ))
+
         actions += [
             (
                 "Checkout in a new worktree" if checked_out else "Checkout in a worktree",
-                "gs_checkout_in_worktree",
-                {"start_point": branch.commit_hash if checked_out else name}
+                partial(window.run_command, "gs_checkout_in_worktree", {
+                    "start_point": branch.commit_hash if checked_out else name
+                })
             ),
-            ("-", "", {}),
-            ("Push" if branch.upstream else "Push...", "gs_push", {"local_branch_name": name})
+            POPUP_SEPARATOR,
+            (
+                "Push" if branch.upstream else "Push...",
+                partial(window.run_command, "gs_push", {"local_branch_name": name})
+            )
         ]
+
         if branch.active and not self.in_bisect():
-            actions.append(("Merge into...", "gs_merge_current_branch_into", {"source": name}))
+            actions.append((
+                "Merge into...",
+                partial(window.run_command, "gs_merge_current_branch_into", {
+                    "source": name
+                })
+            ))
+
         if branch.upstream:
             if branch.active:
-                actions.append(("Pull", "gs_pull", {}))
+                actions.append((
+                    "Pull",
+                    partial(window.run_command, "gs_pull", {})
+                ))
             elif not checked_out and "behind" in branch.upstream.status and "ahead" not in branch.upstream.status:
                 actions.append((
                     "Move {} to {}".format(name, branch.upstream.canonical_name),
-                    "gs_move_branch", {
+                    partial(window.run_command, "gs_move_branch", {
                         "branch": name,
                         "target": branch.upstream.canonical_name,
                         "previous_tip": branch.commit_hash
-                    }
+                    })
                 ))
             elif not checked_out:
                 actions.append((
                     "Update {} from {} (ff-only)".format(name, branch.upstream.canonical_name),
-                    "gs_fetch", {
+                    partial(window.run_command, "gs_fetch", {
                         "remote": branch.upstream.remote,
                         "refspec": "{}:{}".format(branch.upstream.branch, name)
-                    }
+                    })
                 ))
             actions.append((
                 "Fetch {}".format(branch.upstream.canonical_name),
-                "gs_fetch", {"remote": branch.upstream.remote, "refspec": branch.upstream.branch}
+                partial(window.run_command, "gs_fetch", {
+                    "remote": branch.upstream.remote,
+                    "refspec": branch.upstream.branch
+                })
             ))
+
         actions += [
-            ("-", "", {}),
-            ("Rename '{}'".format(name), "gs_rename_branch", {"branch": name}),
-            ("Delete '{}'".format(name), "gs_delete_branch", {"branch": name, "undo_owner": self.view.id()})
+            POPUP_SEPARATOR,
+            (
+                "Rename '{}'".format(name),
+                partial(window.run_command, "gs_rename_branch", {"branch": name})
+            ),
+            (
+                "Delete '{}'".format(name),
+                partial(window.run_command, "gs_delete_branch", {
+                    "branch": name,
+                    "undo_owner": self.view.id()
+                })
+            )
         ]
+
         return actions
 
-    def commit_actions(self, pt: int, commit_hash: str) -> list[tuple[str, str, dict]]:
+    def commit_actions(self, window: sublime.Window, pt: int, commit_hash: str) -> list[ActionType]:
         from .log_graph_helper import format_revision_list
 
         selected_regions: list[list[int]] = self.view.settings().get("git_savvy.multi_selection", [])
@@ -251,58 +284,90 @@ class GraphMouse(GitCommand):
                 reverse=True
             )
         ))
+
         if len(selected_commits) >= 2 and commit_hash in selected_commits:
-            diff_actions: list[tuple[str, str, dict]] = []
+            diff_actions: list[ActionType] = []
             if len(selected_commits) == 2:
                 base_commit, target_commit = selected_commits
                 diff_actions = [
                     (
                         "Diff {}..{}".format(base_commit, target_commit),
-                        "gs_diff", {
+                        partial(window.run_command, "gs_diff", {
                             "base_commit": base_commit,
                             "target_commit": target_commit,
                             "in_cached_mode": False,
                             "disable_stage": True
-                        }
+                        })
                     ),
-                    ("-", "", {})
+                    POPUP_SEPARATOR
                 ]
-            actions = [
+
+            actions: list[ActionType] = [
                 *diff_actions,
                 (
                     "Squash {}".format(format_revision_list(selected_commits)),
-                    "gs_rebase_squash_commits",
-                    {"base_commit": selected_commits[0], "commits": selected_commits[1:]}
+                    partial(self.view.run_command, "gs_rebase_squash_commits", {
+                        "base_commit": selected_commits[0],
+                        "commits": selected_commits[1:]
+                    })
                 ),
-                *self.cherry_pick_and_revert_actions(selected_commits)
+                *self.cherry_pick_and_revert_actions(window, selected_commits)
             ]
         else:
             actions = [
                 (
                     "Create branch at {}".format(commit_hash),
-                    "gs_create_branch", {"start_point": commit_hash}
+                    partial(window.run_command, "gs_create_branch", {
+                        "start_point": commit_hash
+                    })
                 ),
-                ("Create tag...", "gs_create_tag", {"target_commit": commit_hash}),
-                ("-", "", {}),
-                ("Checkout here", "gs_checkout_branch", {"branch": commit_hash, "detach": True}),
                 (
-                    "Checkout in a worktree", "gs_checkout_in_worktree",
-                    {"start_point": commit_hash}
+                    "Create tag...",
+                    partial(window.run_command, "gs_create_tag", {
+                        "target_commit": commit_hash
+                    })
                 ),
-                ("-", "", {}),
+                POPUP_SEPARATOR,
+                (
+                    "Checkout here",
+                    partial(window.run_command, "gs_checkout_branch", {
+                        "branch": commit_hash,
+                        "detach": True
+                    })
+                ),
+                (
+                    "Checkout in a worktree",
+                    partial(window.run_command, "gs_checkout_in_worktree", {
+                        "start_point": commit_hash
+                    })
+                ),
+                POPUP_SEPARATOR,
                 *self.fixup_actions(pt, commit_hash),
-                ("Reword", "gs_rebase_reword_commit", {"commit_hash": commit_hash}),
-                ("Edit", "gs_rebase_edit_commit", {"commit_hash": commit_hash}),
                 (
-                    "Drop", "gs_rebase_drop_commits",
-                    {"base_commit": commit_hash, "commits": [commit_hash]}
+                    "Reword",
+                    partial(self.view.run_command, "gs_rebase_reword_commit", {
+                        "commit_hash": commit_hash
+                    })
                 ),
-                *self.cherry_pick_and_revert_actions([commit_hash])
+                (
+                    "Edit",
+                    partial(self.view.run_command, "gs_rebase_edit_commit", {
+                        "commit_hash": commit_hash
+                    })
+                ),
+                (
+                    "Drop",
+                    partial(self.view.run_command, "gs_rebase_drop_commits", {
+                        "base_commit": commit_hash,
+                        "commits": [commit_hash]
+                    })
+                ),
+                *self.cherry_pick_and_revert_actions(window, [commit_hash])
             ]
 
         return actions
 
-    def fixup_actions(self, pt: int, commit_hash: str) -> list[tuple[str, str, dict]]:
+    def fixup_actions(self, pt: int, commit_hash: str) -> list[ActionType]:
         from .log_graph import is_fixup_or_squash_message
         from .log_graph_rebase_actions import (
             Commit, commit_message_from_line, find_base_commit_for_fixup, is_fixup
@@ -316,30 +381,37 @@ class GraphMouse(GitCommand):
         base_commit = find_base_commit_for_fixup(self.view, line, message)
         if base_commit is None:
             return []
+
         fix = Commit(commit_hash, message)
         return [(
             "Apply fix to {}".format(base_commit) if is_fixup(fix) else
             "Squash with {}".format(base_commit),
-            "gs_rebase_apply_fixup", {"base_commit": base_commit, "fixes": [fix]}
+            partial(self.view.run_command, "gs_rebase_apply_fixup", {
+                "base_commit": base_commit,
+                "fixes": [fix]
+            })
         )]
 
-    def cherry_pick_and_revert_actions(self, commits: list[str]) -> list[tuple[str, str, dict]]:
+    def cherry_pick_and_revert_actions(self, window: sublime.Window, commits: list[str]) -> list[ActionType]:
         from .log_graph_helper import describe_head, format_revision_list
 
         head = describe_head(self.view, {})
         pickable = [commit for commit in commits if head is None or commit != head["commit"]]
-        actions: list[tuple[str, str, dict]] = []
+
+        actions: list[ActionType] = []
         if pickable:
             actions.append((
                 "Cherry-pick" if len(commits) == 1 else
                 "Cherry-pick {}".format(format_revision_list(pickable)),
-                "gs_cherry_pick", {"commit_hash": pickable}
+                partial(window.run_command, "gs_cherry_pick", {"commit_hash": pickable})
             ))
+
         actions.append((
             "Revert this commit" if len(commits) == 1 else
             "Revert {}".format(format_revision_list(commits)),
-            "gs_revert_commit", {"commit_hash": commits}
+            partial(window.run_command, "gs_revert_commit", {"commit_hash": commits})
         ))
+
         return actions
 
     def target_at(self, pt: int) -> sublime.Region | None:

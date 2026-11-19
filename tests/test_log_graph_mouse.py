@@ -5,6 +5,7 @@ import sublime
 from unittesting import DeferrableTestCase
 
 from GitSavvy.core.commands import worktrees
+from GitSavvy.core.ui__quick_panel import ActionType
 from GitSavvy.core.git_mixins.worktrees import WorktreeLocation
 from GitSavvy.core.interfaces import log_graph
 from GitSavvy.core.interfaces.log_graph_panels import gs_log_graph_edit_branches
@@ -405,8 +406,8 @@ class TestGraphLabelSelection(DeferrableTestCase):
         when(command).target_at(11).thenReturn(target)
         branch = mock({"name": "topic"})
         when(command).branch_at(11).thenReturn(branch)
-        when(command).branch_actions(branch).thenReturn([
-            ("Rename 'topic'", "gs_rename_branch", {"branch": "topic"})
+        when(command).branch_actions(view.window(), branch).thenReturn([
+            ("Rename 'topic'", lambda: self.fail("Cancelled menu ran an action"))
         ])
         captured = []
         when(view).show_popup_menu(...).thenAnswer(lambda *args: captured.append(args))
@@ -471,15 +472,15 @@ class TestGraphCheckoutActions(DeferrableTestCase):
         menu = self.branch_menu(active=False, upstream=None)
         self.assertEqual([
             "Checkout here", "Checkout in a worktree", "-", "Push...", "-", "Rename 'feature'", "Delete 'feature'"
-        ], [label for label, _, _ in menu])
-        self.assertEqual(menu[-2:], [
-            ("Rename 'feature'", "gs_rename_branch", {"branch": "feature"}),
-            ("Delete 'feature'", "gs_delete_branch", {"branch": "feature", "undo_owner": 77})
-        ])
-        self.assertEqual(("gs_checkout_branch", {"branch": "feature"}), menu[0][1:])
-        self.assertEqual(
-            ("gs_checkout_in_worktree", {"start_point": "feature"}), menu[1][1:]
-        )
+        ], [description for description, _ in menu])
+        menu[-2][1]()
+        verify(self.window).run_command("gs_rename_branch", {"branch": "feature"})
+        menu[-1][1]()
+        verify(self.window).run_command("gs_delete_branch", {"branch": "feature", "undo_owner": 77})
+        menu[0][1]()
+        verify(self.window).run_command("gs_checkout_branch", {"branch": "feature"})
+        menu[1][1]()
+        verify(self.window).run_command("gs_checkout_in_worktree", {"start_point": "feature"})
 
     def test_current_branch_with_upstream(self) -> None:
         menu = self.branch_menu(
@@ -489,17 +490,19 @@ class TestGraphCheckoutActions(DeferrableTestCase):
         self.assertEqual([
             "Checkout in a new worktree", "-", "Push", "Merge into...", "Pull", "Fetch origin/master",
             "-", "Rename 'feature'", "Delete 'feature'"
-        ], [label for label, _, _ in menu])
-        self.assertEqual(
-            ("gs_checkout_in_worktree", {"start_point": "abcdef0"}), menu[0][1:]
-        )
-        self.assertEqual(("gs_merge_current_branch_into", {"source": "feature"}), menu[3][1:])
-        self.assertEqual(("gs_pull", {}), menu[4][1:])
-        self.assertEqual(("gs_fetch", {"remote": "origin", "refspec": "master"}), menu[5][1:])
+        ], [description for description, _ in menu])
+        menu[0][1]()
+        verify(self.window).run_command("gs_checkout_in_worktree", {"start_point": "abcdef0"})
+        menu[3][1]()
+        verify(self.window).run_command("gs_merge_current_branch_into", {"source": "feature"})
+        menu[4][1]()
+        verify(self.window).run_command("gs_pull", {})
+        menu[5][1]()
+        verify(self.window).run_command("gs_fetch", {"remote": "origin", "refspec": "master"})
 
     def test_current_branch_in_bisect_does_not_offer_merge_into(self) -> None:
         menu = self.branch_menu(active=True, upstream=None, in_bisect=True)
-        self.assertNotIn("Merge into...", [label for label, _, _ in menu])
+        self.assertNotIn("Merge into...", [description for description, _ in menu])
 
     def test_available_branch_with_upstream(self) -> None:
         menu = self.branch_menu(active=False, upstream=mock({
@@ -510,33 +513,31 @@ class TestGraphCheckoutActions(DeferrableTestCase):
             "Checkout here", "Checkout in a worktree", "-", "Push",
             "Update feature from fork/topic/nested (ff-only)", "Fetch fork/topic/nested",
             "-", "Rename 'feature'", "Delete 'feature'"
-        ], [label for label, _, _ in menu])
-        self.assertEqual(
-            ("gs_fetch", {"remote": "fork", "refspec": "topic/nested:feature"}), menu[4][1:]
-        )
-        self.assertEqual(
-            ("gs_fetch", {"remote": "fork", "refspec": "topic/nested"}), menu[5][1:]
-        )
+        ], [description for description, _ in menu])
+        menu[4][1]()
+        verify(self.window).run_command("gs_fetch", {"remote": "fork", "refspec": "topic/nested:feature"})
+        menu[5][1]()
+        verify(self.window).run_command("gs_fetch", {"remote": "fork", "refspec": "topic/nested"})
 
     def test_branch_behind_upstream_offers_move(self) -> None:
         menu = self.branch_menu(active=False, upstream=mock({
             "remote": "origin", "branch": "master", "canonical_name": "origin/master",
             "status": "behind 2"
         }))
-        self.assertEqual((
-            "Move feature to origin/master", "gs_move_branch",
-            {"branch": "feature", "target": "origin/master", "previous_tip": "abcdef0"}
-        ), menu[4])
+        self.assertEqual(menu[4][0], "Move feature to origin/master")
+        menu[4][1]()
+        verify(self.window).run_command("gs_move_branch", {
+            "branch": "feature", "target": "origin/master", "previous_tip": "abcdef0"
+        })
 
     def test_diverged_branch_still_offers_fetch_update(self) -> None:
         menu = self.branch_menu(active=False, upstream=mock({
             "remote": "origin", "branch": "master", "canonical_name": "origin/master",
             "status": "ahead 1, behind 2"
         }))
-        self.assertEqual((
-            "Update feature from origin/master (ff-only)", "gs_fetch",
-            {"remote": "origin", "refspec": "master:feature"}
-        ), menu[4])
+        self.assertEqual(menu[4][0], "Update feature from origin/master (ff-only)")
+        menu[4][1]()
+        verify(self.window).run_command("gs_fetch", {"remote": "origin", "refspec": "master:feature"})
 
     def test_sha_menu_shows_create_before_checkout_actions(self) -> None:
         view = sublime.active_window().new_file()
@@ -551,7 +552,7 @@ class TestGraphCheckoutActions(DeferrableTestCase):
         when(command).target_at(2).thenReturn(target)
         when(command).branch_at(2).thenReturn(None)
         when(command).fixup_actions(2, "abcdef0").thenReturn([])
-        when(command).cherry_pick_and_revert_actions(["abcdef0"]).thenReturn([])
+        when(command).cherry_pick_and_revert_actions(...).thenReturn([])
         when(view).match_selector(2, "string.other.rebase-hint.git-savvy").thenReturn(False)
         when(view).match_selector(2, "constant.numeric.graph.commit-hash.git-savvy").thenReturn(True)
         captured = []
@@ -588,7 +589,7 @@ class TestGraphCheckoutActions(DeferrableTestCase):
         when(view).match_selector(10, "string.other.rebase-hint.git-savvy").thenReturn(True)
         args = {"base_commit": "1234567", "fixes": []}
         when(handler).fixup_actions(10, "abcdef0").thenReturn(
-            [], [("Apply fix", "gs_rebase_apply_fixup", args)]
+            [], [("Apply fix", lambda: view.run_command("gs_rebase_apply_fixup", args))]
         )
         captured = []
         when(view).show_popup_menu(...).thenAnswer(lambda *args: captured.append(args))
@@ -615,7 +616,7 @@ class TestGraphCheckoutActions(DeferrableTestCase):
         command = GraphMouse(view)
         when(command).target_at(2).thenReturn(sublime.Region(2, 9))
         when(command).branch_at(2).thenReturn(None)
-        when(command).cherry_pick_and_revert_actions(["1234567", "abcdef0"]).thenReturn([])
+        when(command).cherry_pick_and_revert_actions(...).thenReturn([])
         when(view).match_selector(2, "string.other.rebase-hint.git-savvy").thenReturn(False)
         when(view).match_selector(2, "constant.numeric.graph.commit-hash.git-savvy").thenReturn(True)
         captured = []
@@ -651,13 +652,11 @@ class TestGraphCheckoutActions(DeferrableTestCase):
         self.assertEqual([
             "Open worktree in a new window", "Checkout in a new worktree", "-", "Push...",
             "-", "Rename 'feature'", "Delete 'feature'"
-        ], [label for label, _, _ in menu])
-        self.assertEqual(
-            ("gs_checkout_in_worktree", {"start_point": "abcdef0"}), menu[1][1:]
-        )
-        self.assertEqual(
-            ("gs_open_worktree_in_new_window", {"worktree": "/repo/feature"}), menu[0][1:]
-        )
+        ], [description for description, _ in menu])
+        menu[1][1]()
+        verify(self.window).run_command("gs_checkout_in_worktree", {"start_point": "abcdef0"})
+        menu[0][1]()
+        verify(self.window).run_command("gs_open_worktree_in_new_window", {"worktree": "/repo/feature"})
 
     def test_branch_checked_out_elsewhere_offers_fetch_but_not_pull(self) -> None:
         menu = self.branch_menu(
@@ -668,7 +667,7 @@ class TestGraphCheckoutActions(DeferrableTestCase):
         self.assertEqual([
             "Open worktree in a new window", "Checkout in a new worktree", "-", "Push", "Fetch origin/master",
             "-", "Rename 'feature'", "Delete 'feature'"
-        ], [label for label, _, _ in menu])
+        ], [description for description, _ in menu])
 
     def test_open_worktree_command_only_opens_the_existing_checkout(self) -> None:
         command = worktrees.gs_open_worktree_in_new_window(mock())
@@ -701,7 +700,9 @@ class TestGraphCheckoutActions(DeferrableTestCase):
     def branch_menu(
         self, *, active: bool, upstream: object, worktree_path: str | None = None,
         is_current: bool = False, in_bisect: bool = False
-    ) -> list[tuple[str, str, dict]]:
+    ) -> list[ActionType]:
+        self.window = mock()
+        when(self.window).run_command(...).thenReturn(None)
         view = mock()
         when(view).id().thenReturn(77)
         command = GraphMouse(view)
@@ -717,7 +718,7 @@ class TestGraphCheckoutActions(DeferrableTestCase):
             "upstream": upstream, "worktree_path": None, "commit_hash": "abcdef0"
         })
         when(command).get_branches().thenRaise(AssertionError("Redundant branch lookup"))
-        return command.branch_actions(branch)
+        return command.branch_actions(self.window, branch)
 
     def check_worktree_checkout(self, start_point: str) -> None:
         command = worktrees.gs_checkout_in_worktree(mock())
