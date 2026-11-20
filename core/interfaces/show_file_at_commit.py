@@ -152,7 +152,12 @@ def await_slow_revision(
             return
         if future.done():
             waiting.erase_regions(WAIT_LINK)
-            finish_open(cmd, future, syntax, waiting)
+            shown = None
+            try:
+                shown = finish_open(cmd, future, syntax, buffer=waiting)
+            finally:
+                if shown != waiting:
+                    waiting.close()
             return
 
         draw_waiting_view(waiting, cmd.window, time.monotonic() - started)
@@ -162,42 +167,39 @@ def await_slow_revision(
 
 
 def finish_open(
-    cmd: GitContext, future: Future[Revision | None], syntax: str | None, waiting: sublime.View | None = None
-) -> None:
+    cmd: GitContext, future: Future[Revision | None], syntax: str | None, *, buffer: sublime.View | None = None
+) -> sublime.View | None:
     try:
         revision = future.result()
     except AbortedGitCall:
-        if waiting:
-            waiting.close()
         cmd.window.status_message("Loading the revision was aborted.")
-        return
-    except Exception:
-        if waiting:
-            waiting.close()
-        raise
+        return None
 
+    return show_revision(cmd, revision, syntax, buffer=buffer)
+
+
+def show_revision(
+    cmd: GitContext, revision: Revision | None, syntax: str | None, *, buffer: sublime.View | None = None
+) -> sublime.View | None:
     if revision is None:
-        if waiting:
-            waiting.close()
         cmd.window.status_message("No older revision of this file found.")
-        return
+        return None
 
     file_path, commit, position, text = revision
     if existing := find_revision_view(cmd, file_path, commit):
-        should_focus = not waiting or cmd.window.active_view() == waiting
-        if waiting:
-            waiting.close()
-        if should_focus:
+        if buffer is None or cmd.window.active_view() == buffer:
             focus_view(existing)
         if position:
             run_as_text_command(apply_position, existing, *position)
-    elif text is not None:
-        view = waiting or new_revision_buffer(cmd, file_path, commit)
-        view.set_name(SHOW_COMMIT_TITLE.format(cmd.to_short_path(file_path), commit))
+        return existing
+
+    if text is not None:
+        view = buffer or new_revision_buffer(cmd, file_path, commit)
         configure_revision_view(cmd, view, file_path, commit, syntax)
         display_revision(cmd, view, file_path, commit, text, position)
-    elif waiting:
-        waiting.close()
+        return view
+
+    return None
 
 
 def find_revision_view(cmd: GitContext, file_path: FullPath, commit: ShortHash) -> sublime.View | None:
@@ -220,6 +222,7 @@ def new_revision_buffer(
 def configure_revision_view(
     cmd: GitContext, view: sublime.View, file_path: FullPath, commit: ShortHash, syntax: str | None
 ) -> None:
+    view.set_name(SHOW_COMMIT_TITLE.format(cmd.to_short_path(file_path), commit))
     view.set_syntax_file(syntax or guess_syntax_for_file(cmd.window, file_path))
     settings = view.settings()
     settings.set("git_savvy.file_path", file_path)
