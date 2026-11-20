@@ -84,11 +84,55 @@ class TestWaitingView(DeferrableTestCase):
         self.assertEqual(self.window.views(), remaining)
         self.assertFalse(self.ticks)
 
+    def test_existing_revision_takes_focus_from_waiting_view(self):
+        existing = self.make_existing_revision()
+        self.window.focus_view(self.view)
+        self.finish_with_existing_revision()
+
+        self.assertFalse(self.view.is_valid())
+        self.assertEqual(self.window.active_view(), existing)
+
+    def test_existing_revision_does_not_take_focus_from_another_view(self):
+        self.make_existing_revision()
+        other = self.window.new_file()
+        self.addCleanup(other.close)
+        self.finish_with_existing_revision()
+
+        self.assertFalse(self.view.is_valid())
+        self.assertEqual(self.window.active_view(), other)
+
+    def test_missing_revision_removes_waiting_view(self):
+        self.future.set_result(None)
+        self.ticks.pop()()
+        self.assertFalse(self.view.is_valid())
+
+    def test_unexpected_failure_closes_waiting_view_and_propagates(self):
+        self.future.set_exception(RuntimeError("load failed"))
+        with self.assertRaisesRegex(RuntimeError, "load failed"):
+            self.ticks.pop()()
+        self.assertFalse(self.view.is_valid())
+
     def test_abort_removes_waiting_view(self):
         self.future.set_exception(module.AbortedGitCall("Aborted", show_panel=False))
         self.ticks.pop()()
         self.assertFalse(self.view.is_valid())
         self.assertFalse(self.ticks)
+
+
+    def make_existing_revision(self):
+        existing = self.window.new_file()
+        existing.set_scratch(True)
+        self.addCleanup(existing.close)
+        settings = existing.settings()
+        settings.set("git_savvy.repo_path", sublime.packages_path())
+        settings.set("git_savvy.file_path", "/repo/test")
+        settings.set("git_savvy.show_file_at_commit_view.commit", "abc")
+        settings.set("git_savvy.show_file_at_commit_view", True)
+        return existing
+
+    def finish_with_existing_revision(self):
+        self.future.set_result(module.Revision("/repo/test", "abc", None, None))
+        self.ticks.pop()()
 
 
 class TestOpenFileRevision(DeferrableTestCase):
