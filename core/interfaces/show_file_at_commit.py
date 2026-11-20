@@ -11,9 +11,10 @@ from sublime_plugin import TextCommand, ViewEventListener
 from ..base_commands import GsTextCommand, GsWindowCommand
 from ..exceptions import AbortedGitCall
 from ..fns import chain, filter_
+from ..git_future import AbortableFuture, run_as_abortable_future
 from ..runtime import (
     enqueue_on_ui, enqueue_on_worker, on_worker,
-    run_as_future, run_as_text_command, text_command, throttled
+    run_as_text_command, text_command, throttled
 )
 from ..types import FullHash, FullPath, ShortHash
 from ..ui_mixins.quick_panel import show_log_panel
@@ -21,7 +22,7 @@ from ..utils import flash, focus_view
 from ..view import (
     apply_position, capture_cur_position, create_scratch_view, guess_syntax_for_file,
     replace_view_content, Position)
-from GitSavvy.core.git_command import GitCancellation, GitCommand, GitContext, GitSavvyError
+from GitSavvy.core.git_command import GitCommand, GitContext, GitSavvyError
 from GitSavvy.core.git_mixins.history import CommitInfo
 
 from ..commands.log import LogMixin
@@ -109,10 +110,11 @@ class gs_show_file_at_commit(GsWindowCommand):
                 lang = view.settings().get('syntax')
 
         cmd = GitContext.for_view(view) if view else GitContext(window, None)
-        cmd.cancellation = GitCancellation()
         open_views = {compute_identifier_for_view(v) for v in window.views()}
         started = time.monotonic()
-        future = run_as_future(prepare_revision, cmd, filepath, commit_hash, position, fix_position, open_views)
+        future = run_as_abortable_future(
+            prepare_revision, cmd, filepath, commit_hash, position, fix_position, open_views
+        )
         # Block M: no key handling, painting or placeholder during this wait.
         done, _ = wait([future], timeout=OPEN_BUDGET)
         if done:
@@ -145,13 +147,12 @@ def prepare_revision(
 
 
 def await_slow_revision(
-    cmd: GitContext, waiting: sublime.View, future: Future[Revision | None],
+    cmd: GitContext, waiting: sublime.View, future: AbortableFuture[Revision | None],
     syntax: str | None, started: float
 ) -> None:
     def tick() -> None:
         if waiting.window() != cmd.window:
-            assert cmd.cancellation
-            cmd.cancellation.abort()
+            future.abort()
             return
         if future.done():
             waiting.erase_regions(WAIT_LINK)
@@ -172,7 +173,6 @@ def await_slow_revision(
 def finish_open(
     cmd: GitContext, future: Future[Revision | None], syntax: str | None, *, buffer: sublime.View | None = None
 ) -> sublime.View | None:
-    cmd.cancellation = None  # Later updates no longer belong to the pending open.
     try:
         revision = future.result()
     except AbortedGitCall:

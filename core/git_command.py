@@ -15,16 +15,16 @@ import re
 import shutil
 import stat
 import subprocess
-from threading import Lock
 import time
 import traceback
 
 import sublime
 
 from . import command_log, debug, output_panel, worker_occupancy as _worker_occupancy
+from .git_future import current_git_cancellation
 from .settings import ProjectSettings, SettingsMixin
 from .utils import (
-    abort_proc, try_kill_proc, paths_upwards, proc_has_been_aborted_by_user,
+    try_kill_proc, paths_upwards, proc_has_been_aborted_by_user,
     proc_has_been_killed, resolve_path, STARTUPINFO
 )
 from GitSavvy.core import store
@@ -267,8 +267,6 @@ class _GitCommand(SettingsMixin):
     Base class for all Sublime commands that interact with git.
     """
 
-    cancellation: GitCancellation | None = None
-
     def git(
         self,
         git_cmd,
@@ -306,7 +304,7 @@ class _GitCommand(SettingsMixin):
         only changes what the output panel and the error message show; the
         returned stdout and `GitSavvyError.stdout` stay unformatted.
         """
-        cancellation = self.cancellation if not just_the_proc else None
+        cancellation = current_git_cancellation() if not just_the_proc else None
         if cancellation:
             cancellation.check()
         window = self.some_window()
@@ -886,41 +884,6 @@ class GitCommand(
     _GitCommand
 ):
     pass
-
-
-class GitCancellation:
-    """Abort the managed Git processes of one operation, including subsequent calls."""
-
-    def __init__(self) -> None:
-        self._lock = Lock()
-        self._aborted = False
-        self._running: set[subprocess.Popen] = set()
-
-    def abort(self) -> None:
-        with self._lock:
-            if self._aborted:
-                return
-            self._aborted = True
-            for proc in self._running:
-                if proc.poll() is None:
-                    abort_proc(proc)
-
-    def check(self) -> None:
-        with self._lock:
-            if self._aborted:
-                raise AbortedGitCall("Aborted by user.", show_panel=False)
-
-    def track(self, proc: subprocess.Popen) -> None:
-        with self._lock:
-            if self._aborted:
-                # Close raced with Popen. Let git() drain and reap as usual.
-                abort_proc(proc)
-            else:
-                self._running.add(proc)
-
-    def forget(self, proc: subprocess.Popen) -> None:
-        with self._lock:
-            self._running.discard(proc)
 
 
 class GitContext(GitCommand):

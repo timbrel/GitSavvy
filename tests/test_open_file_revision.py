@@ -55,7 +55,7 @@ class TestWaitingView(DeferrableTestCase):
         self.addCleanup(unstub)
         self.addCleanup(setattr, module, "OPEN_BUDGET", module.OPEN_BUDGET)
         module.OPEN_BUDGET = 0.05
-        self.future = Future()
+        self.future = module.AbortableFuture()
         self.ticks = []
         self.ui_turns = []
 
@@ -70,7 +70,7 @@ class TestWaitingView(DeferrableTestCase):
             self.time_before_creation = monotonic() - self.started
             return new_buffer(*args)
 
-        when(module).run_as_future(...).thenAnswer(start)
+        when(module).run_as_abortable_future(...).thenAnswer(start)
         when(module).new_revision_buffer(...).thenAnswer(create)
         when(module).enqueue_on_worker(...)
         schedule = sublime.set_timeout
