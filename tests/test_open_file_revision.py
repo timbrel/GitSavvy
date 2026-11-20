@@ -1,5 +1,6 @@
 from concurrent.futures import Future
 import os
+from pathlib import Path
 from threading import current_thread
 from time import monotonic
 
@@ -16,6 +17,32 @@ class TestOpenFileInRepository(GitRepoTestCase):
         self.window.run_command("gs_show_file_at_commit", {"filepath": os.path.join(self._temp_dir, "README.md")})
         view = self.window.active_view()
         self.assertEqual(view.substr(sublime.Region(0, view.size())), "README")
+
+    def test_closing_dinosaur_aborts_running_git(self):
+        self.addCleanup(unstub)
+        self.addCleanup(setattr, module, "OPEN_BUDGET", module.OPEN_BUDGET)
+        module.OPEN_BUDGET = 0
+        marker = Path(self._temp_dir, "git-started")
+        stopped = Future()
+
+        def slow_load(cmd, *args):
+            try:
+                cmd.git("-c", "alias.slow=!echo ready > git-started; exec sleep 5", "slow")
+            except Exception as e:
+                stopped.set_exception(e)
+                raise
+            else:
+                stopped.set_result(None)
+
+        when(module).prepare_revision(...).thenAnswer(slow_load)
+        self.window.run_command("gs_show_file_at_commit", {"filepath": os.path.join(self._temp_dir, "README.md")})
+        waiting = self.window.active_view()
+        self.assertTrue(waiting.settings().get("git_savvy.loading_revision_view"))
+        yield marker.exists
+        waiting.close()
+        yield stopped.done
+        with self.assertRaises(module.AbortedGitCall):
+            stopped.result()
 
 
 class TestWaitingView(DeferrableTestCase):

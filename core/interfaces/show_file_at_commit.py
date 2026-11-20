@@ -21,7 +21,7 @@ from ..utils import flash, focus_view
 from ..view import (
     apply_position, capture_cur_position, create_scratch_view, guess_syntax_for_file,
     replace_view_content, Position)
-from GitSavvy.core.git_command import GitCommand, GitContext, GitSavvyError
+from GitSavvy.core.git_command import GitCancellation, GitCommand, GitContext, GitSavvyError
 from GitSavvy.core.git_mixins.history import CommitInfo
 
 from ..commands.log import LogMixin
@@ -109,6 +109,7 @@ class gs_show_file_at_commit(GsWindowCommand):
                 lang = view.settings().get('syntax')
 
         cmd = GitContext.for_view(view) if view else GitContext(window, None)
+        cmd.cancellation = GitCancellation()
         open_views = {compute_identifier_for_view(v) for v in window.views()}
         started = time.monotonic()
         future = run_as_future(prepare_revision, cmd, filepath, commit_hash, position, fix_position, open_views)
@@ -149,6 +150,8 @@ def await_slow_revision(
 ) -> None:
     def tick() -> None:
         if waiting.window() != cmd.window:
+            assert cmd.cancellation
+            cmd.cancellation.abort()
             return
         if future.done():
             waiting.erase_regions(WAIT_LINK)
@@ -169,6 +172,7 @@ def await_slow_revision(
 def finish_open(
     cmd: GitContext, future: Future[Revision | None], syntax: str | None, *, buffer: sublime.View | None = None
 ) -> sublime.View | None:
+    cmd.cancellation = None  # Later updates no longer belong to the pending open.
     try:
         revision = future.result()
     except AbortedGitCall:
