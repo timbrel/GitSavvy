@@ -28,6 +28,36 @@ class TestGitContext(DeferrableTestCase):
             git_command.GitContext.for_view(source)
 
 
+class TestGitCancellation(DeferrableTestCase):
+    def test_abort_between_calls_prevents_next_spawn(self):
+        self.addCleanup(unstub)
+        cmd = TimeoutGitCommand()
+        cmd.cancellation = git_command.GitCancellation()
+        cmd.cancellation.abort()
+        when(git_command.subprocess).Popen(...)
+
+        with self.assertRaises(git_command.AbortedGitCall):
+            cmd.git("status")
+        verify(git_command.subprocess, times=0).Popen(...)
+
+    def test_abort_during_spawn_kills_the_arriving_process(self):
+        self.addCleanup(unstub)
+        cmd = TimeoutGitCommand()
+        cmd.cancellation = git_command.GitCancellation()
+        process = FailingProcess(b"", b"")
+
+        def spawn(*args, **kwargs):
+            cmd.cancellation.abort()
+            return process
+
+        when(git_command.subprocess).Popen(...).thenAnswer(spawn)
+        when(git_command).abort_proc(process).thenAnswer(lambda p: setattr(p, "aborted_by_user", True))
+
+        with self.assertRaises(git_command.AbortedGitCall):
+            cmd.git("status")
+        verify(git_command).abort_proc(process)
+
+
 class TestGitTimeout(DeferrableTestCase):
     def tearDown(self):
         unstub()
