@@ -21,6 +21,7 @@ import sublime
 from unittesting import DeferrableTestCase
 
 from GitSavvy.core import app_state, runtime
+from GitSavvy.core.git_command import GitCommand
 from GitSavvy.core.interfaces import dashboard_base as ui, status_main_actions
 from GitSavvy.tests.mockito import unstub, when
 from GitSavvy.tests.parameterized import parameterized as p
@@ -81,6 +82,18 @@ class TestFutureRepositories(DeferrableTestCase):
         view = yield from self.await_view("git_savvy.show_commit_view", "+first line")
         self.assertIn(commit, self.contents(view))
         self.assertIn("Git 3 initial commit", view.name())
+
+    def test_empty_tree_cache_is_local_to_each_repository(self):
+        for fmt in ("sha1", "sha256"):
+            self.repo = Path(self.temp.name) / fmt
+            self.repo.mkdir()
+            self.create_repo(fmt, "files")
+            cmd = GitCommand()
+            when(cmd).get_repo_path().thenReturn(str(self.repo))
+            expected = self.git("write-tree").strip()  # the index is empty
+            self.assertEqual(cmd.empty_tree_oid(), expected)
+            when(cmd).git(...).thenRaise(AssertionError("Unexpected repeat Git query"))
+            self.assertEqual(cmd.empty_tree_oid(), expected)
 
     @p.expand(FORMATS)
     def test_blame_opens_the_selected_commit(self, object_format: str, ref_format: str):

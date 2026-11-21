@@ -80,7 +80,6 @@ Signed-off-by: {name} <{email}>
 """
 
 COMMIT_TITLE = "COMMIT: {}"
-THE_EMPTY_SHA = ""
 
 CONFIRM_ABORT = "Confirm to abort commit?"
 
@@ -256,7 +255,7 @@ class gs_prepare_commit_refresh_diff(GsTextCommand):
                     "--patch" if show_patch else None,
                     "--stat" if show_stat else None,
                     "--cached" if not include_unstaged else None,
-                    self.the_empty_sha(),
+                    self.empty_tree_oid(),
                     decode=False
                 )
             else:
@@ -350,14 +349,6 @@ class gs_prepare_commit_refresh_diff(GsTextCommand):
             settings.set("git_savvy.commit_view.include_unstaged", False)
             settings.set("git_savvy.diff_view.in_cached_mode", True)
             view.run_command("gs_prepare_commit_refresh_diff", {"sync": False, "just_switched": True})
-
-    def the_empty_sha(self):
-        # type: () -> str
-        global THE_EMPTY_SHA
-        if not THE_EMPTY_SHA:
-            THE_EMPTY_SHA = self.git('mktree', stdin='').strip()
-        return THE_EMPTY_SHA
-
 
 def extract_patch(commit_text: str) -> str:
     lines = commit_text.splitlines(keepends=True)
