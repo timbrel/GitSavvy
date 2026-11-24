@@ -67,7 +67,10 @@ class gs_log_graph_delete_decoration(GsWindowCommand):
         self, view: sublime.View, info: LineInfo
     ) -> Sequence[ActionType]:
         worktrees = self.current_state().get("worktree_locations", [])
-        return branch_and_worktree_delete_actions(self, view, info, worktrees) + [
+        return (
+            branch_delete_actions(self, view, info, worktrees)
+            + worktree_delete_actions(self, view, info, worktrees)
+        ) + [
             (
                 "Delete tag '{}'".format(tag_name),
                 partial(self.delete_tag, tag_name, view.id())
@@ -463,7 +466,18 @@ class gs_log_graph_action(GsWindowCommand):
                     for branch_name in info.get("local_branches", [])
                 ]
 
-            actions += branch_and_worktree_delete_actions(self, view, info, worktrees)
+            worktree_branches = {wt.branch_name for wt, _ in worktree_targets(info, worktrees)}
+            for branch_name in info.get("local_branches", []):
+                if branch_name not in worktree_branches:
+                    actions.append((
+                        f"Delete branch '{branch_name}'",
+                        partial(self.delete_branch, branch_name, view.id())
+                    ))
+                actions.append((
+                    f"Rename branch '{branch_name}'",
+                    partial(self.rename_branch, branch_name)
+                ))
+            actions += worktree_delete_actions(self, view, info, worktrees)
 
             if "HEAD" not in info:
                 actions += [
@@ -666,7 +680,10 @@ class gs_log_graph_action(GsWindowCommand):
             "previous_tip": previous_tip
         })
 
-    def delete_branch(self, branch_name: str, undo_owner: sublime.ViewId):
+    def rename_branch(self, branch_name: str) -> None:
+        self.window.run_command("gs_rename_branch", {"branch": branch_name})
+
+    def delete_branch(self, branch_name: str, undo_owner: sublime.ViewId) -> None:
         self.window.run_command("gs_delete_branch", {
             "branch": branch_name,
             "undo_owner": undo_owner
@@ -776,7 +793,7 @@ class gs_log_graph_action(GsWindowCommand):
         interface_util.refresh_gitsavvy_interfaces(self.window)
 
 
-def branch_and_worktree_delete_actions(
+def branch_delete_actions(
     cmd: gs_log_graph_action | gs_log_graph_delete_decoration,
     view: sublime.View,
     info: LineInfo,
@@ -784,14 +801,23 @@ def branch_and_worktree_delete_actions(
 ) -> list[ActionType]:
     targets = worktree_targets(info, worktrees)
     worktree_branches = {wt.branch_name for wt, _ in targets}
-    return [  # type: ignore[return-value]
+    return [
         (
             f"Delete branch '{branch_name}'",
             partial(cmd.delete_branch, branch_name, view.id())
         )
         for branch_name in info.get("local_branches", [])
         if branch_name not in worktree_branches
-    ] + [
+    ]
+
+
+def worktree_delete_actions(
+    cmd: gs_log_graph_action | gs_log_graph_delete_decoration,
+    view: sublime.View,
+    info: LineInfo,
+    worktrees: list[WorktreeLocation]
+) -> list[ActionType]:
+    return [
         (
             f"Delete worktree at {name}",
             partial(
@@ -801,7 +827,7 @@ def branch_and_worktree_delete_actions(
                 )
             )
         )
-        for wt, name in targets
+        for wt, name in worktree_targets(info, worktrees)
     ]
 
 

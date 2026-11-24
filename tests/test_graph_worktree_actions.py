@@ -40,6 +40,45 @@ class TestGraphWorktreeActions(DeferrableTestCase):
         menu["Open feature in a new window"]()
         verify(self.command).open_worktree_in_new_window(wt.path)
 
+    def test_rename_branch_follows_delete_and_uses_existing_command(self) -> None:
+        menu = self.menu({"commit": COMMIT, "local_branches": ["feature"]}, [])
+        labels = list(menu)
+        self.assertEqual(
+            labels.index("Delete branch 'feature'") + 1,
+            labels.index("Rename branch 'feature'")
+        )
+        when(self.window).run_command("gs_rename_branch", {"branch": "feature"}).thenReturn(None)
+
+        menu["Rename branch 'feature'"]()
+
+        verify(self.window).run_command("gs_rename_branch", {"branch": "feature"})
+
+    def test_rename_is_offered_for_each_local_branch_including_worktrees(self) -> None:
+        info = {
+            "commit": COMMIT,
+            "local_branches": ["available", "another", "feature"],
+            "branches": ["origin/feature"]
+        }
+        menu = self.menu(info, [worktree("/repo/feature", "feature")])
+        self.assertEqual(
+            [label for label in menu if label.startswith("Rename branch")],
+            ["Rename branch 'available'", "Rename branch 'another'", "Rename branch 'feature'"]
+        )
+        labels = list(menu)
+        start = labels.index("Delete branch 'available'")
+        self.assertEqual(labels[start:start + 6], [
+            "Delete branch 'available'",
+            "Rename branch 'available'",
+            "Delete branch 'another'",
+            "Rename branch 'another'",
+            "Rename branch 'feature'",
+            "Delete worktree at feature"
+        ])
+        for branch in info["local_branches"]:
+            when(self.window).run_command("gs_rename_branch", {"branch": branch}).thenReturn(None)
+            menu[f"Rename branch '{branch}'"]()
+            verify(self.window).run_command("gs_rename_branch", {"branch": branch})
+
     def test_merge_into_follows_push_and_rebase_only_on_checked_out_head(self) -> None:
         info = {"commit": COMMIT, "local_branches": ["feature"], "HEAD": "feature"}
         menu = self.menu(info, [])
