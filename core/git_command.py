@@ -52,6 +52,7 @@ binary_not_found_message_displayed, git_too_old_message_displayed = False, False
 #: Typically this *is* "{repo_path}/.git"
 git_dirs: dict[FullPath, FullPath] = {}
 git_common_dirs: dict[FullPath, FullPath] = {}
+reftable_repos: dict[FullPath, bool] = {}
 
 DECODE_ERROR_MESSAGE = """
 The Git command returned data that is unparsable.  This may happen
@@ -338,21 +339,7 @@ class _GitCommand(SettingsMixin):
         stdout, stderr = None, None
         p = None
         command_log_execution_id = None
-        vars_for_replace = ChainMap(
-            custom_environ or {},
-            window.extract_variables(),
-            os.environ
-        )
-        savvy_env = self.project_settings.get("env") or {}
-        savvy_env_expanded = {
-            k: sublime.expand_variables(v, vars_for_replace)
-            for k, v in savvy_env.items()
-        }
-        environ = ChainMap(
-            custom_environ or {},
-            savvy_env_expanded or {},
-            os.environ
-        )
+        environ = self._git_environment(window, custom_environ)
         popen_kwargs: Dict[str, Any] = {"startupinfo": STARTUPINFO}
         if os.name != "nt":
             popen_kwargs["start_new_session"] = True
@@ -514,6 +501,23 @@ class _GitCommand(SettingsMixin):
             )
 
         return stdout
+
+    def _git_environment(self, window, custom_environ=None):
+        vars_for_replace = ChainMap(
+            custom_environ or {},
+            window.extract_variables(),
+            os.environ
+        )
+        savvy_env = self.project_settings.get("env") or {}
+        savvy_env_expanded = {
+            k: sublime.expand_variables(v, vars_for_replace)
+            for k, v in savvy_env.items()
+        }
+        return ChainMap(
+            custom_environ or {},
+            savvy_env_expanded or {},
+            os.environ
+        )
 
     def git_throwing_silently(self, *args, **kwargs):
         return self.git(
@@ -756,6 +760,16 @@ class _GitCommand(SettingsMixin):
                 pass
             git_common_dirs[repo_path] = commondir
             return commondir
+
+    @property
+    def repo_uses_reftable(self) -> bool:
+        common_dir = self.git_common_dir
+        try:
+            return reftable_repos[common_dir]
+        except KeyError:
+            uses_reftable = os.path.isdir(os.path.join(common_dir, "reftable"))
+            reftable_repos[common_dir] = uses_reftable
+            return uses_reftable
 
     @property
     def repo_config_path(self) -> FullPath:

@@ -45,7 +45,7 @@ from ..runtime import (
     throttled_by_key,
     time_budget,
 )
-from ..types import FullHash
+from ..types import FullHash, ShortHash
 from ..ui__busy_spinner import start_busy_indicator, stop_busy_indicator
 from ..view import replace_view_content, visible_views
 from .log_graph import (
@@ -613,8 +613,7 @@ class gs_log_graph_refresh(GsTextCommand):
                     if isinstance(line, str) or not line.decoration:
                         yield "...\n"
 
-        def resolve_refs_from_the_logs():
-            # type: () -> Dict[str, str]
+        def resolve_refs_from_the_logs() -> dict[ShortHash, str]:
             # git does not decorate refs from the reflogs, e.g. "branch@{2}", so we resolve
             # them manually.
             all_branches = settings.get("git_savvy.log_graph_view.all_branches")
@@ -680,7 +679,7 @@ class gs_log_graph_refresh(GsTextCommand):
                 or additional_decorations
                 or detached_worktree_commits
             ):
-                commit_hash = hash.rsplit(" ", 1)[1]
+                commit_hash: ShortHash = hash.rsplit(" ", 1)[1]  # type: ignore[assignment]
                 hash_length = len(commit_hash)
                 if hash_length > short_hash_length:
                     short_hash_length = self.update_short_hash_length(hash_length)
