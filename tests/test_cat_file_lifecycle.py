@@ -208,10 +208,16 @@ class TestCatFileDescendants(TestCase):
         self.addCleanup(reader.stop)
         futures = [reader.submit([b"HEAD"]), reader.submit([b"queued"])]
         deadline = time.monotonic() + 3
-        while not pidfile.exists() and time.monotonic() < deadline:
-            time.sleep(.005)
-        self.assertTrue(pidfile.exists())
-        descendant = Descendant(int(pidfile.read_text()))
+        while True:
+            try:
+                pid = int(pidfile.read_text())
+                break
+            except (FileNotFoundError, PermissionError):
+                # On Windows the rename can be visible before its handle closes.
+                if time.monotonic() >= deadline:
+                    raise
+                time.sleep(.005)
+        descendant = Descendant(pid)
         self.addCleanup(descendant.close)
         # The handle is opened while the parent is still alive, eliminating PID
         # reuse races in both the assertion and emergency test cleanup.
