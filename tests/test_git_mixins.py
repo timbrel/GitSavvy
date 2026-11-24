@@ -67,6 +67,24 @@ join0 = lambda x: "\x00".join(x)
 
 
 class TestGetBranchesParsing(TestGitMixinsUsage):
+    def test_old_git_does_not_discover_worktrees_while_listing_branches(self) -> None:
+        repo = OldGitBranchesTestRepo()
+        git_output = join0(
+            [" ", "refs/heads/feature", "", "", ""]
+            + date_sha_and_subject
+            + ["", ""]
+        )
+        when(repo).git("for-each-ref", ...).thenReturn(git_output)
+        when(repo).get_repo_path().thenReturn("yeah/sure")
+        when(repo).get_worktree_locations().thenRaise(
+            AssertionError("Worktree discovery in the branch-listing hot path")
+        )
+
+        branches = repo.get_branches()
+
+        self.assertIsNone(branches[0].worktree_path)
+        verify(repo, times=0).get_worktree_locations()
+
     def test_local_branch(self):
         repo = GitCommand()
         git_output = join0(
@@ -600,6 +618,19 @@ class TestWorktreeProject(TestGitMixinsUsage):
             should_copy
         )
 
+    @p.expand([
+        ("feature/topic", "feature-topic"),
+        ("feature|topic", "feature-topic"),
+        ("feature<topic>", "feature-topic-")
+    ])
+    def test_generated_paths_are_safe_for_branch_names(self, branch: str, suffix: str) -> None:
+        repo = WorktreeCreationTestRepo(self.repo_path, self.project_file, self.project_data)
+
+        path = repo.create_new_worktree(branch)
+
+        self.assertEqual(path, os.path.join(self.tmp_dir, "repo-" + suffix))
+        self.assertTrue(os.path.isdir(path))
+
     def test_respects_the_copy_project_setting(self):
         repo = WorktreeCreationTestRepo(
             self.repo_path, self.project_file, self.project_data,
@@ -718,6 +749,12 @@ class TestWorktreeProject(TestGitMixinsUsage):
         repo.open_worktree_in_new_window(path, then=callback)
 
         verify(worktrees).open_worktree_in_new_window(path, then=callback)
+
+
+class OldGitBranchesTestRepo(GitCommand):
+    @property
+    def git_version(self) -> tuple:
+        return (2, 22, 0)
 
 
 class WorktreeCreationTestRepo(WorktreesMixin):

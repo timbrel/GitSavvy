@@ -226,6 +226,10 @@
         "command": "gs_checkout_branch"
     },
     {
+        "caption": "git: open current commit in a worktree",
+        "command": "gs_checkout_in_worktree"
+    },
+    {
         "caption": "git: checkout new branch",
         "command": "gs_checkout_new_branch"
     },

@@ -1,0 +1,318 @@
+from __future__ import annotations
+
+from itertools import starmap
+
+import sublime
+from sublime_plugin import EventListener, TextCommand
+
+from ..git_command import GitCommand
+from ..fns import unique
+from ..git_mixins.branches import Branch
+from .multi_selector import normalize_mouse_selection
+
+
+__all__ = ("gs_log_graph_mouse", "GsLogGraphMouseListener")
+
+TARGET_KEY = "git_savvy.log_graph_mouse_target"
+
+
+class gs_log_graph_mouse(TextCommand, GitCommand):
+    def run(
+        self, edit: sublime.Edit, event: dict, release: bool = False,
+        context_menu: bool = False, text_selection: str | None = None
+    ) -> None:
+        from .log_graph import COMMIT_LINE, colorize_dots, colorize_fixups
+
+        view = self.view
+        settings = view.settings()
+        settings.erase(TARGET_KEY)
+        if release:
+            view.run_command("gs_log_graph_branch_drag", {
+                "action": "finish", "event": event
+            })
+            return
+
+        window = view.window()
+        if window is not None:
+            window.focus_view(view)
+
+        if text_selection is not None:
+            settings.erase("git_savvy.mouse_selected_target")
+            selection_args: dict = {"event": event}
+            if text_selection != "characters":
+                selection_args["by"] = text_selection
+            view.run_command("drag_select", selection_args)
+            return
+
+        pt = view.window_to_text((event["x"], event["y"]))
+        if context_menu:
+            selected: list[list[int]] = settings.get("git_savvy.multi_selection", [])
+            if selected and not any(a <= pt < b for a, b in selected):
+                view.run_command("gs_clear_multiselect")
+                return
+
+        target = self.target_at(pt)
+        if context_menu and target is None:
+            view.run_command("context_menu", {"event": event})
+            return
+        view.sel().clear()
+        view.sel().add(target if target is not None else sublime.Region(pt))
+        settings.set("git_savvy.mouse_selected_target", [target.a, target.b] if target else None)
+        colorize_dots(view)
+        colorize_fixups(view)
+        if context_menu:
+            match = COMMIT_LINE.search(view.substr(view.line(pt)))
+            if match and target is not None:
+                commit_hash = match.group("commit_hash")
+                if self.show_menu(pt, target, commit_hash):
+                    return
+            view.run_command("context_menu", {"event": event})
+            return
+        if target is not None and view.match_selector(
+            target.a, "meta.graph.branch.git-savvy constant.other.git.branch"
+        ):
+            from .log_graph_branch_drag import get_drag_state
+
+            view.run_command("gs_log_graph_branch_drag", {"event": event})
+            if get_drag_state(view) is not None:
+                return
+
+        args: dict = {"event": event}
+        if target is not None:
+            settings.set(TARGET_KEY, [target.a, target.b])
+            args["by"] = "words"
+        # Let this TextCommand finish so Sublime draws the selection before
+        # native drag tracking takes over until mouse release.
+        sublime.set_timeout(lambda: view.run_command("drag_select", args), 0)
+
+    def want_event(self) -> bool:
+        return True
+
+    def show_menu(self, pt: int, target: sublime.Region, commit_hash: str) -> bool:
+        """Open actions for the clicked label; return False for the native menu."""
+        view = self.view
+        window = view.window()
+        if window is None:
+            return False
+
+        actions: list[tuple[str, str, dict]]
+        branch = self.branch_at(pt)
+        if branch is not None:
+            actions = self.branch_actions(branch) + [
+                ("-", "", {}),
+                (
+                    "Rename '{}'".format(branch.name),
+                    "gs_rename_branch", {"branch": branch.name}
+                ),
+                (
+                    "Delete '{}'".format(branch.name),
+                    "gs_delete_branch", {"branch": branch.name, "undo_owner": view.id()}
+                )
+            ]
+        elif view.match_selector(target.a, "string.other.rebase-hint.git-savvy"):
+            actions = self.fixup_actions(pt, commit_hash)
+            if not actions:
+                return False
+        elif not view.match_selector(pt, "constant.numeric.graph.commit-hash.git-savvy"):
+            return False
+        else:
+            from .log_graph_helper import format_revision_list
+
+            selected_regions: list[list[int]] = view.settings().get("git_savvy.multi_selection", [])
+            selected_commits = list(unique(
+                view.substr(r)
+                for r in sorted(
+                    starmap(sublime.Region, selected_regions),
+                    reverse=True
+                )
+            ))
+            if len(selected_commits) >= 2 and commit_hash in selected_commits:
+                diff_actions: list[tuple[str, str, dict]] = []
+                if len(selected_commits) == 2:
+                    base_commit, target_commit = selected_commits
+                    diff_actions = [
+                        (
+                            "Diff {}..{}".format(base_commit, target_commit),
+                            "gs_diff", {
+                                "base_commit": base_commit,
+                                "target_commit": target_commit,
+                                "in_cached_mode": False,
+                                "disable_stage": True
+                            }
+                        ),
+                        ("-", "", {})
+                    ]
+                actions = [
+                    *diff_actions,
+                    (
+                        "Squash {}".format(format_revision_list(selected_commits)),
+                        "gs_rebase_squash_commits",
+                        {"base_commit": selected_commits[0], "commits": selected_commits[1:]}
+                    ),
+                    *self.cherry_pick_and_revert_actions(selected_commits)
+                ]
+            else:
+                actions = [
+                    (
+                        "Create branch at {}".format(commit_hash),
+                        "gs_create_branch", {"start_point": commit_hash}
+                    ),
+                    ("Create tag...", "gs_create_tag", {"target_commit": commit_hash}),
+                    ("-", "", {}),
+                    ("Checkout here", "gs_checkout_branch", {"branch": commit_hash, "detach": True}),
+                    (
+                        "Checkout in a worktree", "gs_checkout_in_worktree",
+                        {"start_point": commit_hash}
+                    ),
+                    ("-", "", {}),
+                    *self.fixup_actions(pt, commit_hash),
+                    ("Reword", "gs_rebase_reword_commit", {"commit_hash": commit_hash}),
+                    ("Edit", "gs_rebase_edit_commit", {"commit_hash": commit_hash}),
+                    (
+                        "Drop", "gs_rebase_drop_commits",
+                        {"base_commit": commit_hash, "commits": [commit_hash]}
+                    ),
+                    *self.cherry_pick_and_revert_actions([commit_hash])
+                ]
+
+        view.sel().clear()
+        view.sel().add(target)
+
+        def on_done(index: int) -> None:
+            if 0 <= index < len(actions):
+                _, command, args = actions[index]
+                if not command:
+                    return
+                if command.startswith("gs_rebase_"):
+                    view.run_command(command, args)
+                else:
+                    window.run_command(command, args)
+
+        # The popup takes over the gesture and can swallow mouse-up. Do not
+        # keep anchoring later keyboard selections to the pressed label.
+        view.settings().erase(TARGET_KEY)
+        view.show_popup_menu([label for label, _, _ in actions], on_done, pt)
+        return True
+
+    def branch_actions(self, branch: Branch) -> list[tuple[str, str, dict]]:
+        name = branch.name
+        worktrees = self.current_state().get("worktree_locations", [])
+        worktree = next((wt for wt in worktrees if wt.branch_name == name), None)
+        checked_out = branch.active or worktree is not None
+        actions: list[tuple[str, str, dict]] = []
+        if not checked_out:
+            actions.append(("Checkout here", "gs_checkout_branch", {"branch": name}))
+        elif worktree and not worktree.is_current:
+            actions.append((
+                "Open worktree in a new window", "gs_open_worktree_in_new_window",
+                {"worktree": worktree.path}
+            ))
+        actions += [
+            (
+                "Checkout in a new worktree" if checked_out else "Checkout in a worktree",
+                "gs_checkout_in_worktree",
+                {"start_point": branch.commit_hash if checked_out else name}
+            ),
+            ("-", "", {}),
+            ("Push" if branch.upstream else "Push...", "gs_push", {"local_branch_name": name})
+        ]
+        if branch.upstream:
+            if branch.active:
+                actions.append(("Pull", "gs_pull", {}))
+            elif not checked_out and "behind" in branch.upstream.status and "ahead" not in branch.upstream.status:
+                actions.append((
+                    "Move {} to {}".format(name, branch.upstream.canonical_name),
+                    "gs_move_branch", {
+                        "branch": name,
+                        "target": branch.upstream.canonical_name,
+                        "previous_tip": branch.commit_hash
+                    }
+                ))
+            elif not checked_out:
+                actions.append((
+                    "Update {} from {} (ff-only)".format(name, branch.upstream.canonical_name),
+                    "gs_fetch", {
+                        "remote": branch.upstream.remote,
+                        "refspec": "{}:{}".format(branch.upstream.branch, name)
+                    }
+                ))
+            actions.append((
+                "Fetch {}".format(branch.upstream.canonical_name),
+                "gs_fetch", {"remote": branch.upstream.remote, "refspec": branch.upstream.branch}
+            ))
+        return actions
+
+    def fixup_actions(self, pt: int, commit_hash: str) -> list[tuple[str, str, dict]]:
+        from .log_graph import is_fixup_or_squash_message
+        from .log_graph_rebase_actions import (
+            Commit, commit_message_from_line, find_base_commit_for_fixup, is_fixup
+        )
+        from ..text_helper import line_from_pt
+
+        line = line_from_pt(self.view, pt)
+        message = commit_message_from_line(self.view, line)
+        if not message or not is_fixup_or_squash_message(message):
+            return []
+        base_commit = find_base_commit_for_fixup(self.view, line, message)
+        if base_commit is None:
+            return []
+        fix = Commit(commit_hash, message)
+        return [(
+            "Apply fix to {}".format(base_commit) if is_fixup(fix) else
+            "Squash with {}".format(base_commit),
+            "gs_rebase_apply_fixup", {"base_commit": base_commit, "fixes": [fix]}
+        )]
+
+    def cherry_pick_and_revert_actions(self, commits: list[str]) -> list[tuple[str, str, dict]]:
+        from .log_graph_helper import describe_head, format_revision_list
+
+        head = describe_head(self.view, {})
+        pickable = [commit for commit in commits if head is None or commit != head["commit"]]
+        actions: list[tuple[str, str, dict]] = []
+        if pickable:
+            actions.append((
+                "Cherry-pick" if len(commits) == 1 else
+                "Cherry-pick {}".format(format_revision_list(pickable)),
+                "gs_cherry_pick", {"commit_hash": pickable}
+            ))
+        actions.append((
+            "Revert this commit" if len(commits) == 1 else
+            "Revert {}".format(format_revision_list(commits)),
+            "gs_revert_commit", {"commit_hash": commits}
+        ))
+        return actions
+
+    def target_at(self, pt: int) -> sublime.Region | None:
+        return next((
+            region for region in self.view.find_by_selector(
+                "constant.numeric.graph.commit-hash.git-savvy, "
+                "meta.graph.branch.git-savvy constant.other.git.branch, "
+                "string.other.rebase-hint.git-savvy"
+            )
+            if region.begin() <= pt < region.end()
+        ), None)
+
+    def branch_at(self, pt: int) -> Branch | None:
+        for region in self.view.find_by_selector(
+            "meta.graph.branch.git-savvy constant.other.git.branch"
+        ):
+            if region.begin() <= pt < region.end():
+                name = self.view.substr(region)
+                return next((
+                    branch for branch in self.get_branches()
+                    if not branch.is_remote and branch.name == name
+                ), None)
+        return None
+
+
+class GsLogGraphMouseListener(EventListener):
+    def on_selection_modified(self, view: sublime.View) -> None:
+        from .log_graph_branch_drag import get_drag_state
+
+        settings = view.settings()
+        if not settings.get("git_savvy.log_graph_view") and settings.get(TARGET_KEY) is None:
+            return
+        # Armed drags still own native word-selection normalization. Moving
+        # within that gesture must not invalidate the clicked-label identity.
+        if get_drag_state(view) is None:
+            normalize_mouse_selection(view, TARGET_KEY)

@@ -7,7 +7,7 @@ from typing import Iterable
 from typing_extensions import TypeAlias
 
 import sublime
-from sublime_plugin import TextCommand
+from sublime_plugin import EventListener, TextCommand
 
 
 __all__ = (
@@ -15,6 +15,7 @@ __all__ = (
     "gs_diff_multiselect",
     "gs_dashboard_multiselect",
     "gs_clear_multiselect",
+    "MultiSelectionContext",
 )
 
 
@@ -41,10 +42,11 @@ def get_multi_selection_if_multi(view: sublime.View) -> Iterable[sublime.Region]
 
 
 class gs_log_graph_multiselect(TextCommand):
-    def run(self, edit) -> None:
+    def run(self, edit, event: dict | None = None) -> None:
         from .log_graph import COMMIT_LINE
 
         view = self.view
+        prepare_mouse_selection(view, event)
         frozen_sel = list(view.sel())
 
         multi_selection: list[Region] = view.settings().get("git_savvy.multi_selection", [])
@@ -71,16 +73,24 @@ class gs_log_graph_multiselect(TextCommand):
         view.sel().clear()
         view.sel().add_all([sublime.Region(frozen_sel[-1].b)])
         if (
-            len(frozen_sel) == 1
+            event is None
+            and len(frozen_sel) == 1
             and frozen_sel[0].empty()
             and any(r not in multi_selection for r in regions)
         ):
             view.run_command("gs_log_graph_navigate", {"natural_movement": True})
 
+    def want_event(self) -> bool:
+        return True
+
 
 class gs_diff_multiselect(TextCommand):
-    def run(self, edit) -> None:
+    def run(self, edit, event: dict | None = None) -> None:
         view = self.view
+        if event is not None and not any(not s.empty() for s in view.sel()):
+            pt = view.window_to_text((event["x"], event["y"]))
+            view.sel().clear()
+            view.sel().add(sublime.Region(pt))
         frozen_sel = list(view.sel())
 
         multi_selection: list[Region] = view.settings().get("git_savvy.multi_selection", [])
@@ -119,7 +129,10 @@ class gs_diff_multiselect(TextCommand):
         set_multiselect_markers(view, list(starmap(sublime.Region, regions)))
 
         view.sel().clear()
-        view.sel().add_all([sublime.Region(s.b)])
+        view.sel().add_all([sublime.Region(frozen_sel[-1].b if event is not None else s.b)])
+        if event is not None:
+            return
+
         if hunk_selected:
             # if a hunk is toggled out, don't move but stay on the starting pos
             if all(r in multi_selection for r in regions):
@@ -145,10 +158,14 @@ class gs_diff_multiselect(TextCommand):
         ):
             view.run_command("move", {"by": "lines", "forward": True})
 
+    def want_event(self) -> bool:
+        return True
+
 
 class gs_dashboard_multiselect(TextCommand):
-    def run(self, edit) -> None:
+    def run(self, edit, event: dict | None = None) -> None:
         view = self.view
+        prepare_mouse_selection(view, event)
         frozen_sel = list(view.sel())
 
         multi_selection: list[Region] = view.settings().get("git_savvy.multi_selection", [])
@@ -178,7 +195,8 @@ class gs_dashboard_multiselect(TextCommand):
         view.sel().clear()
         view.sel().add_all([sublime.Region(frozen_sel[-1].b)])
         if (
-            len(frozen_sel) == 1
+            event is None
+            and len(frozen_sel) == 1
             and frozen_sel[0].empty()
             and any(r not in multi_selection for r in regions)
         ):
@@ -190,12 +208,92 @@ class gs_dashboard_multiselect(TextCommand):
             if navigation_command:
                 view.run_command(navigation_command)
 
+    def want_event(self) -> bool:
+        return True
+
 
 class gs_clear_multiselect(TextCommand):
     def run(self, edit) -> None:
-        view = self.view
-        view.settings().set("git_savvy.multi_selection", [])
-        set_multiselect_markers(view, [])
+        clear_multiselect(self.view)
+
+
+def reset_multiselections() -> None:
+    for window in sublime.windows():
+        views = list(window.views())
+        for panel in window.panels():
+            if panel.startswith("output."):
+                view = window.find_output_panel(panel[len("output."):])
+                if view is not None:
+                    views.append(view)
+        for view in views:
+            clear_multiselect(view)
+
+
+def clear_multiselect(view: sublime.View) -> None:
+    view.settings().erase("git_savvy.mouse_selected_target")
+    view.settings().set("git_savvy.multi_selection", [])
+    set_multiselect_markers(view, [])
+
+
+class MultiSelectionContext(EventListener):
+    def on_query_context(
+        self, view: sublime.View, key: str, operator: int, operand: object, match_all: bool
+    ) -> bool | None:
+        if key != "git_savvy.has_multi_selection":
+            return None
+        has_selection = bool(view.settings().get("git_savvy.multi_selection", []))
+        if operator == sublime.OP_EQUAL:
+            return has_selection == operand
+        if operator == sublime.OP_NOT_EQUAL:
+            return has_selection != operand
+        return None
+
+
+def prepare_mouse_selection(view: sublime.View, event: dict | None) -> None:
+    """Consume click identity before the caller freezes its selection.
+
+    Keyboard toggles treat an unchanged clicked label as a caret so they can
+    advance. Mouse toggles retarget that label (or a caret) to the click point.
+    Explicit text selections are preserved in either case.
+    """
+    mouse_target = view.settings().get("git_savvy.mouse_selected_target")
+    automatic_selection = (
+        mouse_target is not None
+        and list(view.sel()) == [sublime.Region(*mouse_target)]
+    )
+    if event is None:
+        if automatic_selection:
+            # A clicked label acts like a caret for Space's toggle-and-advance.
+            pt = view.sel()[0].b
+            view.sel().clear()
+            view.sel().add(sublime.Region(pt))
+    elif automatic_selection or not any(not s.empty() for s in view.sel()):
+        pt = view.window_to_text((event["x"], event["y"]))
+        view.sel().clear()
+        view.sel().add(sublime.Region(pt))
+    view.settings().erase("git_savvy.mouse_selected_target")
+
+
+def normalize_mouse_selection(view: sublime.View, anchor_key: str) -> None:
+    """Keep a held label included; expire click identity after selection moves."""
+    settings = view.settings()
+    coordinates = settings.get(anchor_key)
+    if coordinates is None:
+        clicked = settings.get("git_savvy.mouse_selected_target")
+        if clicked is not None and list(view.sel()) != [sublime.Region(*clicked)]:
+            settings.erase("git_savvy.mouse_selected_target")
+        return
+    if len(view.sel()) != 1:
+        settings.erase(anchor_key)
+        settings.erase("git_savvy.mouse_selected_target")
+        return
+    selection = view.sel()[0]
+    expanded = sublime.Region(*coordinates).cover(selection)
+    if selection.a > selection.b:
+        expanded = sublime.Region(expanded.end(), expanded.begin())
+    if selection != expanded:
+        view.sel().clear()
+        view.sel().add(expanded)
 
 
 def is_exactly_selected_chunk(diff: SplittedDiff, s: sublime.Region) -> bool:

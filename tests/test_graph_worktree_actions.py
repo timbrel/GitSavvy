@@ -40,6 +40,13 @@ class TestGraphWorktreeActions(DeferrableTestCase):
         menu["Open feature in a new window"]()
         verify(self.command).open_worktree_in_new_window(wt.path)
 
+    def test_create_worktree_uses_checkout_command(self) -> None:
+        when(self.window).run_command("gs_checkout_in_worktree", {"start_point": COMMIT}).thenReturn(None)
+
+        self.command.create_worktree(COMMIT)
+
+        verify(self.window).run_command("gs_checkout_in_worktree", {"start_point": COMMIT})
+
     def test_single_detached_worktree_uses_generic_open_and_hash_for_delete(self) -> None:
         menu = self.menu({"commit": COMMIT}, [worktree("/repo/detached")])
 

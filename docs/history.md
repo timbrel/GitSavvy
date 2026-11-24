@@ -37,11 +37,51 @@ branch names, tags, and commit IDs.
 
 The `■` character is reserved for worktree markers in graph decorations.
 
+Left-click a branch name or commit hash to select the whole label. Use
+Alt+click and drag for normal text selection; Alt+double-click selects a word
+and Alt+triple-click selects a line. Alt-selection also works in the status,
+branches, and tags dashboards.
+
+Right-click a local branch name or commit hash to open its action menu.
+Right-click elsewhere opens Sublime Text's normal context menu. With saved
+multiselections, right-click a selected commit hash for actions on those commits
+(such as squash); right-click elsewhere clears the multiselections instead.
+Left-click and hold no longer opens an action menu.
+
+**Checkout here** switches the current working directory; a commit hash is
+checked out detached. **Checkout in a worktree** creates a new worktree and
+opens it in a new window. It attaches to an available branch, but stays
+detached when the branch is already checked out here or elsewhere, or when
+opening a commit hash. For branches checked out elsewhere, **Checkout here**
+is hidden; **Open worktree in a new window** opens their existing checkout
+without modifying it.
+
+Branch menus also offer **Push** (**Push...** without an upstream), plus
+**Fetch** when an upstream is configured. **Pull** is available for the current
+branch and unchecked branches with an upstream. Pulling an unchecked branch
+only fast-forwards it; divergent histories are rejected. Pull is not offered
+for branches checked out elsewhere; open their worktree to pull there.
+
+To move a local branch, press its name and hold, or drag straight to another
+commit without waiting. Activating the drag clears saved multiselections;
+a quick click leaves them intact. The source name becomes `|`; the destination
+previews its new decoration. Release and choose **Move 'branch name' here** to confirm.
+Dismiss the menu to abort; releasing on the original commit also aborts.
+Remote-tracking branches and branches checked out in another worktree cannot be
+dragged. Moving the branch checked out here uses `checkout -B`, including the
+usual offer to merge local changes if needed. Other branches move without
+switching checkout and support GitSavvy's ref undo.
+
 Use `.` to go to next commit and use `,` to go to previous commit.
 
 Pressing `m` while your cursor is over a particular line will toggle display of a quick panel containing more info about the selected commit. GitSavvy remembers the selection for the next graph view.
 
 Pressing `Enter` while your cursor is over a particular line will show the options similar to that of `git: log`.
+
+## `git: open current commit in a worktree`
+
+Creates a detached worktree at the current `HEAD` commit and opens it in a new
+window, leaving the current checkout unchanged.
 
 ## `git: graph current file`
 

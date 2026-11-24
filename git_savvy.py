@@ -98,7 +98,9 @@ def plugin_loaded() -> None:
     from .core import git_activity, worker_occupancy
     from .core.theme_generator import start_watchers
     from .core.commands.context_menu import start_context_menu_watcher
+    from .core.interfaces.multi_selector import reset_multiselections
     from .github import ci_status
+    reset_multiselections()
     git_activity.initialize()
     worker_occupancy.on_plugin_load()
     prepare_gitsavvy()

@@ -13,7 +13,7 @@ import sublime
 from GitSavvy.core.fns import filter_
 from GitSavvy.core.caches import cache_in_store_as
 from GitSavvy.core.git_command import mixin_base
-from GitSavvy.core.types import FullHash, ShortHash
+from GitSavvy.core.types import FullHash
 from GitSavvy.core.utils import open_worktree_in_new_window
 
 
@@ -162,11 +162,7 @@ class WorktreesMixin(mixin_base):
         commit_current(current)
         return worktrees
 
-    def create_new_worktree(
-        self, start_point: ShortHash, worktree_path: str | None = None
-    ) -> str:
-        # Note: `start_point: ShortHash` is a shortcut for the automatic `worktree_path`
-        #       computation.  Change when needed.
+    def create_new_worktree(self, start_point: str, worktree_path: str | None = None) -> str:
         if not worktree_path:
             if self.repo_path.startswith(sublime.packages_path()):
                 base = self.default_project_root()
@@ -174,9 +170,10 @@ class WorktreesMixin(mixin_base):
                 base = os.path.dirname(self.repo_path)
 
             project_name = os.path.basename(self.repo_path)
+            path_suffix = re.sub(r'[<>:"/\\|?*]', "-", start_point)
             suffix, c = "", count(1)
             while True:
-                worktree_path = f"{base}{os.path.sep}{project_name}-{start_point}{suffix}"
+                worktree_path = f"{base}{os.path.sep}{project_name}-{path_suffix}{suffix}"
                 if os.path.exists(worktree_path):
                     suffix = f"-{next(c)}"
                 else:

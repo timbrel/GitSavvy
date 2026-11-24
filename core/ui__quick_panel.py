@@ -64,7 +64,9 @@ def show_quick_panel(
 def show_actions_panel(
     window: sublime.Window,
     actions: Sequence[ActionType],
-    select: int = -1
+    select: int = -1,
+    *,
+    on_cancel: Callable[[], None] = lambda: None
 ) -> None:
     def on_selection(idx: int) -> None:
         description, action = actions[idx]
@@ -74,6 +76,7 @@ def show_actions_panel(
         window,
         (action[0] for action in actions),
         on_selection,
+        on_cancel=on_cancel,
         selected_index=select
     )
 
@@ -82,8 +85,8 @@ def show_noop_panel(window: sublime.Window, message: str) -> None:
     show_actions_panel(window, [noop(message)])
 
 
-def noop(description: str) -> ActionType:
-    return Action(description, lambda: None)
+def noop(description: str, action: Callable[[], None] = lambda: None) -> ActionType:
+    return Action(description, action)
 
 
 SEPARATOR = noop("_" * 74)

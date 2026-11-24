@@ -17,7 +17,7 @@ from ..git_mixins.branches import Branch
 from ..git_mixins.worktrees import WorktreeLocation, WorktreeTarget
 from ..runtime import on_new_thread
 from ..text_helper import line_from_pt
-from ..types import FullPath
+from ..types import FullHash, FullPath
 from ..commands.worktrees import remove_worktree
 from ..ui__quick_panel import ActionType, SEPARATOR, show_actions_panel, show_quick_panel
 from . import multi_selector
@@ -161,16 +161,16 @@ class gs_log_graph_action(GsWindowCommand):
 
             actions += [
                 (
-                    "Diff {}{}...{}".format(
-                        "file " if file_path else "", base_commit, target_commit
-                    ),
-                    partial(self.sym_diff_two_commits, base_commit, target_commit, file_path)
-                ),
-                (
                     "Diff {}{}..{}".format(
                         "file " if file_path else "", base_commit, target_commit
                     ),
                     partial(self.diff_commit, base_commit, target_commit, file_path)
+                ),
+                (
+                    "Diff {}{}...{}".format(
+                        "file " if file_path else "", base_commit, target_commit
+                    ),
+                    partial(self.sym_diff_two_commits, base_commit, target_commit, file_path)
                 ),
                 (
                     "Compare {}'{}' and '{}'".format(
@@ -344,14 +344,17 @@ class gs_log_graph_action(GsWindowCommand):
                     if "behind" in b.upstream.status and "ahead" not in b.upstream.status:
                         actions += [
                             (
-                                "Fast-forward '{}' to '{}'".format(branch_name, b.upstream.canonical_name),
-                                partial(self.move_branch, branch_name, b.upstream.canonical_name)
+                                "Move '{}' to '{}'".format(branch_name, b.upstream.canonical_name),
+                                partial(
+                                    self.move_branch, branch_name, b.upstream.canonical_name,
+                                    previous_tip=b.commit_hash
+                                )
                             ),
                         ]
                     else:
                         actions += [
                             (
-                                "Update '{}' from '{}'".format(branch_name, b.upstream.canonical_name),
+                                "Update '{}' from '{}' (ff-only)".format(branch_name, b.upstream.canonical_name),
                                 partial(self.update_from_tracking, b.upstream.remote, b.upstream.branch, b.name)
                             ),
                         ]
@@ -650,9 +653,14 @@ class gs_log_graph_action(GsWindowCommand):
             "force": True,
         })
 
-    def move_branch(self, branch_name, target):
-        self.git("branch", "-f", branch_name, target)
-        interface_util.refresh_gitsavvy_interfaces(self.window)
+    def move_branch(
+        self, branch_name: str, target: str, previous_tip: FullHash | None = None
+    ) -> None:
+        self.window.run_command("gs_move_branch", {
+            "branch": branch_name,
+            "target": target,
+            "previous_tip": previous_tip
+        })
 
     def delete_branch(self, branch_name: str, undo_owner: sublime.ViewId):
         self.window.run_command("gs_delete_branch", {
@@ -663,13 +671,8 @@ class gs_log_graph_action(GsWindowCommand):
     def show_commit(self, commit_hash):
         self.window.run_command("gs_show_commit", {"commit_hash": commit_hash})
 
-    def create_worktree(self, commit_hash):
-        def callback(w: sublime.Window):
-            if not w.views():
-                w.run_command("gs_graph")
-
-        worktree_path = self.create_new_worktree(commit_hash)
-        self.open_worktree_in_new_window(worktree_path, then=callback)
+    def create_worktree(self, commit_hash: str) -> None:
+        self.window.run_command("gs_checkout_in_worktree", {"start_point": commit_hash})
 
     def create_branch(self, commit_hash):
         self.window.run_command("gs_create_branch", {"start_point": commit_hash})
