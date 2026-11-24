@@ -7,6 +7,7 @@ import sublime
 from sublime_plugin import EventListener
 
 from ..base_commands import GsTextCommand
+from ..commands.checkout import branch_ref
 from ..git_command import GitCommand
 from ..fns import unique
 from ..git_mixins.branches import Branch
@@ -32,7 +33,7 @@ class gs_log_graph_mouse(GsTextCommand):
     def run(
         self, edit: sublime.Edit, event: dict, release: bool = False,
         context_menu: bool = False, text_selection: str | None = None,
-        fallback_selection: str | None = None
+        fallback_selection: str | None = None, toggle_branch_choice: bool = False
     ) -> None:
         view = self.view
         view.settings().erase(GRAPH_MOUSE_TARGET_KEY)
@@ -50,7 +51,21 @@ class gs_log_graph_mouse(GsTextCommand):
             return
 
         pt = view.window_to_text((event["x"], event["y"]))
-        if not context_menu and activate_prelude_control(view, pt):
+        if not context_menu and activate_prelude_control(view, pt, remove_choice=toggle_branch_choice):
+            return
+
+        if toggle_branch_choice:
+            ref = view.expand_to_scope(
+                pt, "meta.graph.branch.git-savvy constant.other.git.branch - meta.graph.branch-move"
+            )
+            view.settings().erase("git_savvy.mouse_selected_target")
+            if ref is not None:
+                view.run_command("gs_log_graph_edit_branches", {"branch": view.substr(ref), "keep_all_mode": True})
+            else:
+                args = {"event": event, "extend": True}
+                if fallback_selection is not None:
+                    args["by"] = fallback_selection
+                view.run_command("drag_select", args)
             return
 
         if fallback_selection is not None:
@@ -74,11 +89,17 @@ class GsLogGraphMouseListener(EventListener):
             normalize_mouse_selection(view, GRAPH_MOUSE_TARGET_KEY)
 
 
-def activate_prelude_control(view: sublime.View, pt: int) -> bool:
+def activate_prelude_control(view: sublime.View, pt: int, *, remove_choice: bool = False) -> bool:
     settings = view.settings()
     controls = PreludeControls.from_dict(settings.get("git_savvy.log_graph_view.prelude_controls", {}))
 
-    if controls.all is not None and controls.all.contains(pt):
+    region = controls.resolve_base
+    if not remove_choice and region is not None and region.begin() <= pt < region.end():
+        settings.erase("git_savvy.mouse_selected_target")
+        view.run_command("gs_log_graph_focus_comparison")
+        return True
+
+    if not remove_choice and controls.all is not None and controls.all.contains(pt):
         settings.erase("git_savvy.mouse_selected_target")
         view.run_command("gs_log_graph_toggle_all_setting")
         return True
@@ -86,7 +107,11 @@ def activate_prelude_control(view: sublime.View, pt: int) -> bool:
     for toggle in controls.refs:
         if toggle.contains(pt):
             settings.erase("git_savvy.mouse_selected_target")
-            view.run_command("gs_log_graph_edit_branches", {"branch": toggle.ref})
+            view.run_command("gs_log_graph_edit_branches", {
+                "branch": toggle.ref,
+                "action": "remove" if remove_choice else "toggle_visibility",
+                "keep_all_mode": remove_choice
+            })
             return True
 
     return False
@@ -160,9 +185,10 @@ class GraphMouse(GitCommand):
             return False
 
         actions: list[ActionType]
-        branch = self.branch_at(pt)
-        if branch is not None:
-            actions = self.branch_actions(window, branch)
+        hit = self.branch_at(pt, commit_hash)
+        if hit is not None:
+            branch, head = hit
+            actions = self.branch_actions(window, branch, head)
         elif view.match_selector(target.a, "string.other.rebase-hint.git-savvy"):
             actions = self.fixup_actions(pt, commit_hash)
             if not actions:
@@ -172,8 +198,14 @@ class GraphMouse(GitCommand):
         else:
             actions = self.commit_actions(window, pt, commit_hash)
 
+        self.popup_actions(target, actions)
+        return True
+
+    def popup_actions(self, anchor: sublime.Region, actions: list[ActionType]) -> None:
+        view = self.view
+        # Sublime positions popup menus at the selection, not at the mouse.
         view.sel().clear()
-        view.sel().add(target)
+        view.sel().add(anchor)
 
         def on_done(index: int) -> None:
             if 0 <= index < len(actions):
@@ -183,10 +215,22 @@ class GraphMouse(GitCommand):
         # The popup takes over the gesture and can swallow mouse-up. Do not
         # keep anchoring later keyboard selections to the pressed label.
         view.settings().erase(GRAPH_MOUSE_TARGET_KEY)
-        view.show_popup_menu([description for description, _ in actions], on_done, pt)
-        return True
+        view.show_popup_menu([description for description, _ in actions], on_done)
 
-    def branch_actions(self, window: sublime.Window, branch: Branch) -> list[ActionType]:
+    def branch_actions(self, window: sublime.Window, branch: Branch, head: Branch | None) -> list[ActionType]:
+        actions = self.local_branch_actions(window, branch) if not branch.is_remote else []
+        if not branch.active:
+            if actions:
+                actions.append(POPUP_SEPARATOR)
+            actions.append((
+                "Compare '{}' with '{}'".format(branch.canonical_name, head.name if head else "HEAD"),
+                partial(self.view.run_command, "gs_log_graph_focus_comparison", {
+                    "tips": [branch_ref(head) if head else "HEAD", branch_ref(branch)]
+                })
+            ))
+        return actions
+
+    def local_branch_actions(self, window: sublime.Window, branch: Branch) -> list[ActionType]:
         name = branch.name
         worktrees = self.current_state().get("worktree_locations", [])
         worktree = next((wt for wt in worktrees if wt.branch_name == name), None)
@@ -420,14 +464,19 @@ class GraphMouse(GitCommand):
             if region.begin() <= pt < region.end()
         ), None)
 
-    def branch_at(self, pt: int) -> Branch | None:
+    def branch_at(self, pt: int, commit_hash: str) -> tuple[Branch, Branch | None] | None:
+        """Return the clicked branch and the checkout from one branch listing."""
         for region in self.view.find_by_selector(
             "meta.graph.branch.git-savvy constant.other.git.branch"
         ):
             if region.begin() <= pt < region.end():
                 name = self.view.substr(region)
-                return next((
-                    branch for branch in self.get_branches()
-                    if not branch.is_remote and branch.name == name
-                ), None)
+                branches = self.get_branches()
+                matches = [
+                    b for b in branches
+                    if b.canonical_name == name and b.commit_hash.startswith(commit_hash)
+                ]
+                if len(matches) != 1:
+                    return None
+                return matches[0], next((b for b in branches if b.active), None)
         return None

@@ -42,6 +42,20 @@ Alt+click and drag for normal text selection; Alt+double-click selects a word
 and Alt+triple-click selects a line. Alt-selection also works in the status,
 branches, and tags dashboards.
 
+Shift+click a branch name beside a commit to add it to or remove it from the
+comparison. In `all` mode, Shift+click edits the comparison without leaving
+`all`; press `a` to show the edited comparison. In the prelude, Shift+click a
+branch label to remove it. A plain click only toggles its visibility.
+
+With two or more refs listed in the prelude, click `[!]` to focus the graph
+on their common history boundary. All listed tips count, highlighted or not.
+Click a resulting `<hash>^!` to toggle the cutoff, or
+Shift+click to remove it. When the last cutoff is removed, `[!]` returns
+so you can recompute it. Changing a tip does not silently move the cutoff.
+
+Right-click a branch beside a commit to compare it with the checked-out
+branch (or HEAD if detached) in this graph.
+
 Right-click a local branch name or commit hash to open its action menu.
 Right-click elsewhere opens Sublime Text's normal context menu. With saved
 multiselections, right-click a selected commit hash for actions on those commits
