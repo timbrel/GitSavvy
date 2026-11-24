@@ -1,12 +1,82 @@
 import unittest
 
+import sublime
+from unittesting import DeferrableTestCase
+
+from GitSavvy.tests.mockito import mock, unstub, verify, when
+from GitSavvy.tests.parameterized import parameterized as p
 from GitSavvy.core.git_mixins.tags import TagDetails, TagsMixin, is_semver_tag, is_version_tag
 from GitSavvy.core.interfaces.tags import (
+    gs_tags_show_graph,
     is_short_version_tag,
     remote_tag_conflict_message,
     tag_with_date,
     tags_that_already_exist_on_remote,
 )
+
+
+class TestTagsShowGraph(DeferrableTestCase):
+    hash_length = 40
+
+    def setUp(self):
+        self.addCleanup(unstub)
+        self.view = sublime.active_window().new_file()
+        self.view.set_scratch(True)
+        self.addCleanup(self.view.close)
+        self.view.assign_syntax("Packages/GitSavvy/syntax/tags.sublime-syntax")
+        self.view.run_command("append", {"characters": (
+            "  LOCAL:\n    aaaaaaa v1.2.3\n"
+            "  REMOTE (origin):\n    1111111 v1.2.3\n    3333333 v1.2.4\n"
+        )})
+        remote_start = self.view.find("  REMOTE", 0).begin()
+        self.view.add_regions("git_savvy_interface.local_tags", [sublime.Region(0, remote_start)])
+        self.view.add_regions("git_savvy_interface.remote_tags_list_origin", [
+            sublime.Region(remote_start, self.view.size())
+        ])
+        self.command = gs_tags_show_graph(self.view)
+        self.window = mock()
+        self.command.window = self.window
+        when(self.window).run_command(...).thenReturn(None)
+        when(self.command).get_short_hash_length().thenReturn(7)
+        when(self.command).git(...).thenRaise(AssertionError("Unexpected Git query"))
+        remote_tags = RemoteTagsRepo(
+            f"{'1' * self.hash_length}\trefs/tags/v1.2.3\n"
+            f"{'2' * self.hash_length}\trefs/tags/v1.2.3^{{}}\n"
+            f"{'3' * self.hash_length}\trefs/tags/v1.2.4\n"
+        ).get_remote_tags("origin")
+        self.command.interface = mock({"state": {
+            "remotes": {"origin": "unused"},
+            "remote_tags_info": {
+                "origin": {"state": "succeeded", "tags": list(remote_tags.all)},
+                "loading": {"state": "loading"},
+                "failed": {"state": "erred", "message": "unavailable"}
+            }
+        }})
+
+    @p.expand([
+        ("aaaaaaa", "tag: v1.2.3"),
+        ("1111111", "2222222"),
+        ("3333333", "3333333"),
+    ])
+    def test_follows_selected_tag(self, selected, follow):
+        yield lambda: self.view.find_by_selector("meta.git-savvy.tag.name")
+        self.view.sel().clear()
+        self.view.sel().add(self.view.find(selected, 0).begin())
+
+        self.command.run(None)
+
+        verify(self.window).run_command("gs_graph", {"all": True, "follow": follow})
+        verify(self.command, times=0).git(...)
+
+    def test_no_tag_selected_does_not_open_graph(self):
+        self.view.sel().clear()
+        self.view.sel().add(0)
+        self.command.run(None)
+        verify(self.window, times=0).run_command(...)
+
+
+class TestTagsShowGraphSha256(TestTagsShowGraph):
+    hash_length = 64
 
 
 class RemoteTagsRepo(TagsMixin):
@@ -32,13 +102,19 @@ class TestTags(unittest.TestCase):
         self.assertFalse(is_version_tag("v1"))
         self.assertFalse(is_version_tag("private"))
 
-    def test_get_remote_tags_skips_peeled_annotated_tags(self):
-        tag_list = RemoteTagsRepo("""\
-1111111111111111111111111111111111111111\trefs/tags/v1.2.3
-2222222222222222222222222222222222222222\trefs/tags/v1.2.3^{}
-3333333333333333333333333333333333333333\trefs/tags/v1.2.4
-""").get_remote_tags("origin")
+    @p.expand([(40,), (64,)])
+    def test_get_remote_tags_skips_peeled_annotated_tags(self, hash_length):
+        tag_list = RemoteTagsRepo(
+            f"{'1' * hash_length}\trefs/tags/v1.2.3\n"
+            f"{'2' * hash_length}\trefs/tags/v1.2.3^{{}}\n"
+            f"{'3' * hash_length}\trefs/tags/v1.2.4\n"
+        ).get_remote_tags("origin")
         self.assertEqual([tag.tag for tag in tag_list.versions], ["v1.2.4", "v1.2.3"])
+        lightweight, annotated = tag_list.versions
+        self.assertEqual(annotated.sha, "1" * hash_length)
+        self.assertEqual(annotated.peeled, "2" * hash_length)
+        self.assertEqual(lightweight.sha, "3" * hash_length)
+        self.assertIsNone(lightweight.peeled)
 
     def test_handle_tags_prefers_semver(self):
         tag_list = TagsMixin().handle_semver_tags([

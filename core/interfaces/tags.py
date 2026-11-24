@@ -694,15 +694,25 @@ class gs_tags_show_graph(TagsInterfaceCommand):
         #       real commit or a tag in case it's an annotated tag.
         #       Because in the graph a tag ref takes the form e.g.
         #       `tag: 2.14.5` we need to format it like that here.
-        tags = self.selected_local_tags()
-        if not tags:
+        symbols = ["tag: {}".format(tag) for tag in self.selected_local_tags()]
+        for remote_name, remote_info in self.interface.state["remote_tags_info"].items():
+            if remote_info["state"] != "succeeded":
+                continue
+            selected_tags = self.selected_remote_tags(remote_name)
+            symbols.extend(
+                self.to_short_hash(tag.peeled or tag.sha)
+                for tag in remote_info["tags"]
+                if tag.tag in selected_tags
+            )
+
+        if not symbols:
             return
-        if len(tags) > 1:
+        if len(symbols) > 1:
             flash(self.view, "Can only follow one tag. Taking the first one")
 
         self.window.run_command('gs_graph', {
             'all': True,
-            'follow': "tag: {}".format(tags[0])
+            'follow': symbols[0]
         })
 
 

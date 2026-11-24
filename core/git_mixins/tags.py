@@ -9,14 +9,16 @@ from GitSavvy.core.types import FullHash
 from typing import Iterable, List, Literal, NamedTuple, Optional, Set
 
 
+TagName = str
 VersionStyle = Literal["calendar", "semver"]
 
 
 class TagDetails(NamedTuple):
     sha: FullHash
-    tag: str
+    tag: TagName
     human_date: str
     relative_date: str
+    peeled: Optional[FullHash] = None
 
 
 class TagList(NamedTuple):
@@ -75,20 +77,23 @@ class TagsMixin(mixin_base):
         )
         return self.handle_semver_tags(entries)
 
-    def get_remote_tags(self, remote):
-        # type: (str) -> TagList
+    def get_remote_tags(self, remote: str) -> TagList:
         stdout = self.git_throwing_silently(
             "ls-remote",
             "--tags",
             remote,
             timeout=20.0,
         )
-        porcelain_entries = stdout.splitlines()
+        porcelain_entries = [line.split("\t", 1) for line in stdout.splitlines() if line]
+        peeled: dict[TagName, FullHash] = {
+            ref[len("refs/tags/"):-len("^{}")]: FullHash(sha)
+            for sha, ref in porcelain_entries
+            if ref.endswith("^{}")
+        }
         entries = (
-            TagDetails(entry[:40], tag_name, "", "")
-            for entry in reversed(porcelain_entries)
-            if entry
-            if (tag_name := entry[51:])
+            TagDetails(FullHash(sha), tag_name, "", "", peeled.get(tag_name))
+            for sha, ref in reversed(porcelain_entries)
+            if (tag_name := ref[len("refs/tags/"):])
             if not tag_name.endswith("^{}")
         )
         return self.handle_semver_tags(entries)
