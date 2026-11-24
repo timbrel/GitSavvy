@@ -162,7 +162,9 @@ class WorktreesMixin(mixin_base):
         commit_current(current)
         return worktrees
 
-    def create_new_worktree(self, start_point: str, worktree_path: str | None = None) -> str:
+    def create_new_worktree(
+        self, start_point: str, worktree_path: str | None = None, *, copy_project: bool = True
+    ) -> str:
         if not worktree_path:
             if self.repo_path.startswith(sublime.packages_path()):
                 base = self.default_project_root()
@@ -180,13 +182,15 @@ class WorktreesMixin(mixin_base):
                     break
 
         self.git("worktree", "add", worktree_path, start_point)
-        self._copy_active_project_to_worktree(worktree_path)
+        if copy_project:
+            self._copy_active_project_to_worktree(worktree_path)
         return worktree_path
 
     def open_worktree_in_new_window(
-        self, path: str, *, then: Callable[[sublime.Window], None] | None = None
+        self, path: str, *, then: Callable[[sublime.Window], None] | None = None,
+        copy_project_only_if_ignored: bool = False
     ) -> None:
-        self._copy_active_project_to_worktree(path)
+        self._copy_active_project_to_worktree(path, only_if_ignored=copy_project_only_if_ignored)
         open_worktree_in_new_window(path, then=then)
 
     def move_worktree(self, path: str, new_path: str) -> None:
@@ -197,7 +201,7 @@ class WorktreesMixin(mixin_base):
             self.git_throwing_silently("worktree", "unlock", path)
         self.git_throwing_silently("worktree", "remove", "-f" if force else None, path)
 
-    def _copy_active_project_to_worktree(self, path: str) -> None:
+    def _copy_active_project_to_worktree(self, path: str, *, only_if_ignored: bool = False) -> None:
         if (
             not self.app_settings.get("copy_active_project_file_to_new_worktrees", True)
             or glob(os.path.join(path, "*.sublime-project"))
@@ -205,7 +209,7 @@ class WorktreesMixin(mixin_base):
             return
 
         if project := self._project_for_worktree():
-            self._copy_project_to_worktree(project, path)
+            self._copy_project_to_worktree(project, path, only_if_ignored=only_if_ignored)
 
     def _project_for_worktree(self) -> tuple[str, dict] | None:
         window = self.some_window()
@@ -223,7 +227,7 @@ class WorktreesMixin(mixin_base):
         return os.path.basename(project_file), project_data
 
     def _copy_project_to_worktree(
-        self, project: tuple[str, dict], worktree_path: str
+        self, project: tuple[str, dict], worktree_path: str, *, only_if_ignored: bool = False
     ) -> None:
         source_filename, source_data = project
         filename = os.path.basename(os.path.normpath(worktree_path)) + ".sublime-project"
@@ -238,7 +242,8 @@ class WorktreesMixin(mixin_base):
             return  # Tracked project files belong to the target branch's checkout.
 
         # Empty output means ignored; '?' means already visibly untracked.
-        if not source_status and not self.git(
+        must_stay_ignored = only_if_ignored or not source_status
+        if must_stay_ignored and not self.git(
             "check-ignore", "--", filename,
             working_dir=worktree_path, throw_on_error=False
         ):

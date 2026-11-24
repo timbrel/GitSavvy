@@ -216,6 +216,8 @@ class gs_log_graph_mouse(TextCommand, GitCommand):
             ("-", "", {}),
             ("Push" if branch.upstream else "Push...", "gs_push", {"local_branch_name": name})
         ]
+        if branch.active and not self.in_bisect():
+            actions.append(("Merge into...", "gs_merge_current_branch_into", {"source": name}))
         if branch.upstream:
             if branch.active:
                 actions.append(("Pull", "gs_pull", {}))

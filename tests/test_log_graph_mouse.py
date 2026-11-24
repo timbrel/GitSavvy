@@ -236,13 +236,18 @@ class TestGraphCheckoutActions(DeferrableTestCase):
             active=True, upstream=mock({"remote": "origin", "branch": "master", "canonical_name": "origin/master"}),
             worktree_path="/repo/current", is_current=True
         )
-        self.assertEqual(["Checkout in a new worktree", "-", "Push", "Pull", "Fetch origin/master"],
+        self.assertEqual(["Checkout in a new worktree", "-", "Push", "Merge into...", "Pull", "Fetch origin/master"],
                          [label for label, _, _ in menu])
         self.assertEqual(
             ("gs_checkout_in_worktree", {"start_point": "abcdef0"}), menu[0][1:]
         )
-        self.assertEqual(("gs_pull", {}), menu[3][1:])
-        self.assertEqual(("gs_fetch", {"remote": "origin", "refspec": "master"}), menu[4][1:])
+        self.assertEqual(("gs_merge_current_branch_into", {"source": "feature"}), menu[3][1:])
+        self.assertEqual(("gs_pull", {}), menu[4][1:])
+        self.assertEqual(("gs_fetch", {"remote": "origin", "refspec": "master"}), menu[5][1:])
+
+    def test_current_branch_in_bisect_does_not_offer_merge_into(self) -> None:
+        menu = self.branch_menu(active=True, upstream=None, in_bisect=True)
+        self.assertNotIn("Merge into...", [label for label, _, _ in menu])
 
     def test_available_branch_with_upstream(self) -> None:
         menu = self.branch_menu(active=False, upstream=mock({
@@ -412,9 +417,10 @@ class TestGraphCheckoutActions(DeferrableTestCase):
 
     def branch_menu(
         self, *, active: bool, upstream: object, worktree_path: str | None = None,
-        is_current: bool = False
+        is_current: bool = False, in_bisect: bool = False
     ) -> list[tuple[str, str, dict]]:
         command = gs_log_graph_mouse(mock())
+        when(command).in_bisect().thenReturn(in_bisect)
         when(command).current_state().thenReturn({
             "worktree_locations": [WorktreeLocation(worktree_path, "feature", None, is_current)]
             if worktree_path else []

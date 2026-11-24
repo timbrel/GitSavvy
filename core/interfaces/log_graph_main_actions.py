@@ -295,6 +295,7 @@ class gs_log_graph_action(GsWindowCommand):
             actions += [
                 ("Push", partial(self.push, current_branch)),
                 ("Rebase on...", partial(self.rebase_on)),
+                ("Merge into...", partial(self.merge_into, current_branch)),
                 SEPARATOR,
             ]
 
@@ -636,6 +637,9 @@ class gs_log_graph_action(GsWindowCommand):
 
     def rebase_on(self) -> None:
         self.window.run_command("gs_rebase_on_branch")
+
+    def merge_into(self, source: str) -> None:
+        self.window.run_command("gs_merge_current_branch_into", {"source": source})
 
     def update_from_tracking(self, remote: str, remote_name: str, local_name: str) -> None:
         self.window.run_command("gs_fetch", {

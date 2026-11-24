@@ -422,6 +422,10 @@
         "command": "gs_merge"
     },
     {
+        "caption": "git: merge current branch into...",
+        "command": "gs_merge_current_branch_into"
+    },
+    {
         "caption": "git: merge --abort",
         "command": "gs_merge_abort"
     },
