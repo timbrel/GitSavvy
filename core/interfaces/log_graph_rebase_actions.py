@@ -199,13 +199,8 @@ def suggested_ref_branch(view: sublime.View, local_names: set[str]) -> str | Non
     return None
 
 
-def take_current_branch_name(cmd, args, done):
-    # type: (GsTextCommand, Args, Kont) -> None
-    current_branch_name = cmd.get_current_branch_name()
-    if current_branch_name:
-        done(current_branch_name)
-    else:
-        cmd.window.status_message("Not in detached state.")
+def take_current_branch_name(cmd: GsTextCommand, args: Args, done: Kont) -> None:
+    done(cmd.get_current_branch_name() or "HEAD")
 
 
 def get_view_for_command(cmd):
