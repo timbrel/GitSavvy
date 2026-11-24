@@ -227,21 +227,23 @@ def on_new_thread(fn):
     return wrapped
 
 
-def run_as_future(fn, *args, **kwargs):
-    # type: (Callable[P, T], P.args, P.kwargs) -> Future[T]
-    fut = Future()  # type: Future[T]
+def run_as_future(fn: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> Future[T]:
+    fut: Future[T] = Future()
+    start_future(fut, partial(fn, *args, **kwargs))
+    return fut
 
-    def task():
-        # type: () -> None
-        fut.set_running_or_notify_cancel()
+
+def start_future(fut: Future[T], fn: Callable[[], T]) -> None:
+    def task() -> None:
+        if not fut.set_running_or_notify_cancel():
+            return
         try:
-            rv = fn(*args, **kwargs)
+            rv = fn()
         except Exception as e:
             fut.set_exception(e)
         else:
             fut.set_result(rv)
     run_on_new_thread(task)
-    return fut
 
 
 def run_or_timeout(fn, timeout):

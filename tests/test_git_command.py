@@ -1,11 +1,88 @@
 import io
 import subprocess
 
+import sublime
+
 from unittesting import DeferrableTestCase
 from GitSavvy.tests.mockito import unstub, verify, when
 
-from GitSavvy.core import git_command
+from GitSavvy.core import git_command, git_future, runtime
 from GitSavvy.core.exceptions import GitSavvyError
+
+
+class TestGitContext(DeferrableTestCase):
+    def test_keeps_its_origin_when_source_view_closes(self):
+        window = sublime.active_window()
+        source = window.new_file()
+        source.set_scratch(True)
+        repo = sublime.packages_path()
+        source.settings().set("git_savvy.repo_path", repo)
+        source.settings().set("git_savvy.file_path", "/repo/source")
+        ctx = git_command.GitContext.for_view(source)
+        source.close()
+
+        self.assertEqual(ctx.some_window(), window)
+        self.assertEqual(ctx.repo_path, repo)
+        self.assertEqual(ctx.file_path, "/repo/source")
+        with self.assertRaises(git_command.DetachedView):
+            git_command.GitContext.for_view(source)
+
+
+class TestGitCancellation(DeferrableTestCase):
+    def setUp(self):
+        self.addCleanup(unstub)
+        self.tasks = []
+        when(runtime).run_on_new_thread(...).thenAnswer(self.tasks.append)
+
+    def test_abort_between_calls_prevents_next_spawn(self):
+        def job():
+            future.abort()
+            future.abort()
+            TimeoutGitCommand().git("status")
+
+        when(git_command.subprocess).Popen(...)
+        future = git_future.run_as_abortable_future(job)
+        callback_scopes = []
+        future.add_done_callback(lambda _: callback_scopes.append(git_future.current_git_cancellation()))
+        self.tasks.pop()()
+
+        with self.assertRaises(git_command.AbortedGitCall):
+            future.result()
+        verify(git_command.subprocess, times=0).Popen(...)
+        self.assertEqual(callback_scopes, [None])
+
+    def test_abort_during_spawn_kills_the_arriving_process(self):
+        process = FailingProcess(b"", b"")
+
+        def spawn(*args, **kwargs):
+            future.abort()
+            return process
+
+        when(git_command.subprocess).Popen(...).thenAnswer(spawn)
+        when(git_future).abort_proc(process).thenAnswer(lambda p: setattr(p, "aborted_by_user", True))
+
+        future = git_future.run_as_abortable_future(TimeoutGitCommand().git, "status")
+        self.tasks.pop()()
+        with self.assertRaises(git_command.AbortedGitCall):
+            future.result()
+        verify(git_future).abort_proc(process)
+
+    def test_completed_future_no_longer_accepts_abort(self):
+        future = git_future.run_as_abortable_future(git_future.current_git_cancellation)
+        self.tasks.pop()()
+        token = future.result()
+        self.assertIsNotNone(token)
+        self.assertIsNone(git_future.current_git_cancellation())
+        future.abort()
+        token.check()  # Not aborted.
+
+    def test_cancel_before_start_skips_job(self):
+        ran = []
+        future = git_future.run_as_abortable_future(ran.append, True)
+        self.assertTrue(future.cancel())
+        self.tasks.pop()()
+        self.assertTrue(future.cancelled())
+        self.assertEqual(ran, [])
 
 
 class TestGitTimeout(DeferrableTestCase):

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 import os
-from typing import Any
+from typing import Any, Protocol
 
 import sublime
 import sublime_plugin
@@ -21,6 +21,7 @@ class _AppSettings:
     def __init__(self) -> None:
         self._settings = settings = sublime.load_settings("GitSavvy.sublime-settings")
         self._cache: dict[str, Any] = {}
+        self._cache_complete = False
         settings.clear_on_change(__name__)
         settings.add_on_change(__name__, self._on_update)
 
@@ -28,17 +29,28 @@ class _AppSettings:
         try:
             return self._cache[name]
         except KeyError:
-            current_value: Any = self._settings.get(name, default)
+            if self._cache_complete:
+                return default
+            current_value: Any = self._settings.get(name)
+            if current_value is None and not self._settings.has(name):
+                return default
             self._cache[name] = current_value
             return current_value
 
     def set(self, name: str, value: Any) -> None:
         self._settings.set(name, value)  # implicitly calls `_on_update` to clear cache
 
+    def snapshot(self) -> dict[str, Any]:
+        if not self._cache_complete:
+            self._cache = self._settings.to_dict()
+            self._cache_complete = True
+        return self._cache.copy()
+
     def has(self, name: str) -> bool:
         return self._settings.has(name)
 
     def _on_update(self) -> None:
+        self._cache_complete = False
         self._cache.clear()
 
 
@@ -74,6 +86,11 @@ class ProjectSettings:
         except KeyError:
             return app_settings.get(key, default)
 
+    def snapshot(self) -> dict[str, Any]:
+        if self._change_count != PROJECT_FILE_CHANGE_COUNT:
+            self._reload()
+        return {**app_settings.snapshot(), **self._settings}
+
     @classmethod
     def forget_window(cls, window_id: sublime.WindowId) -> None:
         cls._instances.pop(window_id, None)
@@ -84,6 +101,10 @@ class ProjectSettings:
         self._change_count = PROJECT_FILE_CHANGE_COUNT
 
 
+class ReadableSettings(Protocol):
+    def get(self, key: str, default: Any = None, /) -> Any: ...
+
+
 class SettingsMixin:
     _project_settings: ProjectSettings | None = None
 
@@ -92,7 +113,7 @@ class SettingsMixin:
         return app_settings
 
     @property
-    def project_settings(self) -> ProjectSettings:
+    def project_settings(self) -> ReadableSettings:
         if self._project_settings is None:
             self._project_settings = ProjectSettings(self.some_window())
         return self._project_settings
