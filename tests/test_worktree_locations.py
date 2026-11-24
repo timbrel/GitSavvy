@@ -8,9 +8,12 @@ from unittesting import DeferrableTestCase
 
 from GitSavvy.core.git_mixins.worktrees import WorktreesMixin
 from GitSavvy.tests.mockito import mock, unstub, verify, when
+from GitSavvy.tests.test_reftable import corrupt_table_version
 
 
 class TestWorktreeLocations(DeferrableTestCase):
+    ref_format = "files"
+
     def setUp(self) -> None:
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
@@ -57,8 +60,7 @@ class TestWorktreeLocations(DeferrableTestCase):
     def test_current_separate_gitdir_uses_known_checkout_path(self) -> None:
         separate = os.path.join(self.root, "metadata")
         self.git("-C", self.repo, "init", "--separate-git-dir", separate)
-        command = mock({"repo_path": self.repo, "git_dir": separate, "git_common_dir": separate})
-        when(command).update_store(...).thenReturn(None)
+        command = self.command(self.repo, separate, separate)
         locations = WorktreesMixin.get_worktree_locations(command)
         # Git's list can report the separate gitdir as the main checkout;
         # our narrower reader knows this checkout's actual root.
@@ -66,8 +68,7 @@ class TestWorktreeLocations(DeferrableTestCase):
         self.assertTrue(locations[0].is_current)
 
     def assert_matches_git(self, repo: str, git_dir: str) -> None:
-        command = mock({"repo_path": repo, "git_dir": git_dir, "git_common_dir": self.common_dir})
-        when(command).update_store(...).thenReturn(None)
+        command = self.command(repo, git_dir)
         when(command).git(...).thenRaise(AssertionError("Filesystem reader must not launch Git"))
         output = self.git("--git-dir=" + git_dir, "worktree", "list", "--porcelain")
         complete = WorktreesMixin._parse_worktree_entries(command, output.splitlines())
@@ -87,9 +88,40 @@ class TestWorktreeLocations(DeferrableTestCase):
         self.assertCountEqual(expected, actual)
         verify(command).update_store({"worktree_locations": locations})
 
+    def command(self, repo: str, git_dir: str, common_dir: str | None = None):
+        common_dir = common_dir or self.common_dir
+        command = mock({
+            "repo_path": repo, "git_dir": git_dir, "git_common_dir": common_dir,
+            "repo_uses_reftable": os.path.isdir(os.path.join(common_dir, "reftable")),
+        })
+        when(command).update_store(...).thenReturn(None)
+        return command
+
     def git(self, *args: str) -> str:
-        # These tests exercise the process-free loose-HEAD reader specifically,
-        # including clones and reinitialization with a separate gitdir.
+        # Pin the format for clones and reinitialization with a separate gitdir.
         return subprocess.check_output(
-            ["git", "-c", "init.defaultRefFormat=files", *args], stderr=subprocess.PIPE
+            ["git", "-c", "init.defaultRefFormat=" + self.ref_format, *args],
+            stderr=subprocess.PIPE
         ).decode("utf-8")
+
+
+class TestReftableWorktreeLocations(TestWorktreeLocations):
+    ref_format = "reftable"
+
+    def setUp(self) -> None:
+        version = subprocess.check_output(["git", "version"]).decode().split()[2].split(".")
+        if tuple(map(int, version[:2])) < (2, 45):
+            self.skipTest("Reftable repositories require Git 2.45+")
+        super().setUp()
+        self.assertTrue(os.path.isdir(os.path.join(self.common_dir, "reftable")))
+
+    def test_unreadable_stack_omits_only_that_worktree(self) -> None:
+        linked = os.path.join(self.root, "feature")
+        self.git("-C", self.repo, "worktree", "add", "-b", "feature", linked)
+        git_dir = self.git("-C", linked, "rev-parse", "--absolute-git-dir").strip()
+        corrupt_table_version(os.path.join(git_dir, "reftable"))
+        command = self.command(self.repo, self.common_dir)
+        when(command).git(...).thenRaise(AssertionError("Filesystem reader must not launch Git"))
+        locations = WorktreesMixin.get_worktree_locations(command)
+        self.assertEqual([self.repo], [wt.path for wt in locations])
+        self.assertTrue(locations[0].is_current)
