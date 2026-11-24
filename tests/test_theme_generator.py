@@ -39,6 +39,23 @@ class TestThemeGenerator(DeferrableTestCase):
             "background": "#1a1"
         }])
 
+    def test_null_background_uses_a_neighbor_of_the_palette_background(self) -> None:
+        style = ScopedStyle(
+            "Marker", "git_savvy.marker",
+            foreground="#123", background=ColorRef("test", "background")
+        )
+        when(theme_generator).color_value("test", "background").thenReturn(None)
+        when(theme_generator.sublime).ui_info().thenReturn({
+            "color_scheme": {"palette": {"background": "#002130"}}
+        })
+
+        scheme = theme_generator.sublime.decode_value(theme_generator.render_scheme({"graph": [style]}))
+
+        self.assertEqual(scheme["rules"], [{
+            "name": "Marker", "scope": "git_savvy.marker",
+            "foreground": "#123", "background": "#002131"
+        }])
+
     def test_start_only_primes_watchers(self) -> None:
         preferences = WatchableSettings({
             "color_scheme": "Packages/Example/Example.sublime-color-scheme"

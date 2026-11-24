@@ -188,23 +188,38 @@ def render_scheme(
             if style not in styles:
                 styles.append(style)
 
-    rules = [
-        {
-            "name": style.name,
-            "scope": style.scope,
-            **{
-                key: resolve_style_value(value)
-                for key, value in style.properties.items()
-            },
+    region_background = None
+    rules = []
+    for style in styles:
+        properties = {
+            key: resolved
+            for key, value in style.properties.items()
+            if (resolved := resolve_style_value(value)) is not None
         }
-        for style in styles
-    ]
+        if (
+            "background" in style.properties
+            and "background" not in properties
+            and "foreground" in properties
+        ):
+            # add_regions paints the foreground as a fill without a distinct
+            # background. Nudge the actual palette color, not its alpha.
+            if region_background is None:
+                background = sublime.ui_info()["color_scheme"]["palette"]["background"]
+                region_background = adjacent_background(background)
+            properties["background"] = region_background
+        rules.append({"name": style.name, "scope": style.scope, **properties})
     scheme = {
         "variables": {},
         "globals": {},
         "rules": rules,
     }
     return DOCUMENTATION_HEADER + json.dumps(scheme, indent=4) + "\n"
+
+
+def adjacent_background(background: str) -> str:
+    # Flip the low bit of blue: one RGB step, even for black and white.
+    blue = int(background[5:7], 16) ^ 1
+    return f"{background[:5]}{blue:02x}{background[7:]}"
 
 
 def effective_color_schemes(syntax_name: str) -> list[str]:

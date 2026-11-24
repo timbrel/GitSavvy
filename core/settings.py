@@ -126,7 +126,7 @@ class ProjectFileChanges(sublime_plugin.EventListener):
         sublime.set_timeout(lambda: ProjectSettings.forget_window(window_id))
 
 
-def color_value(namespace: str, key: str) -> str:
+def color_value(namespace: str, key: str) -> str | None:
     colors = app_settings.get("colors", {})
     default_settings = read_default_settings()["colors"]
     try:
