@@ -6,9 +6,10 @@ from GitSavvy.tests.mockito import unstub, when
 from GitSavvy.tests.parameterized import parameterized as p
 
 from GitSavvy.core.interfaces import log_graph_rebase_actions
+from GitSavvy.core.interfaces.log_graph_helper import Commit
 from GitSavvy.core.interfaces.log_graph_rebase_actions import (
     extract_commits, change_first_action, copy_commits, drop_commits, fixup_commits,
-    insert_commits, squash_commits, Commit, gs_rebase_edit_commit, gs_rebase_reword_commit
+    insert_commits, squash_commits, gs_rebase_edit_commit, gs_rebase_reword_commit
 )
 
 

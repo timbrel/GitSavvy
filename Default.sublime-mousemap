@@ -88,6 +88,30 @@
     {
         "button": "button1",
         "modifiers": [],
+        "count": 2,
+        "press_command": "gs_log_graph_mouse",
+        "press_args": { "fallback_selection": "words" },
+        "command": "gs_log_graph_mouse",
+        "args": { "release": true },
+        "context": [
+            { "key": "setting.git_savvy.log_graph_view", "operand": true }
+        ]
+    },
+    {
+        "button": "button1",
+        "modifiers": [],
+        "count": 3,
+        "press_command": "gs_log_graph_mouse",
+        "press_args": { "fallback_selection": "lines" },
+        "command": "gs_log_graph_mouse",
+        "args": { "release": true },
+        "context": [
+            { "key": "setting.git_savvy.log_graph_view", "operand": true }
+        ]
+    },
+    {
+        "button": "button1",
+        "modifiers": [],
         "count": 1,
         "press_command": "gs_dashboard_mouse",
         "command": "gs_dashboard_mouse",

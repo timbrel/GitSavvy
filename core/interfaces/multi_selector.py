@@ -2,6 +2,7 @@ from __future__ import annotations
 from itertools import starmap
 
 from ..parse_diff import SplittedDiff
+from .log_graph_helper import COMMIT_LINE
 
 from typing import Iterable
 from typing_extensions import TypeAlias
@@ -18,6 +19,8 @@ __all__ = (
     "MultiSelectionContext",
 )
 
+
+GRAPH_MOUSE_TARGET_KEY = "git_savvy.log_graph_mouse_target"
 
 # Should be `tuple[int, int]` but Sublime serializes tuples to a list
 Region: TypeAlias = "list[int]"
@@ -43,7 +46,6 @@ def get_multi_selection_if_multi(view: sublime.View) -> Iterable[sublime.Region]
 
 class gs_log_graph_multiselect(TextCommand):
     def run(self, edit, event: dict | None = None) -> None:
-        from .log_graph import COMMIT_LINE
 
         view = self.view
         prepare_mouse_selection(view, event)

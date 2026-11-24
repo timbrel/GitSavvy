@@ -8,27 +8,28 @@ import shlex
 import sublime
 from sublime_plugin import TextCommand, EventListener
 
-from . import log_graph_colorizer as colorizer
+from . import log_graph_colorize as colorize
+from . import log_graph_walk as walk
 from . import util as interface_util
 from . import multi_selector
 from . import show_commit_info
 from .log_graph_helper import (
-    COMMIT_LINE,
+
     FIND_COMMIT_HASH,
-    COMMIT_NODE_CHARS,
+    extract_commit_hash,
+    extract_commit_hash_span,
     GRAPH_HEIGHT,
 )
 from ..commands.log import gs_log
 from ..base_commands import GsTextCommand, GsWindowCommand
-from ..fns import filter_, flatten, pairwise, partition, take
+from ..fns import pairwise, take
 from ..git_command import GitCommand
-from ..text_helper import Region, TextRange, line_from_pt
+from ..text_helper import Region, line_from_pt
 from ..runtime import (
-    cooperative_thread_hopper,
     enqueue_on_ui,
     enqueue_on_worker,
     text_command,
-    HopperR
+
 )
 from ..view import (
     create_scratch_view,
@@ -42,7 +43,7 @@ from ..ui_mixins.input_panel import show_single_line_input_panel
 from ..ui__quick_panel import show_quick_panel
 from ..ui__toast_popup import show_toast
 from ..ui_mixins.quick_panel import show_branch_panel
-from ..caches import Cache
+
 from ..utils import add_selection_to_jump_history, flash, focus_view
 from GitSavvy.core import app_state
 from ..theme_generator import ColorRef, ScopedStyle, provide
@@ -63,12 +64,10 @@ __all__ = (
     "gs_log_graph_navigate",
     "gs_log_graph_navigate_wide",
     "gs_log_graph_navigate_to_head",
-    "gs_log_graph_edit_branches",
     "gs_log_graph_edit_filters",
     "gs_input_handler_go_history",
     "gs_log_graph_reset_filters",
     "gs_log_graph_toggle_overview",
-    "gs_log_graph_edit_files",
     "gs_log_graph_toggle_all_setting",
     "gs_log_graph_open_commit",
     "gs_log_graph_toggle_commit_info_panel",
@@ -77,48 +76,49 @@ __all__ = (
 )
 
 from typing import (
-    Callable, Dict, Iterable, Iterator, List, Optional, Set, Sequence, Tuple,
+    Callable, Dict, List, Optional, Sequence, Tuple,
     TypeVar, Union
 )
 T = TypeVar('T')
 
 GRAPH_SHOW_MORE_COMMIT_INFO_KEY = "graph_show_more_commit_info"
-QUICK_PANEL_SUPPORTS_WANT_EVENT = int(sublime.version()) >= 4096
-DOT_SCOPE = 'git_savvy.graph.dot'
-DOT_ABOVE_SCOPE = 'git_savvy.graph.dot.above'
-PATH_SCOPE = 'git_savvy.graph.path_char'
-PATH_ABOVE_SCOPE = 'git_savvy.graph.path_char.above'
-MATCHING_COMMIT_SCOPE = 'git_savvy.graph.matching_commit'
+SELECTED_ITEM_SCOPE = 'git_savvy.graph.selected_item'
 NO_FILTERS = ([], "", "")  # type: Tuple[List[str], str, str]
 
 provide("graph", [
     ScopedStyle(
+        "GitSavvy Selected Graph Item",
+        SELECTED_ITEM_SCOPE,
+        foreground=ColorRef("log_graph", "selected_item_foreground"),
+        background=ColorRef("log_graph", "selected_item_background")
+    ),
+    ScopedStyle(
         "GitSavvy Highlighted Commit Dot",
-        DOT_SCOPE,
+        colorize.DOT_SCOPE,
         background=ColorRef("log_graph", "commit_dot_background"),
         foreground=ColorRef("log_graph", "commit_dot_foreground")
     ),
     ScopedStyle(
         "GitSavvy Highlighted Path Char",
-        PATH_SCOPE,
+        colorize.PATH_SCOPE,
         background=ColorRef("log_graph", "path_background"),
         foreground=ColorRef("log_graph", "path_foreground")
     ),
     ScopedStyle(
         "GitSavvy Highlighted Commit Dot Above",
-        DOT_ABOVE_SCOPE,
+        colorize.DOT_ABOVE_SCOPE,
         background=ColorRef("log_graph", "commit_dot_above_background"),
         foreground=ColorRef("log_graph", "commit_dot_above_foreground")
     ),
     ScopedStyle(
         "GitSavvy Highlighted Path Char Above",
-        PATH_ABOVE_SCOPE,
+        colorize.PATH_ABOVE_SCOPE,
         background=ColorRef("log_graph", "path_above_background"),
         foreground=ColorRef("log_graph", "path_above_foreground")
     ),
     ScopedStyle(
         "GitSavvy Highlighted Matching Commit",
-        MATCHING_COMMIT_SCOPE,
+        colorize.MATCHING_COMMIT_SCOPE,
         background=ColorRef("log_graph", "matching_commit_background"),
         foreground=ColorRef("log_graph", "matching_commit_foreground")
     ),
@@ -177,13 +177,11 @@ class gs_graph(GsWindowCommand):
             if file_path
             else []
         )
-        if branches is None:
-            branches = []
         apply_filters = paths or filters
 
         this_id = (
             repo_path,
-            all or branches,
+            all or branches or [],
             True if overview else (paths, filters) if apply_filters else NO_FILTERS
         )
         for view in self.window.views():
@@ -198,7 +196,10 @@ class gs_graph(GsWindowCommand):
                 settings.set("git_savvy.log_graph_view.overview", overview)
                 settings.set("git_savvy.log_graph_view.all_branches", all)
                 settings.set("git_savvy.log_graph_view.show_tags", show_tags)
-                settings.set("git_savvy.log_graph_view.branches", branches)
+                keep_branch_selection = all and branches is None
+                if not keep_branch_selection:
+                    settings.set("git_savvy.log_graph_view.branches", branches or [])
+                    settings.erase("git_savvy.log_graph_view.branch_upstreams")
                 if decoration is not None:
                     settings.set('git_savvy.log_graph_view.decoration', decoration)
                 settings.set('git_savvy.log_graph_view.apply_filters', apply_filters)
@@ -240,7 +241,7 @@ class gs_graph(GsWindowCommand):
                 "git_savvy.log_graph_view.overview": overview,
                 "git_savvy.log_graph_view.all_branches": all,
                 "git_savvy.log_graph_view.show_tags": show_tags,
-                "git_savvy.log_graph_view.branches": branches,
+                "git_savvy.log_graph_view.branches": branches or [],
                 "git_savvy.log_graph_view.follow": follow,
                 "git_savvy.log_graph_view.decoration": decoration,
                 "git_savvy.log_graph_view.filters": filters,
@@ -480,7 +481,7 @@ class gs_log_graph_navigate(TextCommand):
             if len(line) == 0:
                 break
 
-            commit_hash_region = extract_comit_hash_span(view, line)
+            commit_hash_region = extract_commit_hash_span(line)
             if not commit_hash_region:
                 continue
 
@@ -500,7 +501,7 @@ class gs_log_graph_navigate_wide(TextCommand):
         # type: (sublime.Edit, bool) -> None
         view = self.view
         try:
-            cur_dot = next(chain(find_graph_art_at_cursor(view), _find_dots(view)))
+            cur_dot = next(chain(walk.find_graph_art_at_cursor(view), walk.iter_dots_from_sel(view)))
         except StopIteration:
             view.run_command("gs_log_graph_navigate", {"forward": forward})
             return
@@ -508,7 +509,7 @@ class gs_log_graph_navigate_wide(TextCommand):
         # We actually want to intertwine edge commits and marked fixup commits
         # but I think that is difficult to do elegantly.  So I do it manually.
         marked_fixup_dots = [
-            colorizer.Char(view, r.a) for r in view.get_regions('gs_log_graph_follow_fixups')
+            walk.Char(view, r.a) for r in view.get_regions('gs_log_graph_follow_fixups')
             if (r.a > cur_dot.pt if forward else r.a < cur_dot.pt)
         ]
         if marked_fixup_dots:
@@ -516,7 +517,7 @@ class gs_log_graph_navigate_wide(TextCommand):
         else:
             next_fixup = None
 
-        next_dots = follow_first_parent(cur_dot, forward)
+        next_dots = walk.follow_first_parent(cur_dot, forward)
         try:
             next_dot = next(next_dots)
         except StopIteration:
@@ -548,7 +549,7 @@ class gs_log_graph_navigate_wide(TextCommand):
             next_dot = (min if forward else max)(next_dot, next_fixup, key=lambda dot: dot.pt)
 
         line = line_from_pt(view, next_dot.region())
-        r = extract_comit_hash_span(view, line)
+        r = extract_commit_hash_span(line)
         if r:
             add_selection_to_jump_history(view)
             sel = view.sel()
@@ -560,40 +561,6 @@ class gs_log_graph_navigate_wide(TextCommand):
                 prefer_end=True if forward else False
             )
 
-
-def follow_first_parent(dot, forward=True):
-    # type: (colorizer.Char, bool) -> Iterator[colorizer.Char]
-    """Follow left (first-parent) dot to dot omitting the path chars in between."""
-    while True:
-        try:
-            dot = next(dots_after_dot(dot, forward))
-        except StopIteration:
-            return
-        else:
-            yield dot
-
-
-def follow_dots(dot, forward=True):
-    # type: (colorizer.Char, bool) -> Iterator[colorizer.Char]
-    """Breadth first traverse dot to dot."""
-    # Always sort by `dot.pt` to keep the order exactly like the visual
-    # order in the view.
-    stack = sorted(dots_after_dot(dot, forward), key=lambda dot: dot.pt, reverse=not forward)
-    seen = set()
-    while stack:
-        dot = stack.pop(0)
-        if dot not in seen:
-            yield dot
-            seen.add(dot)
-            stack.extend(dots_after_dot(dot, forward))
-            stack.sort(key=lambda dot: dot.pt, reverse=not forward)
-
-
-def dots_after_dot(dot, forward=True):
-    # type: (colorizer.Char, bool) -> Iterator[colorizer.Char]
-    """Return exact next dots (commits) after `dot`."""
-    fn = colorizer.follow_path_down if forward else colorizer.follow_path_up
-    return filter(lambda ch: ch.char() in COMMIT_NODE_CHARS, fn(dot))
 
 
 class gs_log_graph_navigate_to_head(TextCommand):
@@ -615,22 +582,6 @@ class gs_log_graph_navigate_to_head(TextCommand):
             self.view.run_command("gs_log_graph_refresh")
         else:
             set_and_show_cursor(self.view, head_commit.begin())
-
-
-class gs_log_graph_edit_branches(TextCommand):
-    def run(self, edit):
-        settings = self.view.settings()
-        branches = settings.get("git_savvy.log_graph_view.branches", [])  # type: List[str]
-
-        def on_done(text):
-            # type: (str) -> None
-            new_branches = list(filter_(text.split(' ')))
-            settings.set("git_savvy.log_graph_view.branches", new_branches)
-            self.view.run_command("gs_log_graph_refresh")
-
-        show_single_line_input_panel(
-            "branches", ' '.join(branches), on_done, select_text=True
-        )
 
 
 DEFAULT_HISTORY_ENTRIES = ["--date-order", "--dense", "--first-parent", "--reflog"]
@@ -792,7 +743,7 @@ class gs_log_graph_toggle_overview(TextCommand):
             symbols = view.symbols()
             symbols_ = {s for _, s in symbols}
             if follow not in symbols_:
-                dots = find_dots(view)
+                dots = walk.dots_from_sel(view)
                 if len(dots) == 1:
                     dot = dots.pop()
                     s = next_symbol_upwards(view, symbols, dot)
@@ -803,8 +754,8 @@ class gs_log_graph_toggle_overview(TextCommand):
 
 
 def next_symbol_upwards(view, symbols, dot):
-    # type: (sublime.View, List[Tuple[sublime.Region, str]], colorizer.Char) -> Optional[str]
-    previous_dots = follow_dots(dot, forward=False)
+    # type: (sublime.View, List[Tuple[sublime.Region, str]], walk.Char) -> Optional[str]
+    previous_dots = walk.follow_dots(dot, forward=False)
     for dot in take(50, previous_dots):
         line_span = view.line(dot.pt)
         # Capture all symbols from the line, ...
@@ -818,75 +769,6 @@ def next_symbol_upwards(view, symbols, dot):
         if symbols_on_line:
             return symbols_on_line[-1]
     return None
-
-
-class gs_log_graph_edit_files(GsTextCommand):
-    def run(self, edit, selected_index=-1):
-        view = self.view
-        settings = view.settings()
-        window = view.window()
-        assert window
-
-        files = self.list_controlled_files(view.change_count())
-        apply_filters = settings.get("git_savvy.log_graph_view.apply_filters")
-        paths = (
-            settings.get("git_savvy.log_graph_view.paths", [])
-            if apply_filters
-            else []
-        )  # type: List[str]
-        items = (
-            [
-                ">  {}".format(file)
-                for file in paths
-            ]
-            +
-            sorted(
-                "   {}".format(file)
-                for file in chain(files, set(os.path.dirname(f) for f in files))
-                if file and file not in paths
-            )
-        )
-
-        def on_done(idx, event={}):
-            selected = items[idx]
-            unselect = selected[0] == ">"
-            path = selected[3:]
-            if unselect:
-                next_paths = [p for p in paths if p != path]
-            else:
-                next_paths = paths + [path]
-
-            settings.set("git_savvy.log_graph_view.paths", next_paths)
-            settings.set("git_savvy.log_graph_view.apply_filters", True)
-            if not apply_filters:
-                settings.set("git_savvy.log_graph_view.filters", "")
-            view.run_command("gs_log_graph_refresh", {"assume_complete_redraw": bool(next_paths)})
-            if event.get("modifier_keys", {}).get("primary"):
-                view.run_command("gs_log_graph_edit_files", {
-                    "selected_index": max(0, idx - 1) if unselect else next_paths.index(path)
-                })
-
-        show_quick_panel(
-            window,
-            items,
-            on_done,
-            flags=sublime.MONOSPACE_FONT | (
-                sublime.WANT_EVENT if QUICK_PANEL_SUPPORTS_WANT_EVENT else 0
-            ),
-            selected_index=selected_index
-        )
-
-    @lru_cache(1)
-    def list_controlled_files(self, __cc: int) -> list[str]:
-        output = self.git(
-            "ls-tree",
-            "-r",
-            "-z",
-            "--full-tree",
-            "--name-only",
-            "HEAD"
-        )
-        return list(filter_(output.split("\0")))
 
 
 class gs_log_graph_toggle_all_setting(GsTextCommand):
@@ -1002,8 +884,8 @@ class GsLogGraphCursorListener(EventListener, GitCommand):
         # happen on the main thread (t.i. blocking) bc it is way, way
         # faster. But we still defer that task, so others can run code
         # that actually *needs* to be a sync side-effect to this event.
-        enqueue_on_ui(colorize_dots, view)
-        enqueue_on_ui(colorize_fixups, view)
+        enqueue_on_ui(colorize.colorize_dots, view)
+        enqueue_on_ui(colorize.colorize_fixups, view)
 
         enqueue_on_ui(set_symbol_to_follow, view)
 
@@ -1214,22 +1096,14 @@ def _find_symbol(view, symbol):
     for r, symbol_ in view.symbols():
         if symbol_ == symbol:
             line = line_from_pt(view, r)
-            return extract_comit_hash_span(view, line)
+            return extract_commit_hash_span(line)
 
     r = view.find(FIND_COMMIT_HASH + re.escape(symbol), 0)
     if not r.empty():
         line = line_from_pt(view, r)
-        return extract_comit_hash_span(view, line)
+        return extract_commit_hash_span(line)
     return None
 
-
-def extract_comit_hash_span(view, line):
-    # type: (sublime.View, TextRange) -> Optional[sublime.Region]
-    match = COMMIT_LINE.search(line.text)
-    if match:
-        a, b = match.span('commit_hash')
-        return sublime.Region(a + line.a, b + line.a)
-    return None
 
 
 @text_command
@@ -1261,263 +1135,6 @@ def line_start_of_region(view, region):
     return view.line(region).begin()
 
 
-def colorize_dots(view):
-    # type: (sublime.View) -> None
-    dots = find_graph_art_at_cursor(view) or tuple(find_dots(view))
-    _colorize_dots(view.id(), dots)
-
-
-def find_graph_art_at_cursor(view):
-    # type: (sublime.View) -> Tuple[colorizer.Char, ...]
-    if len(view.sel()) != 1:
-        return ()
-    cursor = view.sel()[0].b
-    if not view.match_selector(cursor, "meta.graph.branch-art"):
-        return ()
-
-    c = colorizer.Char(view, cursor)
-    for get_char in (lambda: c, lambda: c.w):
-        c_ = get_char()
-        if c_ != " ":
-            return (c_,)
-    return ()
-
-
-def find_dots(view):
-    # type: (sublime.View) -> Set[colorizer.Char]
-    return set(_find_dots(view))
-
-
-def _find_dots(view):
-    # type: (sublime.View) -> Iterator[colorizer.Char]
-    for s in view.sel():
-        line = line_from_pt(view, s.begin())
-        dot = dot_from_line(view, line)
-        if dot:
-            yield dot
-
-
-def dot_from_line(view, line):
-    # type: (sublime.View, TextRange) -> Optional[colorizer.Char]
-    for ch in COMMIT_NODE_CHARS:
-        idx = line.text.find(ch)
-        if idx > -1:
-            return colorizer.Char(view, line.region().begin() + idx)
-    return None
-
-
-ACTIVE_COMPUTATION = Cache()
-
-
-@lru_cache(maxsize=1)
-# ^- throttle side-effects
-def _colorize_dots(vid, dots):
-    # type: (sublime.ViewId, Tuple[colorizer.Char]) -> None
-    view = sublime.View(vid)
-    to_region = lambda ch: ch.region()  # type: Callable[[colorizer.Char], sublime.Region]
-
-    view.add_regions(
-        'gs_log_graph.dot',
-        list(map(to_region, dots)),
-        scope=DOT_SCOPE,
-        flags=sublime.RegionFlags.NO_UNDO
-    )
-
-    ACTIVE_COMPUTATION[vid] = dots
-    __colorize_dots(vid, dots)
-
-
-@cooperative_thread_hopper
-def __colorize_dots(vid, dots):
-    # type: (sublime.ViewId, Tuple[colorizer.Char]) -> HopperR
-    timer = yield "ENSURE_UI_THREAD"
-    view = sublime.View(vid)
-
-    paths_down = []  # type: List[List[colorizer.Char]]
-    paths_up = []  # type: List[List[colorizer.Char]]
-
-    uow = []
-    for container, direction in ((paths_down, "down"), (paths_up, "up")):
-        for dot in dots:
-            try:
-                chars = colorizer.follow_path_if_cached(dot, direction)  # type: ignore[arg-type]
-            except ValueError:
-                values = []  # type: List[colorizer.Char]
-                container.append(values)
-                uow.append((colorizer.follow_path(dot, direction), values))  # type: ignore[arg-type]
-            else:
-                container.append(chars)
-
-    c = 0
-    while uow:
-        idx = c % len(uow)
-        iterator, values = uow[idx]
-        try:
-            char = next(iterator)
-        except StopIteration:
-            uow.pop(idx)
-        else:
-            values.append(char)
-        c += 1
-
-        if timer.exhausted_ui_budget():
-            __paint(view, paths_down, paths_up)
-            timer = yield "AWAIT_UI_THREAD"
-            if ACTIVE_COMPUTATION.get(vid) != dots:
-                return
-
-    if ACTIVE_COMPUTATION[vid] == dots:
-        ACTIVE_COMPUTATION.pop(vid, None)
-        __paint(view, paths_down, paths_up)
-
-
-def __paint(view, paths_down, paths_up):
-    # type: (sublime.View, List[List[colorizer.Char]], List[List[colorizer.Char]]) -> None
-    to_region = lambda ch: ch.region()  # type: Callable[[colorizer.Char], sublime.Region]
-    path_down = flatten(filter(
-        lambda path: len(path) > 1,  # type: ignore[arg-type]  # https://github.com/python/mypy/issues/9176
-        paths_down
-    ))
-    chars_up = flatten(filter(
-        lambda path: len(path) > 1,  # type: ignore[arg-type]  # https://github.com/python/mypy/issues/9176
-        paths_up
-    ))
-    path_up, dot_up = partition(lambda ch: ch.char() in COMMIT_NODE_CHARS, chars_up)
-    view.add_regions(
-        'gs_log_graph.path_below',
-        list(map(to_region, path_down)),
-        scope=PATH_SCOPE,
-        flags=sublime.RegionFlags.NO_UNDO
-    )
-    view.add_regions(
-        'gs_log_graph.path_above',
-        list(map(to_region, path_up)),
-        scope=PATH_ABOVE_SCOPE,
-        flags=sublime.RegionFlags.NO_UNDO
-    )
-    view.add_regions(
-        'gs_log_graph.dot.above',
-        list(map(to_region, dot_up)),
-        scope=DOT_ABOVE_SCOPE,
-        flags=sublime.RegionFlags.NO_UNDO
-    )
-
-
-def colorize_fixups(view):
-    # type: (sublime.View) -> None
-    dots = tuple(find_dots(view))
-    _colorize_fixups(view.id(), dots)
-
-
-@lru_cache(maxsize=1)
-def _colorize_fixups(vid, dots):
-    # type: (sublime.ViewId, Tuple[colorizer.Char]) -> None
-    view = sublime.View(vid)
-
-    matching_dots = flatten(__find_matching_dots(vid, dot) for dot in dots)
-    view.add_regions(
-        'gs_log_graph_follow_fixups',
-        [dot.region() for dot in matching_dots],
-        scope=MATCHING_COMMIT_SCOPE,
-        flags=sublime.RegionFlags.NO_UNDO
-    )
-
-
-@lru_cache(maxsize=64)  # If we cache, we must return non-lazy `List`!
-def __find_matching_dots(vid, dot):
-    # type: (sublime.ViewId, colorizer.Char) -> List[colorizer.Char]
-    view = sublime.View(vid)
-    commit_message = commit_message_from_point(view, dot.pt)
-    if not commit_message:
-        return []
-
-    if is_fixup_or_squash_message(commit_message):
-        original_message = strip_fixup_or_squash_prefix(commit_message)
-        return take(1, find_matching_commit(dot, original_message))
-    else:
-        return list(dot for dot, _ in find_fixups_upwards(dot, commit_message))
-
-
-def extract_message_regions(view):
-    # type: (sublime.View) -> List[sublime.Region]
-    return find_by_selector(view, "meta.graph.message.git-savvy")
-
-
-def is_fixup_or_squash_message(commit_message):
-    # type: (str) -> bool
-    return (
-        commit_message.startswith("fixup! ")
-        or commit_message.startswith("squash! ")
-    )
-
-
-def strip_fixup_or_squash_prefix(commit_message):
-    # type: (str) -> str
-    # As long as we process "visually", we must deal with
-    # truncated messages which end with one or multiple dots
-    # we have to strip.
-    if commit_message.startswith('fixup! '):
-        return commit_message[7:].rstrip('.').strip()
-    if commit_message.startswith('squash! '):
-        return commit_message[8:].rstrip('.').strip()
-    return commit_message
-
-
-def add_fixup_or_squash_prefixes(commit_message):
-    # type: (str) -> List[str]
-    return [
-        "fixup! " + commit_message,
-        "squash! " + commit_message
-    ]
-
-
-def commit_message_from_point(view, pt):
-    # type: (sublime.View, int) -> Optional[str]
-    line_span = view.line(pt)
-    for r in extract_message_regions(view):
-        if line_span.a <= r.a <= line_span.b:  # optimized `line_span.contains(r)`
-            return view.substr(r)
-    else:
-        return None
-
-
-def find_matching_commit(dot, message, forward=True):
-    # type: (colorizer.Char, str, bool) -> Iterator[colorizer.Char]
-    dots = follow_dots(dot, forward=forward)
-    for dot, this_message in _with_message(take(100, dots)):
-        this_message = this_message.rstrip(".").strip()
-        shorter, longer = sorted((message, this_message), key=len)
-        if longer.startswith(shorter):
-            yield dot
-
-
-def find_fixups_upwards(dot, message):
-    # type: (colorizer.Char, str) -> Iterator[Tuple[colorizer.Char, str]]
-    messages = add_fixup_or_squash_prefixes(message.rstrip(".").strip())
-
-    previous_dots = follow_dots(dot, forward=False)
-    for dot, this_message in _with_message(take(50, previous_dots)):
-        this_message = this_message.rstrip(".").strip()
-        if is_fixup_or_squash_message(this_message):
-            for message in messages:
-                shorter, longer = sorted((message, this_message), key=len)
-                if longer.startswith(shorter):
-                    yield dot, this_message
-
-
-def _with_message(dots):
-    # type: (Iterable[colorizer.Char]) -> Iterator[Tuple[colorizer.Char, str]]
-    return filter_(map(with_message, dots))
-
-
-def with_message(dot):
-    # type: (colorizer.Char) -> Optional[Tuple[colorizer.Char, str]]
-    commit_message = commit_message_from_point(dot.view, dot.pt)
-    if commit_message:
-        return dot, commit_message
-    return None
-
-
 def draw_info_panel(view):
     # type: (sublime.View) -> None
     """Extract line under the last cursor and draw info panel."""
@@ -1533,6 +1150,7 @@ def draw_info_panel(view):
 
 
 @lru_cache(maxsize=1)
+
 # ^- used to throttle the side-effect!
 # Read: distinct until      (vid, line_text) changes
 def draw_info_panel_for_line(vid, line_text):
@@ -1555,11 +1173,6 @@ def draw_info_panel_for_line(vid, line_text):
             "from_log_graph": True
         })
 
-
-def extract_commit_hash(line):
-    # type: (str) -> str
-    match = COMMIT_LINE.search(line)
-    return match.group('commit_hash') if match else ""
 
 
 class gs_log_graph_toggle_commit_info_panel(GsWindowCommand):

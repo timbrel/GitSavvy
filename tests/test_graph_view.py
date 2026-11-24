@@ -4,15 +4,15 @@ import sublime
 
 from unittesting import DeferrableTestCase, expectedFailure
 from GitSavvy.tests.parameterized import parameterized as p
-from GitSavvy.tests.mockito import mock, spy2, unstub, verify, when
+from GitSavvy.tests.mockito import spy2, unstub, verify, when
 
 from GitSavvy.core import app_state, store
 from GitSavvy.core.interfaces.log_graph import (
-    extract_commit_hash,
-    gs_log_graph_edit_files,
+
     navigate_to_symbol,
     GitCommand
 )
+from GitSavvy.core.interfaces.log_graph_helper import extract_commit_hash
 from GitSavvy.core.interfaces.log_graph_renderer import gs_log_graph_refresh
 from GitSavvy.core.interfaces.show_commit_info import gs_show_commit_info
 from GitSavvy.core.git_mixins.status import WorkingDirState
@@ -102,33 +102,6 @@ f950461
 """.strip().split('\n')
 
 
-class TestGraphFileListing(DeferrableTestCase):
-    def setUp(self) -> None:
-        self.command = gs_log_graph_edit_files(mock())
-        self.addCleanup(unstub)
-        self.addCleanup(self.command.list_controlled_files.cache_clear)
-
-    @p.expand([
-        ("", []),
-        ("normal.md\0", ["normal.md"]),
-        (' spaced \0tab\tname\0line\nname\0quote".md\0ü.md\0',
-         [" spaced ", "tab\tname", "line\nname", 'quote".md', "ü.md"])
-    ])
-    def test_preserves_filenames(self, output: str, expected: list[str]) -> None:
-        when(self.command).git("ls-tree", ...).thenReturn(output)
-
-        self.assertEqual(self.command.list_controlled_files(0), expected)
-        verify(self.command).git("ls-tree", "-r", "-z", "--full-tree", "--name-only", "HEAD")
-
-    def test_caches_until_graph_changes(self) -> None:
-        when(self.command).git("ls-tree", ...).thenReturn("first\0", "second\0")
-
-        self.assertEqual(self.command.list_controlled_files(0), ["first"])
-        self.assertEqual(self.command.list_controlled_files(0), ["first"])
-        self.assertEqual(self.command.list_controlled_files(1), ["second"])
-        verify(self.command, times=2).git("ls-tree", ...)
-
-
 class TestGraphViewCommitHashExtraction(DeferrableTestCase):
     @p.expand(list(zip(EXTRACT_COMMIT_HASH_FIXTURE, HASHES)))
     def test_extract_commit_hash_from_line(self, line, expected):
@@ -186,8 +159,8 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
             when(gs_show_commit_info).to_short_hash(sha1).thenReturn(sha1)
 
     def create_graph_view_async(self, repo_path, log, wait_for, markers=None):
-        when(gs_log_graph_refresh).read_graph(...).thenReturn(
-            line.replace("|", "%00") for line in log.splitlines(keepends=True)
+        when(gs_log_graph_refresh).read_graph(...).thenAnswer(
+            lambda **kwargs: (line.replace("|", "%00") for line in log.splitlines(keepends=True))
         )
         # `GitCommand.get_repo_path` "validates" a given repo using
         # `os.path.exists`.
@@ -196,6 +169,7 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
         when(GitCommand).get_working_dir_status().thenReturn(CLEAN_WORKING_DIR)
         when(gs_log_graph_refresh).get_worktrees().thenRaise(AssertionError("Unexpected Git query"))
         when(gs_log_graph_refresh).get_worktree_locations().thenReturn([])
+        when(gs_log_graph_refresh).get_branches().thenRaise(AssertionError("Unexpected branch query"))
         if markers is not None:
             when(gs_log_graph_refresh).get_worktree_markers().thenReturn(markers)
         self.window.run_command('gs_graph', {'repo_path': repo_path})
@@ -227,6 +201,38 @@ class TestGraphViewInteractionWithCommitInfoPanel(DeferrableTestCase):
             yield from self.await_active_panel_to_be('output.show_commit_info')
 
         return log_view
+
+    def test_all_highlight_updates_when_header_text_does_not_change(self):
+        view = yield from self.setup_graph_view_async(show_commit_info_setting=False)
+        prelude_region = view.find_by_selector("meta.prelude.git_savvy.graph")[0]
+        header = view.substr(prelude_region)
+        self.assertEqual(view.get_regions("gs_log_graph.all"), [])
+
+        view.run_command("gs_log_graph_toggle_all_setting")
+        yield lambda: bool(view.get_regions("gs_log_graph.all"))
+        self.assertEqual([view.substr(r) for r in view.get_regions("gs_log_graph.all")], ["all"])
+        self.assertEqual(view.substr(prelude_region), header)
+
+        view.run_command("gs_log_graph_toggle_all_setting")
+        yield lambda: not view.get_regions("gs_log_graph.all")
+        self.assertEqual(view.substr(prelude_region), header)
+
+    def test_all_graph_reuse_remembers_suspended_subset(self):
+        view = yield from self.setup_graph_view_async(show_commit_info_setting=False)
+        settings = view.settings()
+        ref = 'refs/heads/worker-profiler'
+        upstream = 'refs/remotes/origin/worker-profiler'
+        settings.set('git_savvy.log_graph_view.branches', [ref])
+        settings.set('git_savvy.log_graph_view.branch_upstreams', [upstream])
+        view.run_command('gs_log_graph_toggle_all_setting')
+        yield lambda: bool(view.get_regions('gs_log_graph.all'))
+        self.window.run_command('gs_graph', {'repo_path': '/not/there', 'all': True})
+        self.assertEqual(self.window.active_view(), view)
+        view.run_command('gs_log_graph_toggle_all_setting')
+        yield lambda: not view.get_regions('gs_log_graph.all')
+        self.assertIn('all  worker-profiler', view.substr(sublime.Region(0, view.size())))
+        self.assertEqual(settings.get('git_savvy.log_graph_view.branches'), [ref])
+        self.assertEqual(settings.get('git_savvy.log_graph_view.branch_upstreams'), [upstream])
 
     def test_graph_without_linked_worktrees_avoids_query(self):
         yield from self.setup_graph_view_async(show_commit_info_setting=False)

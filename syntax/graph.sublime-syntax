@@ -17,6 +17,10 @@ contexts:
 
   prelude:
     - meta_scope: meta.prelude.git_savvy.graph
+    - match: '^  (all)(?=  |$)'
+      scope: comment.prelude.git_savvy.graph
+      captures:
+        1: meta.prelude.all.git_savvy.graph
     - match: .*
       scope: comment.prelude.git_savvy.graph
     - match: '^$\n'

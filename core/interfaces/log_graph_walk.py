@@ -1,9 +1,26 @@
+"""Walk the graph drawn in a log view, without asking Git for commit history.
+
+A dot is a `Char` at a commit marker (●, ⌂ or *), not at the commit hash.
+From a selection, start with `iter_dots_from_sel(view)` or `dots_from_sel(view)`.
+From a buffer point, use `dot_from_line(view, line_from_pt(view, pt))`.
+The point can be anywhere on the line, including in a label or message.
+
+From a dot, `dots_after_dot` follows the drawn edges to the next commit on
+each path. Forward means down the view toward parents; backward means up
+toward children. Use `follow_dots` to keep going in visual order, or
+`follow_first_parent` to take only the first path at each fork. For painting
+the edges themselves, `follow_path_down` and `follow_path_up` yield the
+intervening graph characters as well as the dots at the ends of the paths.
+"""
+
+from __future__ import annotations
+
 from collections import deque
 
 import sublime
 
 from GitSavvy.core.caches import Cache
-from .log_graph_helper import COMMIT_NODE_CHARS
+from ..text_helper import TextRange, line_from_pt
 
 from typing import (
     Callable,
@@ -17,6 +34,8 @@ from typing import (
     TypeVar
 )
 
+COMMIT_NODE_CHARS = "●⌂*"
+
 T = TypeVar('T')
 Point = int
 RowCol = Tuple[int, int]
@@ -24,6 +43,75 @@ View = sublime.View
 Region = sublime.Region
 NextFn = Callable[['Char'], Iterator['Char']]
 Direction = Literal["down", "up"]
+
+
+def dots_from_sel(view: sublime.View) -> set[Char]:
+    """Return the distinct dots on the selected lines."""
+    return set(iter_dots_from_sel(view))
+
+
+def iter_dots_from_sel(view: sublime.View) -> Iterator[Char]:
+    """Yield the dot on each selection’s starting line, skipping lines without a dot."""
+    for s in view.sel():
+        line = line_from_pt(view, s.begin())
+        dot = dot_from_line(view, line)
+        if dot:
+            yield dot
+
+
+def dot_from_line(view: sublime.View, line: TextRange) -> Char | None:
+    for ch in COMMIT_NODE_CHARS:
+        idx = line.text.find(ch)
+        if idx > -1:
+            return Char(view, line.region().begin() + idx)
+    return None
+
+
+def follow_first_parent(dot: Char, forward: bool = True) -> Iterator[Char]:
+    """Follow left (first-parent) dot to dot omitting the path chars in between."""
+    while True:
+        try:
+            dot = next(dots_after_dot(dot, forward))
+        except StopIteration:
+            return
+        else:
+            yield dot
+
+
+def follow_dots(dot: Char, forward: bool = True) -> Iterator[Char]:
+    """Yield reachable dots in view order, excluding the starting dot."""
+    # Always sort by `dot.pt` to keep the order exactly like the visual
+    # order in the view.
+    stack = sorted(dots_after_dot(dot, forward), key=lambda dot: dot.pt, reverse=not forward)
+    seen = set()
+    while stack:
+        dot = stack.pop(0)
+        if dot not in seen:
+            yield dot
+            seen.add(dot)
+            stack.extend(dots_after_dot(dot, forward))
+            stack.sort(key=lambda dot: dot.pt, reverse=not forward)
+
+
+def dots_after_dot(dot: Char, forward: bool = True) -> Iterator[Char]:
+    """Yield only the dots one edge away in the given direction."""
+    fn = follow_path_down if forward else follow_path_up
+    return filter(lambda ch: ch.char() in COMMIT_NODE_CHARS, fn(dot))
+
+
+def find_graph_art_at_cursor(view: sublime.View) -> tuple[Char, ...]:
+    if len(view.sel()) != 1:
+        return ()
+    cursor = view.sel()[0].b
+    if not view.match_selector(cursor, "meta.graph.branch-art"):
+        return ()
+
+    c = Char(view, cursor)
+    for get_char in (lambda: c, lambda: c.w):
+        c_ = get_char()
+        if c_ != " ":
+            return (c_,)
+    return ()
 
 
 class Char:

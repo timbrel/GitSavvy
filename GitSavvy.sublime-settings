@@ -226,6 +226,8 @@
 
     "colors": {
         "log_graph": {
+            "selected_item_foreground": "#111",
+            "selected_item_background": "#aaf",
             "commit_dot_foreground": "#9911",
             "commit_dot_background": "#991",
             "path_foreground": "#991",

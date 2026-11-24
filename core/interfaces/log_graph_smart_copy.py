@@ -5,7 +5,8 @@ from itertools import starmap
 import sublime
 import sublime_plugin
 
-from . import log_graph
+from .log_graph_helper import extract_commit_hash_span
+from .log_graph_walk import dot_from_line, follow_dots
 from . import multi_selector
 from ..fns import pairwise, peek, take
 from ..text_helper import Region, TextRange, line_from_pt
@@ -236,7 +237,7 @@ class gs_log_graph_smart_paste(sublime_plugin.TextCommand):
 
 def read_commit_hash(view, line):
     # type: (sublime.View, TextRange) -> Optional[TextRange]
-    commit_region = log_graph.extract_comit_hash_span(view, line)
+    commit_region = extract_commit_hash_span(line)
     if not commit_region:
         return None
 
@@ -305,7 +306,7 @@ def reachable_commits_from_head(view: sublime.View) -> Iterator[str]:
     if head_commit_hash:
         yield head_commit_hash
 
-    for dot in log_graph.follow_dots(head_dot, forward=True):
+    for dot in follow_dots(head_dot, forward=True):
         commit_hash = read_commit_hash_from_dot(view, dot)
         if commit_hash:
             yield commit_hash
@@ -325,5 +326,5 @@ def read_head_dot(view: sublime.View):
         "constant.numeric.graph.commit-hash.git-savvy"
     )
     for head_hash in find_by_selector(view, selector):
-        return log_graph.dot_from_line(view, line_from_pt(view, head_hash.a))
+        return dot_from_line(view, line_from_pt(view, head_hash.a))
     return None

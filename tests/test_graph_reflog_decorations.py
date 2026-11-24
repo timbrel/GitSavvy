@@ -5,7 +5,7 @@ import tempfile
 
 from unittesting import DeferrableTestCase
 
-from GitSavvy.core.interfaces.log_graph_renderer import gs_log_graph_refresh
+from GitSavvy.core.interfaces.log_graph_renderer import gs_log_graph_refresh, prelude
 from GitSavvy.tests.mockito import mock, unstub, verify, when
 from GitSavvy.tests.parameterized import parameterized as p
 
@@ -91,7 +91,7 @@ class TestGraphReflogDecorations(DeferrableTestCase):
     def resolve_decorations(self, linked: bool) -> None:
         when(self.command).get_repo_path().thenReturn(self.linked_path if linked else self.repo_path)
         with self.assertRaises(StopBeforeGraphRead):
-            self.command.run_impl(False, True, "", lambda: False)
+            self.command.run_impl(False, True, prelude(self.view), lambda: False)
 
     def write_reflog(self, git_dir: str, ref: str, hashes: list[str]) -> None:
         contents = "".join(

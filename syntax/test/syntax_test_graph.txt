@@ -2,7 +2,8 @@
 
 # <-  meta.prelude
   REPO: C:\Users\c-flo\AppData\Roaming\Sublime Text\Packages\SublimeLinter
-  [a]ll: true
+  all
+# ^^^ comment.prelude.git_savvy.graph meta.prelude.all.git_savvy.graph
 
 # <-  meta.prelude
 * 2b17192 (HEAD -> develop, origin/master, origin/HEAD, master) replace all references to .tmLanguage to .sublime-syntax

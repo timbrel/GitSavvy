@@ -4,7 +4,7 @@ import sublime
 from unittesting import DeferrableTestCase
 
 from GitSavvy.core.commands import branch, checkout
-from GitSavvy.core.interfaces import log_graph, log_graph_branch_drag as drag, multi_selector
+from GitSavvy.core.interfaces import log_graph_branch_drag as drag, log_graph_colorize, multi_selector
 from GitSavvy.core.interfaces.log_graph import GsLogGraphCursorListener
 from GitSavvy.core.types import FullHash
 from GitSavvy.core.view import replace_view_content
@@ -29,8 +29,8 @@ class TestBranchDrag(DeferrableTestCase):
         self.view.settings().set("git_savvy.log_graph_view", True)
         # Keep unrelated graph rendering out of these mouse-command tests.
         when(GsLogGraphCursorListener).is_applicable(...).thenReturn(False)
-        when(log_graph).colorize_dots(self.view).thenReturn(None)
-        when(log_graph).colorize_fixups(self.view).thenReturn(None)
+        when(log_graph_colorize).colorize_dots(self.view).thenReturn(None)
+        when(log_graph_colorize).colorize_fixups(self.view).thenReturn(None)
         self.branches = [
             mock({"name": "throttling", "is_remote": False, "active": False, "worktree_path": None,
                   "commit_hash": FullHash("718ab2b9" + "0" * 32)}),

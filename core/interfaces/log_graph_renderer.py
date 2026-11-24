@@ -49,6 +49,7 @@ from ..types import FullHash, ShortHash
 from ..ui__busy_spinner import start_busy_indicator, stop_busy_indicator
 from ..view import replace_view_content, visible_views
 from .log_graph import (
+    SELECTED_ITEM_SCOPE,
     get_simple_selection,
     just_set_cursor,
     navigate_to_symbol,
@@ -62,6 +63,8 @@ from .log_graph_helper import (
     ROOT_NODE_CHAR,
     WORKTREE_MARKER,
 )
+
+from .log_graph_prelude import Prelude, PreludeControls, RefToggle, Toggle
 
 T = TypeVar("T")
 
@@ -463,14 +466,14 @@ class gs_log_graph_refresh(GsTextCommand):
             resolve_commit_to_follow_after_rebase(self, parent_commitish)
 
         initial_draw = self.view.size() == 0
-        prelude_text = prelude(self.view)
+        header = prelude(self.view)
         if initial_draw or assume_complete_redraw:
             prelude_region = (
                 None
                 if initial_draw else
                 self.view.find_by_selector('meta.prelude.git_savvy.graph')[0]
             )
-            replace_view_content(self.view, prelude_text, prelude_region)
+            draw_prelude(self.view, header, prelude_region)
 
         should_abort = make_aborter(self.view)
         # Set flag that we started the refresh process.  This must be in sync with the later
@@ -480,7 +483,7 @@ class gs_log_graph_refresh(GsTextCommand):
             self.run_impl,
             initial_draw,
             assume_complete_redraw,
-            prelude_text,
+            header,
             should_abort,
         )
 
@@ -488,7 +491,7 @@ class gs_log_graph_refresh(GsTextCommand):
         self,
         initial_draw: bool,
         assume_complete_redraw: bool,
-        prelude_text: str,
+        header: Prelude,
         should_abort: ShouldAbort
     ) -> None:
         settings = self.view.settings()
@@ -506,7 +509,7 @@ class gs_log_graph_refresh(GsTextCommand):
 
         token_queue = SimpleFiniteQueue()  # type: SimpleFiniteQueue[Replace]
         current_proc = None
-        graph_offset = len(prelude_text)
+        graph_offset = len(header.text)
 
         def remember_proc(proc):
             # type: (subprocess.Popen) -> None
@@ -560,7 +563,7 @@ class gs_log_graph_refresh(GsTextCommand):
             FOLLOW_UP = GRAPH_HEIGHT
             current_number_of_commits = (
                 self.view.rowcol(self.view.size())[0]
-                - prelude_text.count("\n")
+                - header.text.count("\n")
                 - 1  # trailing newline
             )
             default_number_of_commits_to_show = max(FOLLOW_UP, current_number_of_commits)
@@ -838,7 +841,7 @@ class gs_log_graph_refresh(GsTextCommand):
 
             visible_selection = is_sel_in_viewport(self.view)
 
-            replace_view_content(self.view, prelude_text, current_prelude_region)
+            draw_prelude(self.view, header, current_prelude_region)
             if assume_complete_redraw:
                 clear_graph()
             drain_and_draw_queue(self.view, PaintingStateMachine(), follow, col_range, visible_selection)
@@ -1032,7 +1035,8 @@ class gs_log_graph_refresh(GsTextCommand):
             args += ['--simplify-by-decoration', '--sparse']
 
         if branches and not all_branches:
-            args += branches
+            upstreams: list[str] = settings.get("git_savvy.log_graph_view.branch_upstreams", [])
+            args += list(dict.fromkeys([*branches, *upstreams]))
 
         if filters and apply_filters:
             args += shlex.split(filters)
@@ -1056,65 +1060,116 @@ def make_worktree_branch_marker(branches: set[str]) -> Optional[Callable[[str], 
     return partial(pattern.sub, rf"\g<0> {WORKTREE_MARKER}")
 
 
-def prelude(view):
-    # type: (sublime.View) -> str
+def prelude(view: sublime.View) -> Prelude:
     settings = view.settings()
-    all_branches = settings.get("git_savvy.log_graph_view.all_branches") or False
     apply_filters = settings.get("git_savvy.log_graph_view.apply_filters")
-    branches = settings.get("git_savvy.log_graph_view.branches") or []
     filters = settings.get("git_savvy.log_graph_view.filters") or ""
     overview = settings.get("git_savvy.log_graph_view.overview")
+    all_branches = settings.get("git_savvy.log_graph_view.all_branches")
+    branches = settings.get("git_savvy.log_graph_view.branches") or []
     paths = settings.get("git_savvy.log_graph_view.paths") or []
     repo_path = settings.get("git_savvy.repo_path")
 
-    prelude = "\n"
+    text = "\n"
     if paths and apply_filters and not overview:
-        prelude += "  FILE: {}\n".format(" ".join(paths))
+        text += "  FILE: {}\n".format(" ".join(paths))
     elif repo_path:
-        prelude += "  REPO: {}\n".format(repo_path)
+        text += "  REPO: {}\n".format(repo_path)
 
-    if apply_filters:
-        pickaxes, normal_ones = [], []
-        for arg in shlex.split(filters):
-            if arg.startswith("-S") or arg.startswith("-G"):
-                if "\n" in arg:
-                    pickaxes.append(
-                        "\n  {}'''\n{}\n  '''".format(
-                            arg[:2],
-                            textwrap.indent(textwrap.dedent(arg[2:].rstrip()), "    ")
-                        )
-                    )
-                else:
-                    normal_ones.append(
-                        "{}'{}'".format(
-                            arg[:2],
-                            arg[3:-1] if (arg[2], arg[-1]) == ("'", "'") else arg[2:]
-                        )
-                    )
-            else:
-                normal_ones.append(arg)
-        formatted_filters = "\n".join(filter_((" ".join(normal_ones), "".join(pickaxes))))
+    text += "  "
+    all_toggle = None
+    refs = []
+
+    if overview:
+        text += "OVERVIEW"
     else:
-        formatted_filters = None
+        start = len(text)
+        text += "all"
+        all_toggle = Toggle(sublime.Region(start, len(text)), bool(all_branches))
 
-    if not all_branches and not overview:
-        formatted_branches = " ".join(branches)
-    else:
-        formatted_branches = None
+        for index, ref in enumerate(prelude_refs(view)):
+            text += "  " if index == 0 else " "
+            start = len(text)
+            text += short_ref(ref)
+            refs.append(RefToggle(
+                sublime.Region(start, len(text)), not all_branches and ref in branches, ref
+            ))
 
-    prelude += (
-        "  "
-        + "  ".join(filter_((
-            (
-                'OVERVIEW'
-                if overview
-                else '[a]ll: true' if all_branches else '[a]ll: false'
-            ),
-            formatted_branches,
-            formatted_filters
-        )))
+    if apply_filters and (formatted_filters := format_prelude_filters(filters)):
+        text += (
+            formatted_filters if formatted_filters.startswith("\n")
+            else "\n  " + formatted_filters
+        )
+
+    return Prelude(text + "\n\n", PreludeControls(all_toggle, refs))
+
+
+def draw_prelude(view: sublime.View, header: Prelude, region: sublime.Region | None = None) -> None:
+    replace_view_content(view, header.text, region)
+    settings = view.settings()
+    controls = header.controls
+
+    if controls.all is not None:
+        settings.set("git_savvy.log_graph_view.branch_choices", [toggle.ref for toggle in controls.refs])
+
+    settings.set("git_savvy.log_graph_view.prelude_controls", controls.to_dict())
+
+    view.add_regions(
+        "gs_log_graph.branches",
+        [toggle.region for toggle in controls.refs if toggle.selected],
+        scope=SELECTED_ITEM_SCOPE,
+        flags=sublime.RegionFlags.NO_UNDO
     )
-    return prelude + "\n\n"
+
+    if controls.all is not None and controls.all.selected:
+        view.add_regions(
+            "gs_log_graph.all",
+            [controls.all.region],
+            scope=SELECTED_ITEM_SCOPE,
+            flags=sublime.RegionFlags.NO_UNDO
+        )
+    else:
+        view.erase_regions("gs_log_graph.all")
+
+
+def prelude_refs(view: sublime.View) -> list[str]:
+    settings = view.settings()
+    if settings.get("git_savvy.log_graph_view.overview"):
+        return []
+
+    # Keep the controls in place when their selection changes.
+    return list(dict.fromkeys([
+        *settings.get("git_savvy.log_graph_view.branch_choices", []),
+        *(settings.get("git_savvy.log_graph_view.branches", []) or [])
+    ]))
+
+
+def short_ref(ref: str) -> str:
+    return re.sub(r"^refs/(?:heads|remotes|tags)/", "", ref)
+
+
+def format_prelude_filters(filters: str) -> str:
+    pickaxes, normal_ones = [], []
+    for arg in shlex.split(filters):
+        if arg.startswith("-S") or arg.startswith("-G"):
+            if "\n" in arg:
+                pickaxes.append(
+                    "\n  {}'''\n{}\n  '''".format(
+                        arg[:2],
+                        textwrap.indent(textwrap.dedent(arg[2:].rstrip()), "    ")
+                    )
+                )
+            else:
+                normal_ones.append(
+                    "{}'{}'".format(
+                        arg[:2],
+                        arg[3:-1] if (arg[2], arg[-1]) == ("'", "'") else arg[2:]
+                    )
+                )
+        else:
+            normal_ones.append(arg)
+
+    return "\n".join(filter_((" ".join(normal_ones), "".join(pickaxes))))
 
 
 def get_column_range(view, region):

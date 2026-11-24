@@ -22,6 +22,23 @@ class TestThemeGenerator(DeferrableTestCase):
         theme_generator._provided_styles.update(self.provided_styles)
         unstub()
 
+    def test_graph_selected_item_style_uses_its_own_colors(self) -> None:
+        style = next(
+            style for style in self.provided_styles["graph"]
+            if style.scope == "git_savvy.graph.selected_item"
+        )
+        when(theme_generator).color_value("log_graph", "selected_item_foreground").thenReturn("#1f11")
+        when(theme_generator).color_value("log_graph", "selected_item_background").thenReturn("#1a1")
+
+        scheme = theme_generator.sublime.decode_value(theme_generator.render_scheme({"graph": [style]}))
+
+        self.assertEqual(scheme["rules"], [{
+            "name": "GitSavvy Selected Graph Item",
+            "scope": "git_savvy.graph.selected_item",
+            "foreground": "#1f11",
+            "background": "#1a1"
+        }])
+
     def test_start_only_primes_watchers(self) -> None:
         preferences = WatchableSettings({
             "color_scheme": "Packages/Example/Example.sublime-color-scheme"
