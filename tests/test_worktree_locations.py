@@ -48,7 +48,7 @@ class TestWorktreeLocations(DeferrableTestCase):
         bare = os.path.join(self.root, "bare.git")
         self.git("clone", "--bare", self.repo, bare)
         linked = os.path.join(self.root, "bare-linked")
-        self.git("-C", bare, "worktree", "add", "--detach", linked)
+        self.git("--git-dir=" + bare, "worktree", "add", "--detach", linked)
         self.common_dir = bare
         self.assert_matches_git(bare, bare)
         git_dir = self.git("-C", linked, "rev-parse", "--absolute-git-dir").strip()
@@ -69,7 +69,7 @@ class TestWorktreeLocations(DeferrableTestCase):
         command = mock({"repo_path": repo, "git_dir": git_dir, "git_common_dir": self.common_dir})
         when(command).update_store(...).thenReturn(None)
         when(command).git(...).thenRaise(AssertionError("Filesystem reader must not launch Git"))
-        output = self.git("-C", repo, "worktree", "list", "--porcelain")
+        output = self.git("--git-dir=" + git_dir, "worktree", "list", "--porcelain")
         complete = WorktreesMixin._parse_worktree_entries(command, output.splitlines())
         locations = WorktreesMixin.get_worktree_locations(command)
         # Git may expand Windows 8.3 aliases. Compare filesystem identities,
@@ -88,4 +88,8 @@ class TestWorktreeLocations(DeferrableTestCase):
         verify(command).update_store({"worktree_locations": locations})
 
     def git(self, *args: str) -> str:
-        return subprocess.check_output(["git", *args], stderr=subprocess.PIPE).decode("utf-8")
+        # These tests exercise the process-free loose-HEAD reader specifically,
+        # including clones and reinitialization with a separate gitdir.
+        return subprocess.check_output(
+            ["git", "-c", "init.defaultRefFormat=files", *args], stderr=subprocess.PIPE
+        ).decode("utf-8")

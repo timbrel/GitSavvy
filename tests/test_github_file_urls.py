@@ -33,7 +33,7 @@ class FileUrlTestCase(DeferrableTestCase):
             os.path.join(sublime.packages_path(), "file-url-test-{}".format(self.view.id()))
         )
         when(self.command).git(...).thenRaise(AssertionError("Unexpected Git query"))
-        when(self.command).guess_default_branch("origin").thenReturn("origin/main")
+        when(self.command).guess_default_branch("origin").thenReturn("main")
         when(self.command).computed_urls(...).thenReturn(None)
         when(open_on_remote).flash(self.view, ...).thenReturn(None)
         when(sublime).ok_cancel_dialog(...).thenReturn(False)
@@ -133,7 +133,7 @@ class TestGitHubFileUrls(FileUrlTestCase):
         verify(open_on_remote).flash(self.view, "Could not determine the default branch of origin.")
 
     def test_unfetched_branch_asks_to_fetch(self) -> None:
-        when(self.command).guess_default_branch("origin").thenReturn("origin/unfetched")
+        when(self.command).guess_default_branch("origin").thenReturn("unfetched")
         when(self.command).published_branch_from_history("origin", "unfetched").thenReturn(None)
 
         self.command.open_file_on_remote("origin")

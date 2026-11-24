@@ -895,7 +895,7 @@ class EndToEndTestCase(DeferrableTestCase):
     def init_repo(self, comitterdate=None) -> GitCommand:
         repo = GitCommand()
         repo.window = self.window  # type: ignore[attr-defined]
-        repo.git("init", working_dir=self.tmp_dir)
+        repo.git("-c", "init.defaultBranch=master", "init", working_dir=self.tmp_dir)
         repo.git(
             "commit",
             "-m", "Initial commit",

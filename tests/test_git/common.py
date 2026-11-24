@@ -48,7 +48,8 @@ class GitRepoTestCase(TempDirectoryTestCase, AssertionsMixin):
         assert tidy_path(cls._temp_dir) == tidy_path(sublime.active_window().folders()[0])
         assert tidy_path(cls._temp_dir) == tidy_path(cls.window.folders()[0])
         subprocess.check_call(
-            ["git", "init"], cwd=cls._temp_dir, startupinfo=startupinfo
+            ["git", "-c", "init.defaultBranch=master", "init"],
+            cwd=cls._temp_dir, startupinfo=startupinfo
         )
         if cls.initialize:
             cls.add_readme()

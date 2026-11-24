@@ -6,7 +6,7 @@ file_extensions: []
 hidden: true
 scope: git-savvy.graph
 variables:
-  sha: '[0-9a-f]{6,40}'
+  sha: '[0-9a-f]{6,64}'
   ascii_art: (?:[| \\/_.])+
   dot: '[●*⌂]'
 

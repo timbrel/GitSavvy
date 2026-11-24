@@ -29,7 +29,7 @@ contexts:
   section:
     - match: ^$
       pop: true
-    - match: '^   (?:(\*)|(!)| )([0-9a-f]{7,40}) (.+?)(?: +(.+))?\n$'
+    - match: '^   (?:(\*)|(!)| )([0-9a-f]{7,64}) (.+?)(?: +(.+))?\n$'
       scope: meta.git-savvy.tags.tag
       captures:
         1: punctuation.tag-tag.new-tag.git-savvy

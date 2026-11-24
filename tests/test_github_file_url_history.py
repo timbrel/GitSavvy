@@ -23,7 +23,7 @@ class TestPublishedFileUrlHistory(DeferrableTestCase):
         self.addCleanup(self.view.close)
         self.command = gs_github_open_file_in_browser(self.view)
         when(self.command).git(...).thenAnswer(self.git)
-        when(self.command).guess_default_branch("origin").thenReturn("origin/main")
+        when(self.command).guess_default_branch("origin").thenReturn("main")
         # Only the commit graph matters. No checkout, config writes, or index needed.
         self.git("init", "--bare", "--initial-branch=topic")
         self.tree = self.git("mktree", stdin="").strip()
@@ -76,7 +76,7 @@ class TestPublishedFileUrlHistory(DeferrableTestCase):
 
     def git(self, *args: str, stdin: str | None = None, throw_on_error: bool = True, **kwargs) -> str:
         result = subprocess.run(
-            ["git", *args], cwd=self.directory.name,
+            ["git", "--git-dir=" + self.directory.name, *args], cwd=self.directory.name,
             input=stdin.encode("utf-8") if stdin is not None else None,
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=throw_on_error,
             creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,

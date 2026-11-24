@@ -693,7 +693,7 @@ class TestPushCapture(DeferrableTestCase):
 class TestHeadObservation(DeferrableTestCase):
     def setUp(self):
         self.cmd = mock({"repo_path": REPO})
-        for state in ("rebase", "merge", "cherry_pick", "revert", "bisect"):
+        for state in ("rebase", "merge", "bisect"):
             getattr(when(self.cmd), "in_" + state)().thenReturn(False)
         when(self.cmd).get_remote_info().thenReturn(RemoteInfoBlob(
             [
@@ -774,7 +774,7 @@ class TestHeadObservation(DeferrableTestCase):
 
     @p.expand([
         (state, detached)
-        for state in ("rebase", "merge", "cherry_pick", "revert", "bisect")
+        for state in ("rebase", "merge", "bisect")
         for detached in (False, True)
     ])
     def test_ineligible_while_in_progress(self, state, detached):
@@ -784,6 +784,19 @@ class TestHeadObservation(DeferrableTestCase):
             self.observe(detached=True, branch=None, remote=None)
         else:
             self.observe()
+
+        self.assertEqual([], self.scheduled)
+
+    @p.expand([
+        (field, detached)
+        for field in ("cherry_pick_head", "revert_head")
+        for detached in (False, True)
+    ])
+    def test_ineligible_while_head_is_in_a_cherry_pick_or_revert(self, field, detached):
+        if detached:
+            self.observe(detached=True, branch=None, remote=None, **{field: OID})
+        else:
+            self.observe(**{field: OID})
 
         self.assertEqual([], self.scheduled)
 

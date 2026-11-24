@@ -702,6 +702,13 @@ class _GitCommand(SettingsMixin):
         else:
             return self.repo_path
 
+    def empty_tree_oid(self) -> str:
+        oid = self.current_state().get("empty_tree_oid")
+        if oid is None:
+            oid = self.git("hash-object", "-t", "tree", "--stdin", stdin="").strip()
+            self.update_store({"empty_tree_oid": oid})
+        return oid
+
     def update_store(self, partial_state):
         # type: (store.RepoStore) -> None
         store.update_state(self.repo_path, partial_state)

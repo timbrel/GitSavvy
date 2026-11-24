@@ -5,8 +5,8 @@ from typing import Callable
 
 import sublime
 
-from ..base_commands import GsWindowCommand
 from ..ui__quick_panel import SEPARATOR, show_quick_panel
+from .status import StatusInterfaceCommand
 
 
 __all__ = (
@@ -14,14 +14,10 @@ __all__ = (
 )
 
 
-class gs_status_action_menu(GsWindowCommand):
+class gs_status_action_menu(StatusInterfaceCommand):
     selected_index = 0
 
-    def run(self) -> None:
-        view = self.window.active_view()
-        if not view:
-            return
-
+    def run(self, edit: sublime.Edit) -> None:
         actions = self.standard_status_actions()
         if not actions:
             return
@@ -47,19 +43,22 @@ class gs_status_action_menu(GsWindowCommand):
     def standard_status_actions(self) -> list[tuple[str, Callable[[], None]]]:
         actions: list[tuple[str, Callable[[], None]]] = []
 
+        # Offer what the dashboard shows, not what a new query might say.
+        state = self.interface.state
+        head = state.get("head")
         if self.in_rebase():
             actions += [
                 ("Rebase --continue", self.rebase_continue),
                 ("Rebase --abort", self.rebase_abort),
                 ("Rebase --skip", self.rebase_skip),
             ]
-        elif self.in_cherry_pick():
+        elif head and head.in_cherry_pick():
             actions += [
                 ("Cherry-pick --continue", self.cherry_pick_continue),
                 ("Cherry-pick --abort", self.cherry_pick_abort),
                 ("Cherry-pick --skip", self.cherry_pick_skip),
             ]
-        elif self.in_revert():
+        elif head and head.in_revert():
             actions += [
                 ("Revert --continue", self.revert_continue),
                 ("Revert --abort", self.revert_abort),
@@ -71,7 +70,6 @@ class gs_status_action_menu(GsWindowCommand):
                 ("Merge --abort", self.merge_abort),
             ]
         else:
-            state = self.current_state()
             branches = state.get("branches", [])
             current_branch = next(
                 (

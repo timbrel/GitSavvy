@@ -72,6 +72,9 @@ class TestBranchDashboard(DeferrableTestCase):
 
 
 class BranchRenderer(BranchInterface):
+    # The interface metaclass registers subclasses at import time.
+    interface_type = "test_branch_renderer"
+
     def to_short_hash(self, commit_hash: FullHash | ShortHash) -> ShortHash:
         return ShortHash(commit_hash[:7])
 

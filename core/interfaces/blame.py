@@ -139,7 +139,7 @@ LAST_BLAME_FORMAT_KEY = "last_blame_format"
 LAST_COMPACT_BLAME_FORMAT_KEY = "last_compact_blame_format"
 COMPACT_BLAME_FORMATS: tuple[_CompactBlameFormat, ...] = ("hash", "date", "message", "author")
 DEFAULT_BLAME_FORMAT: _CompactBlameFormat = COMPACT_BLAME_FORMATS[0]
-NOT_COMMITED_HASH = "0000000000000000000000000000000000000000"
+UNCOMMITTED_HASHES = {"0" * 40, "0" * 64}
 BLAME_TITLE = "BLAME: {}{}"
 _navigation_info_by_view_id: Dict[sublime.ViewId, NavigationInfo] = {}
 
@@ -720,7 +720,7 @@ class gs_blame_refresh(GsTextCommand):
 
         for line in lines_iter:
             match = re.match(
-                r"(?P<commit>[0-9a-f]{40}) \d+ (?P<lineno>\d+)(?: \d+)?",
+                r"(?P<commit>[0-9a-f]{40}|[0-9a-f]{64}) \d+ (?P<lineno>\d+)(?: \d+)?",
                 line
             )
             assert match
@@ -728,7 +728,7 @@ class gs_blame_refresh(GsTextCommand):
             lineno = int(match["lineno"])
             short_hash: BlamedCommit = (
                 ""
-                if commit_hash == NOT_COMMITED_HASH
+                if commit_hash in UNCOMMITTED_HASHES
                 else self.to_short_hash(commit_hash)
             )
             commits[commit_hash]["short_hash"] = short_hash
@@ -769,7 +769,7 @@ class gs_blame_refresh(GsTextCommand):
         commit: _CommitInfo,
         current_commit_hash: ShortHash | None
     ) -> _RenderedCommitInfo:
-        if commit["long_hash"] == NOT_COMMITED_HASH:
+        if commit["long_hash"] in UNCOMMITTED_HASHES:
             return ["Not committed yet"]
 
         summary = truncate_commit_info(commit["summary"])
@@ -789,7 +789,7 @@ class gs_blame_refresh(GsTextCommand):
         blame_format: _CompactBlameFormat,
         current_commit_hash: ShortHash | None
     ) -> str:
-        if commit["long_hash"] == NOT_COMMITED_HASH:
+        if commit["long_hash"] in UNCOMMITTED_HASHES:
             return "Not committed yet"
 
         if blame_format == "hash":

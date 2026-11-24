@@ -24,8 +24,7 @@ class TestPorcelainStatus(DeferrableTestCase):
         when(self.git).update_store(...).thenAnswer(self.state.update)
         when(self.git).in_rebase().thenReturn(False)
         when(self.git).in_merge().thenReturn(False)
-        when(self.git).in_cherry_pick().thenReturn(False)
-        when(self.git).in_revert().thenReturn(False)
+        when(self.git).read_cherry_pick_and_revert_heads().thenReturn((None, None))
         when(self.git).in_bisect().thenReturn(False)
         when(status.ci_status).on_head_observed(...).thenReturn(None)
 

@@ -42,6 +42,7 @@ if TYPE_CHECKING:
         last_remote_used_for_push: Optional[str]
         last_remote_used_with_option_all: Optional[str]
         last_reset_mode_used: Optional[str]
+        empty_tree_oid: str
         short_hash_length: int
         skipped_files: List[str]
         ahead_behind_consecutive_failures: int
