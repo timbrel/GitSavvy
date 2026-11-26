@@ -61,6 +61,7 @@ INSERTED_KEY = "git-savvy-split-inserted"
 DELETED_CHAR_KEY = "git-savvy-removed-bold"  # shared with the unified view
 INSERTED_CHAR_KEY = "git-savvy-added-bold"
 PHANTOM_KEY = "git-savvy-split-toggle"
+HUNK_BUTTONS_KEY = "git-savvy-hunk-buttons"
 
 class LineInfo(NamedTuple):
     """Where a line of a hunk went."""
@@ -577,7 +578,9 @@ def restore_unified(view: sublime.View) -> Optional[SplitState]:
         return None
 
     view.settings().set(RENDERED_SETTING, False)
-    for key in (DELETED_KEY, INSERTED_KEY, DELETED_CHAR_KEY, INSERTED_CHAR_KEY):
+    for key in (
+        DELETED_KEY, INSERTED_KEY, DELETED_CHAR_KEY, INSERTED_CHAR_KEY, HUNK_BUTTONS_KEY
+    ):
         view.erase_regions(key)
 
     state = states.pop(vid, None)
@@ -740,6 +743,106 @@ def update_toggle(view: sublime.View) -> None:
         sublime.LAYOUT_INLINE,
         lambda href: view.run_command("gs_diff_toggle_split", {"mode": href})
     )
+    update_hunk_buttons(view)
+
+
+# --- the buttons on every hunk ----------------------------------------------
+
+
+HUNK_BUTTONS_TEMPLATE = """
+<body id="git-savvy-hunk-buttons">
+<style>
+    a {{
+        text-decoration: none;
+        padding: 0 0.5rem;
+        color: var(--foreground);
+    }}
+</style>
+{links}
+</body>
+"""
+HUNK_ACTIONS = {
+    # label, reset
+    "stage": ("Stage", False),
+    "restore": ("Restore", True),
+    "unstage": ("Unstage", False),
+}
+
+
+def shows_hunk_buttons(view: sublime.View) -> bool:
+    """Only the views of the working dir and of the index can stage."""
+    settings = view.settings()
+    return bool(
+        settings.get("git_savvy.diff_view")
+        and not settings.get("git_savvy.diff_view.disable_stage")
+        and not settings.get("git_savvy.diff_view.base_commit")
+        and not settings.get("git_savvy.diff_view.target_commit")
+    )
+
+
+def hunk_header_points(view: sublime.View) -> List[int]:
+    """Where the hunk headers begin, in the order of the hunks."""
+    if is_rendered(view):
+        state = states.get(view.id())
+        return [a for a, _ in state.hunk_regions] if state else []
+    return [hunk.a for hunk in SplittedDiff.from_view(view).hunks]
+
+
+def update_hunk_buttons(view: sublime.View) -> None:
+    """Put the buttons at the right edge of every hunk header.
+
+    Stage and Restore for the working dir, Unstage for the index.  For
+    a combined diff only Stage: there the staging command stages the
+    whole file, whatever it is asked to do.
+    """
+    if not shows_hunk_buttons(view):
+        view.erase_regions(HUNK_BUTTONS_KEY)
+        return
+
+    if view.settings().get("git_savvy.diff_view.in_cached_mode"):
+        actions = ["unstage"]
+    elif not is_rendered(view) and SplittedDiff.from_view(view).is_combined_diff():
+        actions = ["stage"]
+    else:
+        actions = ["stage", "restore"]
+
+    points = hunk_header_points(view)
+    annotations = [
+        HUNK_BUTTONS_TEMPLATE.format(links="".join(
+            '<a href="{}:{}">{}</a>'.format(action, idx, HUNK_ACTIONS[action][0])
+            for action in actions
+        ))
+        for idx in range(len(points))
+    ]
+    foreground = view.style().get("foreground", "#888888")
+    view.add_regions(
+        HUNK_BUTTONS_KEY,
+        [view.line(pt) for pt in points],
+        scope="",
+        flags=(
+            sublime.RegionFlags.DRAW_NO_FILL
+            | sublime.RegionFlags.DRAW_NO_OUTLINE
+            | sublime.RegionFlags.NO_UNDO
+        ),
+        annotations=annotations,
+        annotation_color=foreground,
+        on_navigate=lambda href: on_hunk_button(view, href),
+    )
+
+
+def on_hunk_button(view: sublime.View, href: str) -> None:
+    """Run the staging command for the hunk whose button was clicked."""
+    action, _, idx = href.partition(":")
+    if action not in HUNK_ACTIONS or not idx.isdigit():
+        return
+    points = hunk_header_points(view)
+    if int(idx) >= len(points):
+        return
+
+    view.sel().clear()
+    view.sel().add(points[int(idx)])
+    _, reset = HUNK_ACTIONS[action]
+    view.run_command("gs_diff_stage_or_reset_hunk", {"reset": reset})
 
 
 class gs_diff_toggle_split(TextCommand):
