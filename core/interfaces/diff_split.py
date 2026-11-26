@@ -713,20 +713,24 @@ TOGGLE_TEMPLATE = """
 <body id="git-savvy-diff-split-toggle">
 <style>
     body {{
-        padding: 0 0.2rem;
+        padding: 2px 4px;
     }}
     a {{
         text-decoration: none;
-        padding: 0 0.7rem;
-        border-radius: 0.25rem;
-        border: 1px solid color(var(--foreground) alpha(0.4));
-        background-color: color(var(--foreground) alpha(0.06));
-        color: color(var(--foreground) alpha(0.7));
+        padding: 3px 10px;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        border-style: solid;
+        border-width: 1px;
+        border-color: color(var(--foreground) alpha(0.14));
+        background-color: color(var(--foreground) alpha(0.07));
+        color: var(--foreground);
     }}
     a.active {{
+        font-weight: bold;
         border-color: var(--foreground);
-        color: var(--background);
         background-color: var(--foreground);
+        color: var(--background);
     }}
 </style>
 <a class="{unified}" href="unified">Unified</a>&nbsp;<a class="{split}" href="split">Split</a>
@@ -757,20 +761,20 @@ def update_toggle(view: sublime.View) -> None:
 HUNK_BUTTONS_TEMPLATE = """
 <body id="git-savvy-hunk-buttons">
 <style>
-    body {{
-        padding: 0 0.2rem;
-    }}
     a {{
         text-decoration: none;
-        padding: 0 0.6rem;
-        border-radius: 0.25rem;
-        border: 1px solid color(var(--foreground) alpha(0.4));
-        background-color: color(var(--foreground) alpha(0.06));
+        /* An annotation draws the text of a link 10px to the right of
+           its box: what looks like 10px on either side is this. */
+        padding: 1px 20px 1px 0;
+        border-radius: 6px;
+        font-size: 0.9rem;
+        border-style: solid;
+        border-width: 1px;
+        border-color: color(var(--foreground) alpha(0.14));
+        background-color: color(var(--foreground) alpha(0.07));
         color: var(--foreground);
     }}
     a.restore {{
-        border-color: color(var(--redish) alpha(0.7));
-        background-color: color(var(--redish) alpha(0.12));
         color: var(--redish);
     }}
 </style>
@@ -824,9 +828,18 @@ def update_hunk_buttons(view: sublime.View) -> None:
 
     points = hunk_header_points(view)
     annotations = [
-        HUNK_BUTTONS_TEMPLATE.format(links="&nbsp;".join(
-            '<a class="{0}" href="{0}:{1}">{2}</a>'.format(action, idx, HUNK_ACTIONS[action][0])
-            for action in actions
+        HUNK_BUTTONS_TEMPLATE.format(links=(
+            # The width of an annotation leaves out the left edge of its
+            # first link and the right edge of its last one; the characters
+            # around the links keep both edges in.
+            "&nbsp;"
+            + "&nbsp;".join(
+                '<a class="{0}" href="{0}:{1}">{2}</a>'.format(
+                    action, idx, HUNK_ACTIONS[action][0]
+                )
+                for action in actions
+            )
+            + "&#8203;"
         ))
         for idx in range(len(points))
     ]
