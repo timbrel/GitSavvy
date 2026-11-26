@@ -45,7 +45,7 @@ This command will open a special diff view.  Output from `git diff` will be disp
 
 Use `o` to open the file at the beginning of the hunk.  Pressing `w` will toggle whether the diff ignores whitespace changes.  Note that you can not stage anything in this mode.
 
-Each hunk header also carries **Stage** and **Restore** buttons on its right.  They do what `s` and `d` do for that hunk, so `SUPER-z` (`CTRL-z` on Windows) undoes them as well.  A diff against a commit, where staging is off, has no buttons.
+Each hunk header also gets a row of its own with **Stage** and **Restore** buttons at the right.  They do what `s` and `d` do for that hunk, so `SUPER-z` (`CTRL-z` on Windows) undoes them as well.  A diff against a commit, where staging is off, has no buttons.
 
 ### Side by side
 
@@ -56,7 +56,7 @@ Staging, discarding, undo, zooming and opening a hunk work the same in both layo
 
 ## `git: diff cached`
 
-This command functions similarly to the above.  However, it displays the output of `git diff --cached` and, when you press `SUPER-Enter` (`CTRL-Enter` in Windows/Linux) over a hunk, that hunk will be _removed_ from the index.  Here each hunk header carries a single **Unstage** button.
+This command functions similarly to the above.  However, it displays the output of `git diff --cached` and, when you press `SUPER-Enter` (`CTRL-Enter` in Windows/Linux) over a hunk, that hunk will be _removed_ from the index.  Here the row under each hunk header holds a single **Unstage** button.
 
 
 ## `git: edit and stage diff`

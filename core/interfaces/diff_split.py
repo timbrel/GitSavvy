@@ -37,7 +37,7 @@ __all__ = (
 )
 
 
-from typing import Dict, Iterator, List, NamedTuple, Optional, Tuple
+from typing import Dict, Iterator, List, NamedTuple, Optional, Set, Tuple
 from ..parse_diff import Hunk, HunkLine
 
 
@@ -135,6 +135,8 @@ def remember(view: sublime.View, prelude: str, diff_text: str) -> None:
 
 def forget(view: sublime.View) -> None:
     vid = view.id()
+    watched.pop(vid, None)
+    ticking.discard(vid)
     last_drawn.pop(vid, None)
     states.pop(vid, None)
     holds.pop(vid, None)
@@ -567,7 +569,6 @@ def render(view: sublime.View) -> bool:
     # that is the unified text here, which makes every row a changed one.
     view.set_reference_document(state.text)
     update_toggle(view)
-    _watch_width(view)
     return True
 
 
@@ -578,10 +579,9 @@ def restore_unified(view: sublime.View) -> Optional[SplitState]:
         return None
 
     view.settings().set(RENDERED_SETTING, False)
-    for key in (
-        DELETED_KEY, INSERTED_KEY, DELETED_CHAR_KEY, INSERTED_CHAR_KEY, HUNK_BUTTONS_KEY
-    ):
+    for key in (DELETED_KEY, INSERTED_KEY, DELETED_CHAR_KEY, INSERTED_CHAR_KEY):
         view.erase_regions(key)
+    view.erase_phantoms(HUNK_BUTTONS_KEY)
 
     state = states.pop(vid, None)
     if state is None or state.text != view.substr(sublime.Region(0, view.size())):
@@ -672,22 +672,44 @@ def _draw_regions(view: sublime.View, state: SplitState) -> None:
         )
 
 
-def _watch_width(view: sublime.View) -> None:
-    """Lay out again if the room the view has is not what was laid out for.
+WIDTH_CHECK_INTERVAL = 500  # [ms]
+# The width the hunk buttons of a view were laid out for.
+watched: Dict[sublime.ViewId, float] = {}
+# The views whose width is being watched.
+ticking: Set[sublime.ViewId] = set()
 
-    That is the case for a view that was just created, which has no size yet.
+
+def _watch_width(view: sublime.View) -> None:
+    """Lay out again whenever the room the view has changes.
+
+    Sublime has no event for a view that is resized, so look every now and
+    then.  That also covers a view that was just created, which has no size
+    yet.  The watch ends when the view closes.
     """
+    vid = view.id()
+    if vid in ticking:
+        return
+    ticking.add(vid)
+
     def check() -> None:
-        state = states.get(view.id())
-        if (
-            state
-            and view.is_valid()
-            and is_rendered(view)
-            and not is_held(view)
-            and available_columns(view) != state.columns
-        ):
-            restore_unified(view)
-            render(view)
+        if vid not in ticking:
+            return
+        if not view.is_valid():
+            ticking.discard(vid)
+            watched.pop(vid, None)
+            return
+        if not is_held(view):
+            state = states.get(vid)
+            if (
+                state
+                and is_rendered(view)
+                and available_columns(view) != state.columns
+            ):
+                restore_unified(view)
+                render(view)
+            elif view.viewport_extent()[0] != watched.get(vid):
+                update_hunk_buttons(view)
+        sublime.set_timeout(check, WIDTH_CHECK_INTERVAL)
 
     sublime.set_timeout(check, 100)
 
@@ -761,11 +783,14 @@ def update_toggle(view: sublime.View) -> None:
 HUNK_BUTTONS_TEMPLATE = """
 <body id="git-savvy-hunk-buttons">
 <style>
+    div {{
+        width: {width}px;
+        text-align: right;
+        padding: 2px 0 4px 0;
+    }}
     a {{
         text-decoration: none;
-        /* An annotation draws the text of a link 10px to the right of
-           its box: what looks like 10px on either side is this. */
-        padding: 1px 20px 1px 0;
+        padding: 3px 10px;
         border-radius: 6px;
         font-size: 0.9rem;
         border-style: solid;
@@ -778,7 +803,7 @@ HUNK_BUTTONS_TEMPLATE = """
         color: var(--redish);
     }}
 </style>
-{links}
+<div>{links}</div>
 </body>
 """
 HUNK_ACTIONS = {
@@ -809,14 +834,17 @@ def hunk_header_points(view: sublime.View) -> List[int]:
 
 
 def update_hunk_buttons(view: sublime.View) -> None:
-    """Put the buttons at the right edge of every hunk header.
+    """Put the buttons on a row of their own under every hunk header.
 
     Stage and Restore for the working dir, Unstage for the index.  For
     a combined diff only Stage: there the staging command stages the
     whole file, whatever it is asked to do.
+
+    The row is as wide as the view, which is what puts the buttons at its
+    right edge: a phantom ignores `text-align` without a width.
     """
+    view.erase_phantoms(HUNK_BUTTONS_KEY)
     if not shows_hunk_buttons(view):
-        view.erase_regions(HUNK_BUTTONS_KEY)
         return
 
     if view.settings().get("git_savvy.diff_view.in_cached_mode"):
@@ -826,39 +854,24 @@ def update_hunk_buttons(view: sublime.View) -> None:
     else:
         actions = ["stage", "restore"]
 
-    points = hunk_header_points(view)
-    annotations = [
-        HUNK_BUTTONS_TEMPLATE.format(links=(
-            # The width of an annotation leaves out the left edge of its
-            # first link and the right edge of its last one; the characters
-            # around the links keep both edges in.
-            "&nbsp;"
-            + "&nbsp;".join(
-                '<a class="{0}" href="{0}:{1}">{2}</a>'.format(
-                    action, idx, HUNK_ACTIONS[action][0]
-                )
-                for action in actions
+    viewport_width = view.viewport_extent()[0]
+    watched[view.id()] = viewport_width
+    _watch_width(view)
+    width = max(int(viewport_width - 2 * view.em_width()), 0)
+    for idx, pt in enumerate(hunk_header_points(view)):
+        links = "&nbsp;".join(
+            '<a class="{0}" href="{0}:{1}">{2}</a>'.format(
+                action, idx, HUNK_ACTIONS[action][0]
             )
-            + "&#8203;"
-        ))
-        for idx in range(len(points))
-    ]
-    # The bar Sublime draws before an annotation takes this color; make it
-    # the background so that only the buttons show.
-    background = view.style().get("background", "#00000000")
-    view.add_regions(
-        HUNK_BUTTONS_KEY,
-        [view.line(pt) for pt in points],
-        scope="",
-        flags=(
-            sublime.RegionFlags.DRAW_NO_FILL
-            | sublime.RegionFlags.DRAW_NO_OUTLINE
-            | sublime.RegionFlags.NO_UNDO
-        ),
-        annotations=annotations,
-        annotation_color=background,
-        on_navigate=lambda href: on_hunk_button(view, href),
-    )
+            for action in actions
+        )
+        view.add_phantom(
+            HUNK_BUTTONS_KEY,
+            sublime.Region(view.line(pt).b),
+            HUNK_BUTTONS_TEMPLATE.format(width=width, links=links),
+            sublime.LAYOUT_BLOCK,
+            lambda href: on_hunk_button(view, href),
+        )
 
 
 def on_hunk_button(view: sublime.View, href: str) -> None:
