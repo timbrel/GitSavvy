@@ -45,10 +45,18 @@ This command will open a special diff view.  Output from `git diff` will be disp
 
 Use `o` to open the file at the beginning of the hunk.  Pressing `w` will toggle whether the diff ignores whitespace changes.  Note that you can not stage anything in this mode.
 
+Each hunk header also carries **Stage** and **Restore** buttons on its right.  They do what `s` and `d` do for that hunk, so `SUPER-z` (`CTRL-z` on Windows) undoes them as well.  A diff against a commit, where staging is off, has no buttons.
+
+### Side by side
+
+Press `v`, or click **Split** on the first line of the view, to see the diff side by side: the old version of each file on the left, the new one on the right, each with its own line numbers.  A changed line sits next to the line that replaced it, and long lines wrap within their column.  **Unified**, or `v` again, goes back.  The choice is remembered for the diff views you open next.
+
+Staging, discarding, undo, zooming and opening a hunk work the same in both layouts.  Selecting single lines with `space` needs the unified layout, and so do diffs of merge conflicts, which are always shown unified.
+
 
 ## `git: diff cached`
 
-This command functions similarly to the above.  However, it displays the output of `git diff --cached` and, when you press `SUPER-Enter` (`CTRL-Enter` in Windows/Linux) over a hunk, that hunk will be _removed_ from the index.
+This command functions similarly to the above.  However, it displays the output of `git diff --cached` and, when you press `SUPER-Enter` (`CTRL-Enter` in Windows/Linux) over a hunk, that hunk will be _removed_ from the index.  Here each hunk header carries a single **Unstage** button.
 
 
 ## `git: edit and stage diff`
