@@ -744,8 +744,8 @@ TOGGLE_TEMPLATE = """
         font-size: 0.9rem;
         border-style: solid;
         border-width: 1px;
-        border-color: color(var(--foreground) alpha(0.14));
-        background-color: color(var(--foreground) alpha(0.07));
+        border-color: color(var(--foreground) alpha(0.35));
+        background-color: color(var(--foreground) alpha(0.12));
         color: var(--foreground);
     }}
     a.active {{
@@ -795,8 +795,8 @@ HUNK_BUTTONS_TEMPLATE = """
         font-size: 0.9rem;
         border-style: solid;
         border-width: 1px;
-        border-color: color(var(--foreground) alpha(0.14));
-        background-color: color(var(--foreground) alpha(0.07));
+        border-color: color(var(--foreground) alpha(0.35));
+        background-color: color(var(--foreground) alpha(0.12));
         color: var(--foreground);
     }}
     a.restore {{
