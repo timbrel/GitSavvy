@@ -4,6 +4,7 @@ from .commit import *  # noqa: F401, F403
 from .dashboard_base import *  # noqa: F401, F403
 from .dashboard_mouse import *  # noqa: F401, F403
 from .diff import *  # noqa: F401, F403
+from .diff_split import *  # noqa: F401, F403
 from .help import *  # noqa: F401, F403
 from .help_panel import *  # noqa: F401, F403
 from .inline_diff import *  # noqa: F401, F403

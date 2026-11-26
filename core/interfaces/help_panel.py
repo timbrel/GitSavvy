@@ -184,6 +184,7 @@ class gs_diff_help_panel(GsAbstractOpenHelpPanel):
     [tab]          switch between staged/unstaged area
     [s]/[u]/[d]    stage, unstage, or discard hunk or selection
     [S]/[U]/[D]    stage, unstage, or discard complete file
+                   (or the Stage / Restore / Unstage buttons on a hunk)
     [space]        select line or hunk; [{cr}+space] to clear the selection
     [{cr}-z]       undo last action
 
@@ -191,6 +192,7 @@ class gs_diff_help_panel(GsAbstractOpenHelpPanel):
     [m]            amend previous commit
     [f]            make fixup commit
     [a]            toggle all files / current file
+    [v]            toggle unified / side by side view
 
     ### Navigation ###
     [o]            open hunk in working dir

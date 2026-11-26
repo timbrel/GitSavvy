@@ -1112,6 +1112,14 @@
         ]
     },
     {
+        "keys": ["v"],
+        "command": "gs_diff_toggle_split",
+        "context": [
+            { "key": "setting.command_mode", "operator": "equal", "operand": false },
+            { "key": "setting.git_savvy.diff_view", "operator": "equal", "operand": true }
+        ]
+    },
+    {
         "keys": ["+"],
         "command": "gs_diff_zoom",
         "args": { "amount": 5 },

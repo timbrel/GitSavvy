@@ -16,3 +16,21 @@ contexts:
     - match: '  UNSTAGED CHANGES'
     - match: '^--$\n'
       set: 'scope:git-savvy.diff'
+    # The side by side view, see `core/interfaces/diff_split.py`.
+    - match: '^==$\n'
+      set: split
+
+  split:
+    - meta_content_scope: git-savvy.diff-split
+    # The line number of the left half ...
+    - match: '^ *(\d+)(?= )'
+      captures:
+        1: comment.line-number.diff-split
+    # ... and the divider with the line number of the right half.
+    - match: '(\x{2502}) *(\d+)?(?= |$)'
+      captures:
+        1: comment.divider.diff-split
+        2: comment.line-number.diff-split
+    # No row of the two columns begins with a "+" or a "-", so of the diff
+    # syntax only the headers match.
+    - include: 'scope:git-savvy.diff'
