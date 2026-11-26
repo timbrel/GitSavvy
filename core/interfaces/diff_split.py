@@ -844,6 +844,9 @@ def update_hunk_buttons(view: sublime.View) -> None:
     right edge: a phantom ignores `text-align` without a width.
     """
     view.erase_phantoms(HUNK_BUTTONS_KEY)
+    # Before they had a row of their own the buttons were annotations under
+    # the same key; a view that was open across the update still has them.
+    view.erase_regions(HUNK_BUTTONS_KEY)
     if not shows_hunk_buttons(view):
         return
 
