@@ -354,6 +354,10 @@
         "args": { "in_cached_mode": true, "current_file": true }
     },
     {
+        "caption": "git: diff: toggle unified / side by side view",
+        "command": "gs_diff_toggle_split"
+    },
+    {
         "caption": "git: compare against ...",
         "command": "gs_compare_against",
         "args": { "target_commit": "HEAD" }

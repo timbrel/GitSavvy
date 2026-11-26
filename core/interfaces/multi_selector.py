@@ -89,10 +89,20 @@ class gs_log_graph_multiselect(TextCommand):
 class gs_diff_multiselect(TextCommand):
     def run(self, edit, event: dict | None = None) -> None:
         view = self.view
+        if view.settings().get("git_savvy.diff_view.split_rendered"):
+            # The marks are positions in the unified patch.
+            window = view.window()
+            if window:
+                window.status_message(
+                    "Selecting lines is not available in the side by side view."
+                )
+            return
+
         if event is not None and not any(not s.empty() for s in view.sel()):
             pt = view.window_to_text((event["x"], event["y"]))
             view.sel().clear()
             view.sel().add(sublime.Region(pt))
+
         frozen_sel = list(view.sel())
 
         multi_selection: list[Region] = view.settings().get("git_savvy.multi_selection", [])

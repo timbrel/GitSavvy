@@ -191,6 +191,7 @@ class gs_diff_help_panel(GsAbstractOpenHelpPanel):
     [m]            amend previous commit
     [f]            make fixup commit
     [a]            toggle all files / current file
+    [v]            toggle unified / side by side view
 
     ### Navigation ###
     [o]            open hunk in working dir

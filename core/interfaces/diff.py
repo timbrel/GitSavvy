@@ -15,6 +15,7 @@ import re
 import sublime
 from sublime_plugin import TextCommand, EventListener
 
+from . import diff_split
 from . import inline_diff
 from . import util as interface_util
 from .. import intra_line_colorizer
@@ -271,6 +272,7 @@ class gs_diff(GsWindowCommand):
                 "git_savvy.diff_view.history": [],
                 "git_savvy.diff_view.just_hunked": "",
                 "git_savvy.diff_view.toggled_mode_automatically": False,
+                diff_split.SPLIT_SETTING: diff_split.default_mode(),
                 "result_file_regex": FILE_RE,
                 "result_line_regex": LINE_RE,
                 "result_base_dir": repo_path,
@@ -428,14 +430,21 @@ def _draw(
     preserve_history: bool
 ) -> None:
     vid = view.id()
+    # Everything below works on the unified text, the split view is made
+    # from it at the very end.
+    was_split = diff_split.restore_unified(view)
     diff_regions = view.find_by_selector("git-savvy.diff_view git-savvy.diff")
-    was_empty = not diff_regions
+    was_empty = not was_split.diff_text if was_split else not diff_regions
     navigated = False
 
     if vid in DIFF_HISTORY:
         prior_diff_text: str = DIFF_HISTORY[vid][-1]
     else:
-        prior_diff_text = "".join(view.substr(r) for r in diff_regions)
+        prior_diff_text = (
+            was_split.diff_text
+            if was_split
+            else "".join(view.substr(r) for r in diff_regions)
+        )
         DIFF_HISTORY[vid].append(prior_diff_text)
 
     diff_changed = prior_diff_text != diff_text
@@ -469,7 +478,14 @@ def _draw(
     if was_empty and not navigated:
         view.run_command("gs_diff_navigate")
 
-    intra_line_colorizer.annotate_intra_line_differences(view, diff_text, len(prelude))
+    diff_split.remember(view, prelude, diff_text)
+    if diff_split.is_held(view):
+        # A command is at work that needs the unified text, and switches to
+        # the split view itself when it is done.
+        return
+    if not (diff_split.wants_split(view) and diff_split.render(view)):
+        intra_line_colorizer.annotate_intra_line_differences(view, diff_text, len(prelude))
+        diff_split.update_toggle(view)
 
 
 def apply_file_position(
@@ -683,6 +699,7 @@ class gs_diff_toggle_cached_mode(TextCommand):
     """
 
     # NOTE: Blocking because `set_and_show_cursor` must run within a `TextCommand`
+    @diff_split.reads_unified_patch
     def run(self, edit):
         settings = self.view.settings()
 
@@ -741,6 +758,7 @@ class gs_diff_toggle_all(GsTextCommand):
 
     """Toggle between all-files and single-file diff mode."""
 
+    @diff_split.reads_unified_patch
     def run(self, edit: sublime.Edit) -> None:
         settings = self.view.settings()
         diff = SplittedDiff.from_view(self.view)
@@ -1028,6 +1046,7 @@ class gs_diff_zoom(TextCommand):
     Update the number of context lines the diff shows by given `amount`
     and refresh the view.
     """
+    @diff_split.reads_unified_patch
     def run(self, edit, amount):
         # type: (sublime.Edit, int) -> None
         settings = self.view.settings()
@@ -1175,6 +1194,7 @@ class gs_diff_stage_or_reset_hunk(GsTextCommand):
     # the view and the repo state get out of sync and e.g. hitting 'h' very fast will
     # result in errors.
 
+    @diff_split.reads_unified_patch
     def run(self, edit, reset=False, whole_file=False):
         # type: (sublime.Edit, bool, bool) -> None
         settings = self.view.settings()
@@ -1584,6 +1604,7 @@ class _GsDiffOpenFileAtHunk(GsTextCommand, ABC):
     and open the file at that hunk in a separate view.
     """
 
+    @diff_split.reads_unified_patch
     def run(self, edit):
         # type: (sublime.Edit) -> None
 
@@ -1861,6 +1882,10 @@ class gs_diff_navigate(GsNavigateBase):
         super().run(edit, forward)
 
     def get_available_regions(self):
+        split_regions = diff_split.navigation_regions(self.view, self.in_chunks)
+        if split_regions is not None:
+            return split_regions
+
         def _gen() -> Iterator[sublime.Region]:
             diff = SplittedDiff.from_view(self.view)
             if not diff.hunks:
@@ -1902,6 +1927,7 @@ class gs_diff_undo(GsTextCommand):
     """
 
     # NOTE: Blocking because `set_and_show_cursor` must run within a `TextCommand`
+    @diff_split.reads_unified_patch
     def run(self, edit):
         settings = self.view.settings()
         history = settings.get("git_savvy.diff_view.history")
