@@ -712,16 +712,21 @@ def navigation_regions(view: sublime.View, in_chunks: bool) -> Optional[List[sub
 TOGGLE_TEMPLATE = """
 <body id="git-savvy-diff-split-toggle">
 <style>
+    body {{
+        padding: 0 0.2rem;
+    }}
     a {{
         text-decoration: none;
-        padding: 0.1rem 0.6rem;
-        border-radius: 0.3rem;
-        color: color(var(--foreground) alpha(0.6));
+        padding: 0 0.7rem;
+        border-radius: 0.25rem;
+        border: 1px solid color(var(--foreground) alpha(0.4));
         background-color: color(var(--foreground) alpha(0.06));
+        color: color(var(--foreground) alpha(0.7));
     }}
     a.active {{
-        color: var(--foreground);
-        background-color: color(var(--foreground) alpha(0.22));
+        border-color: var(--foreground);
+        color: var(--background);
+        background-color: var(--foreground);
     }}
 </style>
 <a class="{unified}" href="unified">Unified</a>&nbsp;<a class="{split}" href="split">Split</a>
@@ -752,10 +757,21 @@ def update_toggle(view: sublime.View) -> None:
 HUNK_BUTTONS_TEMPLATE = """
 <body id="git-savvy-hunk-buttons">
 <style>
+    body {{
+        padding: 0 0.2rem;
+    }}
     a {{
         text-decoration: none;
-        padding: 0 0.5rem;
+        padding: 0 0.6rem;
+        border-radius: 0.25rem;
+        border: 1px solid color(var(--foreground) alpha(0.4));
+        background-color: color(var(--foreground) alpha(0.06));
         color: var(--foreground);
+    }}
+    a.restore {{
+        border-color: color(var(--redish) alpha(0.7));
+        background-color: color(var(--redish) alpha(0.12));
+        color: var(--redish);
     }}
 </style>
 {links}
@@ -808,13 +824,15 @@ def update_hunk_buttons(view: sublime.View) -> None:
 
     points = hunk_header_points(view)
     annotations = [
-        HUNK_BUTTONS_TEMPLATE.format(links="".join(
-            '<a href="{}:{}">{}</a>'.format(action, idx, HUNK_ACTIONS[action][0])
+        HUNK_BUTTONS_TEMPLATE.format(links="&nbsp;".join(
+            '<a class="{0}" href="{0}:{1}">{2}</a>'.format(action, idx, HUNK_ACTIONS[action][0])
             for action in actions
         ))
         for idx in range(len(points))
     ]
-    foreground = view.style().get("foreground", "#888888")
+    # The bar Sublime draws before an annotation takes this color; make it
+    # the background so that only the buttons show.
+    background = view.style().get("background", "#00000000")
     view.add_regions(
         HUNK_BUTTONS_KEY,
         [view.line(pt) for pt in points],
@@ -825,7 +843,7 @@ def update_hunk_buttons(view: sublime.View) -> None:
             | sublime.RegionFlags.NO_UNDO
         ),
         annotations=annotations,
-        annotation_color=foreground,
+        annotation_color=background,
         on_navigate=lambda href: on_hunk_button(view, href),
     )
 
